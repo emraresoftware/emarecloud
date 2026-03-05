@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}AI Model Orkestratörü - EmareCloud{% endblock %}
+{% block page_title %}Çoklu AI Model Orkestratörü{% endblock %}
+
+{% block head %}
+<style>
+.orch-container{max-width:1100px;margin:0 auto}
+.orch-hero{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.orch-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#ec4899);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.orch-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.orch-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.orch-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.orch-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.orch-models{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.orch-model{padding:16px;border-radius:14px;background:var(--bg-input);border:2px solid transparent;transition:all .25s;cursor:pointer;position:relative}
+.orch-model:hover{border-color:#6366f1;transform:translateY(-2px)}
+.orch-model.active{border-color:#22c55e}
+.orch-model.active::after{content:'✓';position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:#22c55e;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.orch-model-icon{font-size:28px;margin-bottom:8px}
+.orch-model-name{font-size:14px;font-weight:700}
+.orch-model-spec{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.orch-model-status{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-top:8px}
+.orch-chat{display:flex;flex-direction:column;height:460px}
+.orch-chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--bg-input);border-radius:12px;margin-bottom:12px}
+.orch-msg{max-width:80%;padding:14px 18px;border-radius:16px;font-size:13px;line-height:1.6;animation:orchFade .3s ease-out}
+@keyframes orchFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.orch-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff;border-bottom-right-radius:4px}
+.orch-msg.ai{align-self:flex-start;background:var(--bg-card);border:1px solid var(--border-color);border-bottom-left-radius:4px}
+.orch-msg .model-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-bottom:6px}
+.orch-msg .thinking{color:var(--text-secondary);font-style:italic;font-size:12px}
+.orch-chat-input{display:flex;gap:10px}
+.orch-chat-input input{flex:1;padding:14px 18px;border-radius:14px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:14px}
+.orch-chat-input button{padding:14px 24px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#ec4899);color:#fff;border:none;font-weight:700;cursor:pointer;transition:all .2s}
+.orch-chat-input button:hover{opacity:.9;transform:translateY(-1px)}
+.orch-routing{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.orch-rule{padding:16px;border-radius:14px;background:var(--bg-input);display:flex;align-items:center;gap:14px}
+.orch-rule-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.orch-rule-info{flex:1}
+.orch-rule-name{font-size:13px;font-weight:700}
+.orch-rule-desc{font-size:11px;color:var(--text-secondary)}
+.orch-toggle{width:44px;height:24px;border-radius:12px;background:var(--border-color);position:relative;cursor:pointer;transition:all .3s;flex-shrink:0}
+.orch-toggle.on{background:#22c55e}
+.orch-toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;left:2px;transition:all .3s}
+.orch-toggle.on::after{left:22px}
+.orch-perf{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:16px}
+.orch-perf-item{padding:16px;border-radius:14px;background:var(--bg-input);text-align:center}
+.orch-perf-model{font-size:12px;font-weight:700;margin-bottom:8px}
+.orch-perf-bar{height:6px;border-radius:3px;background:var(--border-color);overflow:hidden;margin-bottom:4px}
+.orch-perf-fill{height:100%;border-radius:3px}
+.orch-perf-stat{font-size:11px;color:var(--text-secondary)}
+@media(max-width:768px){.orch-models{grid-template-columns:1fr 1fr}.orch-msg{max-width:95%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="orch-container">
+    <div class="orch-hero">
+        <div class="orch-hero-icon"><i class="fas fa-sitemap"></i></div>
+        <div>
+            <h2>Çoklu AI Model Orkestratörü</h2>
+            <p>Llama, Grok, Mistral ve kendi modellerinizi tek chat'te yönetin. Akıllı yönlendirme ile en iyi yanıtı alın.</p>
+        </div>
+    </div>
+
+    <div class="orch-card">
+        <h3><i class="fas fa-cubes" style="color:#6366f1"></i> Aktif Modeller</h3>
+        <div class="orch-models" id="orchModels"></div>
+    </div>
+
+    <div class="orch-card">
+        <h3><i class="fas fa-comments" style="color:#ec4899"></i> Orkestratör Chat</h3>
+        <div class="orch-chat">
+            <div class="orch-chat-msgs" id="orchMsgs">
+                <div class="orch-msg ai">
+                    <div class="model-tag" style="background:rgba(99,102,241,.15);color:#6366f1">🎯 Orkestratör</div>
+                    Merhaba! Ben çoklu model orkestratörünüzüm. Sorunuzu en uygun AI modeline yönlendiririm. Kod, yaratıcı yazı, analiz — her konuda yardımcı olabilirim.
+                </div>
+            </div>
+            <div class="orch-chat-input">
+                <input type="text" id="orchInput" placeholder="Mesajınızı yazın... (Otomatik model seçimi yapılır)" onkeypress="if(event.key==='Enter')sendOrchMsg()">
+                <button onclick="sendOrchMsg()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="orch-card">
+        <h3><i class="fas fa-route" style="color:#22c55e"></i> Yönlendirme Kuralları</h3>
+        <div class="orch-routing" id="orchRouting"></div>
+    </div>
+
+    <div class="orch-card">
+        <h3><i class="fas fa-chart-bar" style="color:#f59e0b"></i> Model Performans Karşılaştırma</h3>
+        <div class="orch-perf" id="orchPerf"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const orchModels=[
+    {name:'Llama 3 70B',icon:'🦙',spec:'Meta · 70B params',status:'Aktif',statusBg:'#22c55e',active:true},
+    {name:'Mistral Large',icon:'🌀',spec:'Mistral · 123B params',status:'Aktif',statusBg:'#22c55e',active:true},
+    {name:'CodeLlama 34B',icon:'💻',spec:'Meta · 34B params',status:'Aktif',statusBg:'#22c55e',active:true},
+    {name:'Grok-1',icon:'⚡',spec:'xAI · 314B params',status:'Bekleme',statusBg:'#f59e0b',active:false},
+    {name:'Gemma 7B',icon:'💎',spec:'Google · 7B params',status:'Aktif',statusBg:'#22c55e',active:true},
+    {name:'Custom Model',icon:'🧪',spec:'Fine-tuned · 8B params',status:'Aktif',statusBg:'#22c55e',active:true}
+];
+const mc=document.getElementById('orchModels');
+mc.innerHTML=orchModels.map(m=>'<div class="orch-model'+(m.active?' active':'')+'" onclick="this.classList.toggle(\'active\')"><div class="orch-model-icon">'+m.icon+'</div><div class="orch-model-name">'+m.name+'</div><div class="orch-model-spec">'+m.spec+'</div><div class="orch-model-status" style="background:'+m.statusBg+'22;color:'+m.statusBg+'">'+m.status+'</div></div>').join('');
+
+const routingRules=[
+    {icon:'💻',bg:'rgba(99,102,241,.12)',name:'Kod Soruları → CodeLlama',desc:'Programlama, debug, code review',on:true},
+    {icon:'✍️',bg:'rgba(236,72,153,.12)',name:'Yaratıcı Yazı → Llama 3',desc:'Blog, hikaye, pazarlama içeriği',on:true},
+    {icon:'📊',bg:'rgba(34,197,94,.12)',name:'Veri Analizi → Mistral',desc:'Tablo, grafik, istatistik yorumu',on:true},
+    {icon:'🛒',bg:'rgba(245,158,11,.12)',name:'E-Ticaret → Custom Model',desc:'Ürün önerisi, müşteri desteği',on:true},
+    {icon:'🌐',bg:'rgba(59,130,246,.12)',name:'Çeviri → Gemma',desc:'Çoklu dil çevirisi',on:false},
+    {icon:'⚡',bg:'rgba(168,85,247,.12)',name:'Hızlı Yanıt → Gemma',desc:'Basit sorular, kısa yanıtlar',on:true}
+];
+const rc=document.getElementById('orchRouting');
+rc.innerHTML=routingRules.map(r=>'<div class="orch-rule"><div class="orch-rule-icon" style="background:'+r.bg+'">'+r.icon+'</div><div class="orch-rule-info"><div class="orch-rule-name">'+r.name+'</div><div class="orch-rule-desc">'+r.desc+'</div></div><div class="orch-toggle'+(r.on?' on':'')+'" onclick="this.classList.toggle(\'on\')"></div></div>').join('');
+
+const perfData=[
+    {model:'🦙 Llama 3 70B',speed:85,quality:92,cost:70,color:'#6366f1'},
+    {model:'🌀 Mistral Large',speed:78,quality:90,cost:65,color:'#ec4899'},
+    {model:'💻 CodeLlama 34B',speed:82,quality:88,cost:60,color:'#22c55e'},
+    {model:'💎 Gemma 7B',speed:95,quality:75,cost:90,color:'#f59e0b'},
+    {model:'🧪 Custom Model',speed:88,quality:85,cost:95,color:'#a855f7'}
+];
+const pc=document.getElementById('orchPerf');
+pc.innerHTML=perfData.map(p=>'<div class="orch-perf-item"><div class="orch-perf-model">'+p.model+'</div><div class="orch-perf-bar"><div class="orch-perf-fill" style="width:'+p.speed+'%;background:'+p.color+'"></div></div><div class="orch-perf-stat">Hız: '+p.speed+'%</div><div class="orch-perf-bar"><div class="orch-perf-fill" style="width:'+p.quality+'%;background:'+p.color+'"></div></div><div class="orch-perf-stat">Kalite: '+p.quality+'%</div><div class="orch-perf-bar"><div class="orch-perf-fill" style="width:'+p.cost+'%;background:'+p.color+'"></div></div><div class="orch-perf-stat">Maliyet Eff: '+p.cost+'%</div></div>').join('');
+
+const orchResponses=[
+    {q:/kod|code|programla|fonksiyon|debug|hata/i,model:'CodeLlama 34B',tag:'💻',tagBg:'#22c55e',resp:'Kodunuzu analiz ediyorum... İşte optimizasyonlu versiyon:\n\n```python\ndef optimize_query(data):\n    return sorted(set(data), key=lambda x: x.priority)\n```\n\nBu yaklaşım O(n log n) karmaşıklığında çalışır.'},
+    {q:/yaz|blog|içerik|makale|hikaye/i,model:'Llama 3 70B',tag:'🦙',tagBg:'#6366f1',resp:'İşte SEO uyumlu blog yazınız:\n\n**Başlık:** "2025\'te AI ile İş Büyütmenin 5 Yolu"\n\nGiriş paragrafı hazır. Devam etmemi ister misiniz?'},
+    {q:/analiz|veri|istatistik|grafik|rapor/i,model:'Mistral Large',tag:'🌀',tagBg:'#ec4899',resp:'Veri analiziniz hazır:\n\n📊 Trend: Yükseliş (+23%)\n📈 Tahmin: Önümüzdeki çeyrekte %15 büyüme\n⚠️ Anomali: 3 veri noktası normal aralık dışında'},
+    {q:/merhaba|selam|hey|nasıl/i,model:'Gemma 7B',tag:'💎',tagBg:'#f59e0b',resp:'Merhaba! Size nasıl yardımcı olabilirim? Kod, yazı, analiz veya herhangi bir konuda sormak istediğiniz şey var mı? 😊'}
+];
+const defaultResp={model:'Llama 3 70B',tag:'🦙',tagBg:'#6366f1',resp:'Sorunuzu en uygun modele yönlendirdim. İşte yanıtım:\n\nBu konu hakkında detaylı bilgi verebilirim. Daha spesifik bir soru sormak ister misiniz?'};
+
+function sendOrchMsg(){
+    const input=document.getElementById('orchInput');
+    const txt=input.value.trim();if(!txt)return;input.value='';
+    const msgs=document.getElementById('orchMsgs');
+    msgs.innerHTML+='<div class="orch-msg user">'+txt+'</div>';
+    msgs.innerHTML+='<div class="orch-msg ai" id="orchThinking"><div class="thinking">🔄 Model seçiliyor ve yönlendiriliyor...</div></div>';
+    msgs.scrollTop=msgs.scrollHeight;
+    const match=orchResponses.find(r=>r.q.test(txt))||defaultResp;
+    setTimeout(()=>{
+        const th=document.getElementById('orchThinking');
+        if(th)th.remove();
+        msgs.innerHTML+='<div class="orch-msg ai"><div class="model-tag" style="background:'+match.tagBg+'22;color:'+match.tagBg+'">'+match.tag+' '+match.model+'</div>'+match.resp.replace(/\n/g,'<br>')+'</div>';
+        msgs.scrollTop=msgs.scrollHeight;
+    },1200);
+}
+</script>
+{% endblock %}

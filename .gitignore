@@ -1,0 +1,40 @@
+# EmareCloud — Versiyon Kontrol Hariç Tutulanlar
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# EmareCloud güvenlik
+.master.key
+.env
+instance/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Logs
+*.log

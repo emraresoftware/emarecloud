@@ -1,0 +1,997 @@
+{% extends "base.html" %}
+{% block title %}Terminal - {{ server.name }}{% endblock %}
+{% block page_title %}Terminal: {{ server.name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+    /* ═══════ LAYOUT: Split Pane ═══════ */
+    .terminal-layout {
+        display: flex;
+        gap: 1rem;
+        height: calc(100vh - 200px);
+        min-height: 500px;
+    }
+    .terminal-layout.watch-hidden .terminal-pane { flex: 1; }
+    .terminal-layout.watch-hidden .watch-pane { display: none; }
+    .terminal-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .watch-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; max-width: 50%; }
+
+    /* ═══════ WATCH PANEL ═══════ */
+    .watch-panel {
+        background: var(--bg-card, #1e293b);
+        border: 1px solid var(--border-color, rgba(148,163,184,0.1));
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+    .watch-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: rgba(255,255,255,0.03);
+        border-bottom: 1px solid var(--border-color, rgba(148,163,184,0.1));
+        gap: 0.5rem;
+    }
+    .watch-header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .watch-header h3 {
+        font-size: 0.92rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .watch-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+    }
+    .watch-status.active {
+        background: rgba(34,197,94,0.15);
+        color: #22c55e;
+    }
+    .watch-status.idle {
+        background: rgba(100,116,139,0.15);
+        color: #94a3b8;
+    }
+    .watch-status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    .watch-status.active .watch-status-dot {
+        animation: watch-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes watch-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* Watch config */
+    .watch-config {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color, rgba(148,163,184,0.1));
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .watch-config-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    .watch-cmd-input {
+        flex: 1;
+        background: var(--bg-input, #0f172a);
+        border: 1px solid var(--border-color, rgba(148,163,184,0.2));
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-primary, #f1f5f9);
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        font-size: 0.82rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .watch-cmd-input:focus {
+        border-color: #6366f1;
+    }
+    .watch-interval-group {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        background: var(--bg-input, #0f172a);
+        border: 1px solid var(--border-color, rgba(148,163,184,0.2));
+        border-radius: 8px;
+        padding: 0 0.5rem;
+    }
+    .watch-interval-group label {
+        font-size: 0.72rem;
+        color: var(--text-secondary, #94a3b8);
+        white-space: nowrap;
+    }
+    .watch-interval-input {
+        width: 40px;
+        background: transparent;
+        border: none;
+        color: var(--text-primary, #f1f5f9);
+        font-size: 0.82rem;
+        text-align: center;
+        outline: none;
+        font-family: 'SF Mono', monospace;
+    }
+    .watch-interval-group span {
+        font-size: 0.72rem;
+        color: var(--text-secondary, #94a3b8);
+    }
+
+    /* Watch presets */
+    .watch-presets {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+    .watch-preset {
+        padding: 0.25rem 0.55rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-color, rgba(148,163,184,0.15));
+        background: transparent;
+        color: var(--text-secondary, #94a3b8);
+        font-size: 0.72rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .watch-preset:hover {
+        border-color: #6366f1;
+        color: #818cf8;
+        background: rgba(99,102,241,0.08);
+    }
+    .watch-preset.active {
+        border-color: #6366f1;
+        color: #818cf8;
+        background: rgba(99,102,241,0.12);
+    }
+
+    /* Watch output */
+    .watch-output-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        font-size: 0.8rem;
+        background: #0a0e1a;
+        position: relative;
+    }
+    .watch-frame {
+        padding: 1rem;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #e2e8f0;
+        line-height: 1.6;
+        min-height: 100%;
+    }
+    .watch-frame-header {
+        color: #64748b;
+        font-size: 0.72rem;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(148,163,184,0.1);
+        display: flex;
+        justify-content: space-between;
+    }
+    .watch-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #64748b;
+        gap: 0.8rem;
+        padding: 2rem;
+        text-align: center;
+    }
+    .watch-empty-icon { font-size: 2.5rem; opacity: 0.3; }
+    .watch-empty p { font-size: 0.85rem; }
+
+    /* Watch footer */
+    .watch-footer {
+        padding: 0.5rem 1rem;
+        border-top: 1px solid var(--border-color, rgba(148,163,184,0.1));
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.72rem;
+        color: var(--text-secondary, #94a3b8);
+    }
+
+    /* Toggle button */
+    .watch-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color, rgba(148,163,184,0.15));
+        background: transparent;
+        color: var(--text-secondary, #94a3b8);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .watch-toggle-btn:hover {
+        border-color: #6366f1;
+        color: #818cf8;
+    }
+    .watch-toggle-btn.active {
+        background: rgba(99,102,241,0.12);
+        border-color: #6366f1;
+        color: #818cf8;
+    }
+
+    /* Start / Stop buttons */
+    .btn-watch-start {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .btn-watch-start:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
+    .btn-watch-stop {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .btn-watch-stop:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .terminal-layout { flex-direction: column; height: auto; }
+        .watch-pane { max-width: 100%; min-height: 350px; }
+        .ai-panel { right: 0.5rem; left: 0.5rem; width: auto; bottom: 0.5rem; }
+    }
+
+    /* ═══════ AI ASISTAN PANELİ ═══════ */
+    .ai-panel {
+        position: fixed;
+        bottom: 1rem;
+        right: 1.5rem;
+        width: 420px;
+        max-height: 560px;
+        background: var(--bg-card, #1e293b);
+        border: 1px solid rgba(139,92,246,0.3);
+        border-radius: 16px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.08);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        overflow: hidden;
+        animation: aiSlideUp 0.3s ease-out;
+    }
+    @keyframes aiSlideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .ai-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(99,102,241,0.15) 100%);
+        border-bottom: 1px solid rgba(139,92,246,0.2);
+    }
+    .ai-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: #e2e8f0;
+    }
+    .ai-panel-icon {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.8rem; color: #fff;
+    }
+    .ai-badge {
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        background: rgba(139,92,246,0.2);
+        color: #9333ea;
+        letter-spacing: 0.05em;
+    }
+    .ai-panel-close {
+        background: none; border: none; color: #94a3b8; cursor: pointer;
+        font-size: 0.9rem; padding: 0.25rem; border-radius: 6px; transition: all 0.2s;
+    }
+    .ai-panel-close:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
+
+    .ai-quick-tags {
+        display: flex; flex-wrap: wrap; gap: 0.3rem;
+        padding: 0.6rem 0.8rem;
+        border-bottom: 1px solid rgba(148,163,184,0.1);
+    }
+    .ai-quick-tag {
+        padding: 0.2rem 0.55rem;
+        border-radius: 6px;
+        border: 1px solid rgba(148,163,184,0.15);
+        background: transparent;
+        color: #94a3b8;
+        font-size: 0.7rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .ai-quick-tag:hover {
+        border-color: #8b5cf6;
+        color: #9333ea;
+        background: rgba(139,92,246,0.08);
+    }
+
+    .ai-chat-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        min-height: 200px;
+        max-height: 340px;
+    }
+    .ai-welcome {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        color: #94a3b8;
+    }
+    .ai-welcome-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .ai-welcome p { font-size: 0.82rem; line-height: 1.5; margin: 0.3rem 0; }
+    .ai-welcome-hint { font-size: 0.72rem; color: #64748b; }
+
+    .ai-msg {
+        max-width: 95%;
+        padding: 0.6rem 0.8rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        line-height: 1.6;
+        word-break: break-word;
+    }
+    .ai-msg.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border-bottom-right-radius: 3px;
+    }
+    .ai-msg.assistant {
+        align-self: flex-start;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(148,163,184,0.1);
+        color: #e2e8f0;
+        border-bottom-left-radius: 3px;
+    }
+    .ai-msg.assistant strong { color: #9333ea; }
+    .ai-msg.assistant code {
+        background: rgba(0,0,0,0.3);
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.75rem;
+        color: #67e8f9;
+    }
+    .ai-msg-thinking {
+        align-self: flex-start;
+        color: #8b5cf6;
+        font-size: 0.8rem;
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0;
+    }
+    .ai-msg-thinking .dots { animation: aiDots 1.2s infinite; }
+    @keyframes aiDots {
+        0%, 80% { opacity: 0.2; }
+        40% { opacity: 1; }
+    }
+
+    .ai-suggestions {
+        display: flex; flex-wrap: wrap; gap: 0.3rem;
+        margin-top: 0.4rem;
+    }
+    .ai-suggestion-btn {
+        padding: 0.2rem 0.5rem;
+        border-radius: 5px;
+        border: 1px solid rgba(99,102,241,0.3);
+        background: rgba(99,102,241,0.08);
+        color: #818cf8;
+        font-family: 'SF Mono', monospace;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .ai-suggestion-btn:hover {
+        background: rgba(99,102,241,0.2);
+        border-color: #6366f1;
+    }
+
+    .ai-input-area {
+        display: flex;
+        gap: 0.4rem;
+        padding: 0.6rem 0.8rem;
+        border-top: 1px solid rgba(148,163,184,0.1);
+        background: rgba(0,0,0,0.1);
+    }
+    .ai-input {
+        flex: 1;
+        background: var(--bg-input, #0f172a);
+        border: 1px solid rgba(148,163,184,0.2);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        color: #f1f5f9;
+        font-size: 0.82rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .ai-input:focus { border-color: #8b5cf6; }
+    .ai-send-btn {
+        width: 36px; height: 36px;
+        border-radius: 8px;
+        border: none;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: #fff;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+        font-size: 0.85rem;
+    }
+    .ai-send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,0.4); }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Terminal + Watch Layout -->
+<div class="terminal-layout watch-hidden" id="terminalLayout">
+    <!-- === LEFT: Terminal === -->
+    <div class="terminal-pane">
+        <div class="terminal-container" style="flex:1; display:flex; flex-direction:column;">
+            <div class="terminal-header">
+                <div class="terminal-info">
+                    <span class="terminal-dot green"></span>
+                    <span>{{ server.username }}@{{ server.host }}</span>
+                </div>
+                <div class="terminal-actions" style="display:flex; gap:0.4rem; align-items:center;">
+                    <button class="watch-toggle-btn" id="aiToggleBtn" onclick="toggleAIPanel()" title="AI Terminal Asistanı">
+                        <i class="fas fa-brain"></i> AI Asistan
+                    </button>
+                    <button class="watch-toggle-btn" id="watchToggleBtn" onclick="toggleWatchPanel()" title="Canlı İzleme Paneli">
+                        <i class="fas fa-satellite-dish"></i> İzleme
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="clearTerminal()">
+                        <i class="fas fa-eraser"></i> Temizle
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="window.location='/'">
+                        <i class="fas fa-times"></i> Kapat
+                    </button>
+                </div>
+            </div>
+            <div class="terminal-body" id="terminalBody" style="flex:1;">
+                <div id="terminalOutput" class="terminal-output">
+                    <div class="terminal-welcome">
+┌──────────────────────────────────────────┐
+│   🖥️  EmareCloud — Web Terminal         │
+│   Sunucu: {{ server.display_name }}     │
+│   Host: {{ server.display_host }}       │
+└──────────────────────────────────────────┘
+Bağlanılıyor...
+</div>
+                </div>
+                <div class="terminal-input-line">
+                    <span class="terminal-prompt">$</span>
+                    <input type="text" id="terminalInput" class="terminal-input"
+                           placeholder="Komut yazın..." autofocus
+                           onkeydown="handleTerminalKey(event)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Hızlı Komutlar -->
+        <div class="section" style="margin-top: 0.8rem;">
+            <div class="section-header">
+                <h3><i class="fas fa-bolt"></i> Hızlı Komutlar</h3>
+            </div>
+            <div class="quick-commands">
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('uptime')">uptime</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('df -h')">df -h</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('free -h')">free -h</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('top -bn1 | head -20')">top</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('ps aux --sort=-%cpu | head -15')">processes</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('netstat -tlnp 2>/dev/null || ss -tlnp')">ports</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('last -10')">last logins</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('cat /etc/os-release')">os info</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('docker ps 2>/dev/null')">docker ps</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('systemctl list-units --type=service --state=running')">services</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('ip addr show')">ip addr</button>
+                <button class="btn btn-sm btn-secondary" onclick="sendQuickCmd('tail -50 /var/log/syslog 2>/dev/null || tail -50 /var/log/messages')">syslog</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === RIGHT: Watch Panel === -->
+    <div class="watch-pane" id="watchPane">
+        <div class="watch-panel">
+            <!-- Watch Header -->
+            <div class="watch-header">
+                <div class="watch-header-left">
+                    <h3><i class="fas fa-satellite-dish"></i> Canlı İzleme</h3>
+                    <div class="watch-status idle" id="watchStatus">
+                        <span class="watch-status-dot"></span>
+                        <span id="watchStatusText">Bekliyor</span>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="toggleWatchPanel()" title="Paneli kapat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Watch Config -->
+            <div class="watch-config">
+                <div class="watch-config-row">
+                    <input type="text" class="watch-cmd-input" id="watchCmdInput"
+                           placeholder="İzlenecek komut... (örn: top -bn1)" value="top -bn1 | head -20"
+                           onkeydown="if(event.key==='Enter') startWatch()">
+                    <div class="watch-interval-group">
+                        <label>Her</label>
+                        <input type="number" class="watch-interval-input" id="watchInterval" value="3" min="1" max="60">
+                        <span>sn</span>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="watch-presets" id="watchPresets">
+                        <button class="watch-preset" data-cmd="top -bn1 | head -25" data-interval="3" title="CPU & bellek kullanımı">📊 CPU/RAM</button>
+                        <button class="watch-preset" data-cmd="free -h" data-interval="5" title="Bellek durumu">🧠 Bellek</button>
+                        <button class="watch-preset" data-cmd="df -h" data-interval="10" title="Disk kullanımı">💾 Disk</button>
+                        <button class="watch-preset" data-cmd="tail -30 /var/log/syslog 2>/dev/null || tail -30 /var/log/messages 2>/dev/null || journalctl -n 30 --no-pager" data-interval="3" title="Sistem logları">📋 Syslog</button>
+                        <button class="watch-preset" data-cmd="tail -30 /var/log/auth.log 2>/dev/null || tail -30 /var/log/secure 2>/dev/null || journalctl -u sshd -n 30 --no-pager" data-interval="5" title="Giriş logları">🔐 Auth Log</button>
+                        <button class="watch-preset" data-cmd="netstat -tlnp 2>/dev/null || ss -tlnp" data-interval="5" title="Açık portlar">🌐 Portlar</button>
+                        <button class="watch-preset" data-cmd="docker ps --format 'table {{'{{'}}.Names{{'}}'}}\t{{'{{'}}.Status{{'}}'}}\t{{'{{'}}.Ports{{'}}'}}\t{{'{{'}}.Size{{'}}'}}' 2>/dev/null || echo 'Docker yok'" data-interval="5" title="Docker container'ları">🐳 Docker</button>
+                        <button class="watch-preset" data-cmd="ps aux --sort=-%cpu | head -15" data-interval="3" title="En çok CPU kullanan">⚡ Süreçler</button>
+                        <button class="watch-preset" data-cmd="cat /proc/net/dev | tail -n +3 | awk '{print $1,$2,$10}'" data-interval="3" title="Ağ trafiği">📡 Ağ I/O</button>
+                        <button class="watch-preset" data-cmd="iostat -dx 1 1 2>/dev/null || echo 'iostat yok — apt install sysstat'" data-interval="5" title="Disk I/O">🔄 Disk I/O</button>
+                        <button class="watch-preset" data-cmd="who && echo '---' && w" data-interval="10" title="Bağlı kullanıcılar">👥 Oturumlar</button>
+                        <button class="watch-preset" data-cmd="uptime && echo '---' && cat /proc/loadavg" data-interval="5" title="Sistem yükü">📈 Load</button>
+                    </div>
+                    <div style="display:flex; gap:0.4rem; flex-shrink:0; margin-left:0.5rem;">
+                        <button class="btn-watch-start" id="watchStartBtn" onclick="startWatch()">
+                            <i class="fas fa-play"></i> Başlat
+                        </button>
+                        <button class="btn-watch-stop" id="watchStopBtn" onclick="stopWatch()" style="display:none;">
+                            <i class="fas fa-stop"></i> Durdur
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Watch Output -->
+            <div class="watch-output-area" id="watchOutputArea">
+                <div class="watch-empty" id="watchEmpty">
+                    <div class="watch-empty-icon">📡</div>
+                    <p>Bir preset seçin veya komut yazıp <strong>Başlat</strong>'a basın.<br>
+                    Çıktı burada sürekli güncellenecek.</p>
+                </div>
+                <div class="watch-frame" id="watchFrame" style="display:none;"></div>
+            </div>
+
+            <!-- Watch Footer -->
+            <div class="watch-footer">
+                <span id="watchTick">—</span>
+                <div style="display:flex; gap:0.8rem; align-items:center;">
+                    <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer;">
+                        <input type="checkbox" id="watchAutoScroll" checked style="accent-color:#6366f1;">
+                        Oto-kaydır
+                    </label>
+                    <button class="btn btn-sm btn-secondary" onclick="clearWatchOutput()" style="font-size:0.7rem; padding:0.2rem 0.5rem;">
+                        <i class="fas fa-eraser"></i> Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Terminal Asistanı Paneli -->
+<div class="ai-panel" id="aiPanel" style="display:none;">
+    <div class="ai-panel-header">
+        <div class="ai-panel-title">
+            <div class="ai-panel-icon"><i class="fas fa-brain"></i></div>
+            <span>AI Terminal Asistanı</span>
+            <span class="ai-badge">BETA</span>
+        </div>
+        <button class="ai-panel-close" onclick="toggleAIPanel()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="ai-quick-tags" id="aiQuickTags">
+        <button class="ai-quick-tag" onclick="aiAsk('Bu çıktıdaki hatayı açıkla ve çözüm öner')">🔴 Hatayı açıkla</button>
+        <button class="ai-quick-tag" onclick="aiAsk('Sunucuyu genel olarak optimize etmek için ne yapmalıyım?')">🔧 Optimize et</button>
+        <button class="ai-quick-tag" onclick="aiAsk('Sunucunun güvenlik durumunu kontrol etmek için komutlar öner')">🛡️ Güvenlik</button>
+        <button class="ai-quick-tag" onclick="aiAsk('Disk alanı açmak için ne yapabilirim?')">💾 Disk temizle</button>
+        <button class="ai-quick-tag" onclick="aiAsk('Sunucuyu AI/LLM çalıştırmak için optimize et')">🤖 AI optimize</button>
+        <button class="ai-quick-tag" onclick="aiAsk('Sunucu performansını analiz etmek için komutlar öner')">📊 Performans</button>
+    </div>
+    <div class="ai-chat-body" id="aiChatBody">
+        <div class="ai-welcome">
+            <div class="ai-welcome-icon">🤖</div>
+            <p>Merhaba! Terminal çıktılarınızı analiz edebilir, hataları açıklayabilir ve optimizasyon önerileri sunabilirim.</p>
+            <p class="ai-welcome-hint">Bir soru yazın veya yukarıdaki hızlı etiketleri kullanın.</p>
+        </div>
+    </div>
+    <div class="ai-input-area">
+        <input type="text" class="ai-input" id="aiInput"
+               placeholder="Sorunuzu yazın... (örn: bu hatayı açıkla)"
+               onkeydown="if(event.key==='Enter') aiSend()">
+        <button class="ai-send-btn" onclick="aiSend()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+{% endblock %}
+<script>
+const serverId = '{{ server.id }}';
+const socket = io();
+let commandHistory = [];
+let historyIndex = -1;
+let watchActive = false;
+let watchTickCount = 0;
+
+// ═══════════════════════════════════════
+//  TERMINAL (mevcut işlevsellik)
+// ═══════════════════════════════════════
+socket.on('connect', function() {
+    socket.emit('terminal_connect', {server_id: serverId});
+});
+
+socket.on('terminal_output', function(data) {
+    appendOutput(data.output);
+});
+
+function appendOutput(text) {
+    const output = document.getElementById('terminalOutput');
+    output.innerHTML += text.replace(/\n/g, '<br>').replace(/\r/g, '');
+    const body = document.getElementById('terminalBody');
+    body.scrollTop = body.scrollHeight;
+}
+
+function handleTerminalKey(event) {
+    const input = document.getElementById('terminalInput');
+    if (event.key === 'Enter') {
+        const cmd = input.value;
+        if (cmd.trim()) {
+            commandHistory.unshift(cmd);
+            historyIndex = -1;
+            appendOutput(`<span class="cmd-echo">$ ${escapeHtml(cmd)}</span>`);
+            socket.emit('terminal_input', {
+                server_id: serverId,
+                command: cmd
+            });
+        }
+        input.value = '';
+        event.preventDefault();
+    } else if (event.key === 'ArrowUp') {
+        if (historyIndex < commandHistory.length - 1) {
+            historyIndex++;
+            input.value = commandHistory[historyIndex];
+        }
+        event.preventDefault();
+    } else if (event.key === 'ArrowDown') {
+        if (historyIndex > 0) {
+            historyIndex--;
+            input.value = commandHistory[historyIndex];
+        } else {
+            historyIndex = -1;
+            input.value = '';
+        }
+        event.preventDefault();
+    }
+}
+
+function sendQuickCmd(cmd) {
+    const input = document.getElementById('terminalInput');
+    input.value = cmd;
+    appendOutput(`<span class="cmd-echo">$ ${escapeHtml(cmd)}</span>`);
+    socket.emit('terminal_input', {
+        server_id: serverId,
+        command: cmd
+    });
+    input.value = '';
+    input.focus();
+}
+
+function clearTerminal() {
+    document.getElementById('terminalOutput').innerHTML = '';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.getElementById('terminalBody').addEventListener('click', function() {
+    document.getElementById('terminalInput').focus();
+});
+
+// ═══════════════════════════════════════
+//  WATCH PANEL — Canlı İzleme
+// ═══════════════════════════════════════
+
+// Toggle panel açık/kapalı
+function toggleWatchPanel() {
+    const layout = document.getElementById('terminalLayout');
+    const btn = document.getElementById('watchToggleBtn');
+    layout.classList.toggle('watch-hidden');
+    btn.classList.toggle('active', !layout.classList.contains('watch-hidden'));
+}
+
+// Preset butonları
+document.getElementById('watchPresets').addEventListener('click', function(e) {
+    const preset = e.target.closest('.watch-preset');
+    if (!preset) return;
+
+    // Aktif preset'i güncelle
+    document.querySelectorAll('.watch-preset').forEach(p => p.classList.remove('active'));
+    preset.classList.add('active');
+
+    // Input'lara yaz
+    document.getElementById('watchCmdInput').value = preset.dataset.cmd;
+    document.getElementById('watchInterval').value = preset.dataset.interval || 3;
+
+    // Eğer zaten izleme aktifse, yeni komutla yeniden başlat
+    if (watchActive) {
+        startWatch();
+    }
+});
+
+// İzlemeyi başlat
+function startWatch() {
+    const cmd = document.getElementById('watchCmdInput').value.trim();
+    const interval = parseInt(document.getElementById('watchInterval').value) || 3;
+
+    if (!cmd) {
+        showToast && showToast('Komut giriniz', 'warning');
+        return;
+    }
+
+    watchActive = true;
+    watchTickCount = 0;
+
+    // UI güncelle
+    document.getElementById('watchStartBtn').style.display = 'none';
+    document.getElementById('watchStopBtn').style.display = 'flex';
+    document.getElementById('watchStatus').className = 'watch-status active';
+    document.getElementById('watchStatusText').textContent = 'Aktif';
+    document.getElementById('watchEmpty').style.display = 'none';
+    document.getElementById('watchFrame').style.display = 'block';
+    document.getElementById('watchFrame').innerHTML = '<span style="color:#64748b;">⏳ İlk çıktı bekleniyor...</span>';
+
+    // Paneli aç
+    const layout = document.getElementById('terminalLayout');
+    if (layout.classList.contains('watch-hidden')) {
+        toggleWatchPanel();
+    }
+
+    socket.emit('watch_start', {
+        server_id: serverId,
+        command: cmd,
+        interval: interval
+    });
+}
+
+// İzlemeyi durdur
+function stopWatch() {
+    watchActive = false;
+    socket.emit('watch_stop', {});
+
+    document.getElementById('watchStartBtn').style.display = 'flex';
+    document.getElementById('watchStopBtn').style.display = 'none';
+    document.getElementById('watchStatus').className = 'watch-status idle';
+    document.getElementById('watchStatusText').textContent = 'Durduruldu';
+}
+
+// Watch çıktısını temizle
+function clearWatchOutput() {
+    document.getElementById('watchFrame').innerHTML = '';
+    watchTickCount = 0;
+    document.getElementById('watchTick').textContent = '—';
+}
+
+// SocketIO: Watch çıktısı
+socket.on('watch_output', function(data) {
+    if (data.error) {
+        const frame = document.getElementById('watchFrame');
+        frame.innerHTML += `<div style="color:#ef4444; padding:0.5rem 0;">❌ ${escapeHtml(data.error)}</div>`;
+        if (data.stopped) {
+            stopWatch();
+        }
+        return;
+    }
+
+    watchTickCount = data.tick || (watchTickCount + 1);
+
+    const frame = document.getElementById('watchFrame');
+    const header = `<div class="watch-frame-header"><span>$ ${escapeHtml(data.command)} — #${watchTickCount}</span><span>${data.timestamp}</span></div>`;
+    const content = escapeHtml(data.output);
+
+    // Her güncelleme öncekini değiştirir (gerçek zamanlı ekran)
+    frame.innerHTML = header + content;
+
+    // Tick sayacı
+    const interval = data.interval || '?';
+    document.getElementById('watchTick').textContent = `Güncelleme #${watchTickCount} · her ${interval}s`;
+
+    // Oto-kaydır
+    if (document.getElementById('watchAutoScroll').checked) {
+        const area = document.getElementById('watchOutputArea');
+        area.scrollTop = area.scrollHeight;
+    }
+});
+
+socket.on('watch_started', function(data) {
+    console.log('Watch started:', data.message);
+});
+
+socket.on('watch_stopped', function(data) {
+    console.log('Watch stopped:', data.message);
+});
+
+// Sayfa kapanırken izlemeyi durdur
+window.addEventListener('beforeunload', function() {
+    if (watchActive) {
+        socket.emit('watch_stop', {});
+    }
+});
+
+// ═══════════════════════════════════════
+//  AI TERMINAL ASİSTANI
+// ═══════════════════════════════════════
+
+function toggleAIPanel() {
+    const panel = document.getElementById('aiPanel');
+    const btn = document.getElementById('aiToggleBtn');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+        btn.classList.add('active');
+        document.getElementById('aiInput').focus();
+    } else {
+        panel.style.display = 'none';
+        btn.classList.remove('active');
+    }
+}
+
+function getTerminalContext() {
+    const output = document.getElementById('terminalOutput');
+    if (!output) return '';
+    const text = output.innerText || output.textContent || '';
+    const lines = text.split('\n');
+    return lines.slice(-40).join('\n');
+}
+
+function aiAsk(question) {
+    document.getElementById('aiInput').value = question;
+    aiSend();
+}
+
+function aiSend() {
+    const input = document.getElementById('aiInput');
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = '';
+
+    const body = document.getElementById('aiChatBody');
+    // Hoş geldin mesajını kaldır
+    const welcome = body.querySelector('.ai-welcome');
+    if (welcome) welcome.remove();
+
+    // Kullanıcı mesajı
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-msg user';
+    userMsg.textContent = question;
+    body.appendChild(userMsg);
+
+    // Düşünüyor göstergesi
+    const thinking = document.createElement('div');
+    thinking.className = 'ai-msg-thinking';
+    thinking.innerHTML = '<i class="fas fa-brain"></i> Analiz ediliyor<span class="dots">...</span>';
+    body.appendChild(thinking);
+    body.scrollTop = body.scrollHeight;
+
+    // Terminal bağlamını gönder
+    const context = getTerminalContext();
+    socket.emit('ai_assist', { question: question, context: context });
+}
+
+// AI yanıtı
+socket.on('ai_response', function(data) {
+    const body = document.getElementById('aiChatBody');
+    // Düşünüyor göstergesini kaldır
+    const thinking = body.querySelector('.ai-msg-thinking');
+    if (thinking) thinking.remove();
+
+    if (data.error) {
+        const errMsg = document.createElement('div');
+        errMsg.className = 'ai-msg assistant';
+        errMsg.innerHTML = '<strong>❌ Hata:</strong> ' + escapeHtml(data.error);
+        body.appendChild(errMsg);
+        body.scrollTop = body.scrollHeight;
+        return;
+    }
+
+    // AI yanıtı
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'ai-msg assistant';
+    aiMsg.innerHTML = formatAIResponse(data.response);
+    body.appendChild(aiMsg);
+
+    // Komut önerileri
+    if (data.suggestions && data.suggestions.length > 0) {
+        const sugDiv = document.createElement('div');
+        sugDiv.className = 'ai-suggestions';
+        data.suggestions.forEach(function(cmd) {
+            const btn = document.createElement('button');
+            btn.className = 'ai-suggestion-btn';
+            btn.textContent = cmd;
+            btn.title = 'Bu komutu terminalde çalıştır';
+            btn.onclick = function() { sendQuickCmd(cmd); };
+            sugDiv.appendChild(btn);
+        });
+        body.appendChild(sugDiv);
+    }
+
+    body.scrollTop = body.scrollHeight;
+});
+
+function formatAIResponse(text) {
+    // Basit markdown → HTML dönüşümü
+    let html = escapeHtml(text);
+    // Bold
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Satır başı tire → liste
+    html = html.replace(/^- (.+)/gm, '• $1');
+    // Satır sonları
+    html = html.replace(/\n/g, '<br>');
+    // HR
+    html = html.replace(/<br>---<br>/g, '<hr style="border:none;border-top:1px solid rgba(148,163,184,0.1);margin:0.5rem 0;">');
+    return html;
+}
+</script>
+{% endblock %}

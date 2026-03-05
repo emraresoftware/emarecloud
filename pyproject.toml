@@ -1,0 +1,116 @@
+# ==================== EmareCloud — Proje Yapılandırması ====================
+
+[project]
+name = "emarecloud"
+version = "1.0.0"
+description = "Self-hosted Infrastructure Management Panel"
+requires-python = ">=3.10"
+
+# ==================== PYTEST ====================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--color=yes",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests requiring SSH",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:sqlalchemy.*:",
+    "ignore::DeprecationWarning:core.logging_config.*:",
+]
+
+# ==================== COVERAGE ====================
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "venv/*",
+    "__pycache__/*",
+    "setup.sh",
+    "docs/*",
+    "instance/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+precision = 1
+fail_under = 40
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ ==",
+    "raise NotImplementedError",
+    "pass",
+]
+
+# ==================== RUFF (Lint + Format) ====================
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "S",     # flake8-bandit (security)
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T20",   # flake8-print (no print statements)
+    "RET",   # flake8-return
+]
+ignore = [
+    "S104",   # Possible binding to all interfaces (0.0.0.0)
+    "S105",   # Possible hardcoded password
+    "S106",   # Possible hardcoded password argument
+    "S107",   # Possible hardcoded password default
+    "S603",   # subprocess call
+    "S602",   # subprocess call with shell=True
+    "S608",   # SQL injection (SQLAlchemy safe)
+    "T201",   # print found — projede print kullanımı var
+    "E501",   # Line too long — uzun satırlar şimdilik ok
+    "B008",   # Do not perform function call in argument defaults
+    "SIM108", # Use ternary operator
+    "RET504", # Unnecessary variable assignment before return
+    "UP035",  # Deprecated import
+    "N802",   # Function name should be lowercase
+    "N803",   # Argument name should be lowercase
+    "N806",   # Variable in function should be lowercase
+    "DTZ005", # datetime.now() without tz
+    "DTZ003", # datetime.utcnow() without tz (legacy)
+    "SIM105", # contextlib.suppress — mevcut try-except ok
+    "S110",   # try-except-pass — SSH hata yönetiminde gerekli
+    "S112",   # try-except-continue — metrik toplama döngüsünde gerekli
+    "DTZ001", # datetime() without tz — naive datetime kullanımı
+    "S310",   # suspicious-url-open — GitHub API çağrıları
+    "S507",   # ssh-no-host-key-verification — yönetim paneli
+    "SIM110", # reimplemented-builtin — okunabilirlik
+    "F811",   # redefined-while-unused — Flask import pattern
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S106", "S105"]  # assert ve test şifreleri ok
+"setup.sh" = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "routes"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"

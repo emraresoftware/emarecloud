@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Profil — EmareCloud{% endblock %}
+{% block page_title %}Profil{% endblock %}
+
+{% block content %}
+<div class="profile-grid">
+    <!-- Profil Bilgileri -->
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-user-circle"></i> Profil Bilgileri</h2>
+        </div>
+        <div class="section-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div style="margin-bottom:1rem;">
+                {% for category, message in messages %}
+                <div class="dash-alert dash-alert-{{ 'error' if category == 'error' else 'success' if category == 'success' else 'info' }}" style="margin-bottom:0.5rem;">
+                    <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="update_profile">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kullanıcı Adı</label>
+                        <input type="text" value="{{ current_user.username }}" disabled
+                               style="background:var(--bg-hover);opacity:0.7;">
+                    </div>
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <input type="text" value="{{ current_user.role }}" disabled
+                               style="background:var(--bg-hover);opacity:0.7;">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>E-posta</label>
+                        <input type="email" name="email" value="{{ current_user.email or '' }}"
+                               placeholder="ornek@emarecloud.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Son Giriş</label>
+                        <input type="text" value="{{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'Bilinmiyor' }}" disabled
+                               style="background:var(--bg-hover);opacity:0.7;">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Şifre Değiştir -->
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-key"></i> Şifre Değiştir</h2>
+        </div>
+        <div class="section-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="change_password">
+
+                <div class="form-group">
+                    <label>Mevcut Şifre</label>
+                    <input type="password" name="current_password" required
+                           placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Yeni Şifre</label>
+                        <input type="password" name="new_password" required minlength="8"
+                               placeholder="En az 8 karakter" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Yeni Şifre (Tekrar)</label>
+                        <input type="password" name="confirm_password" required minlength="8"
+                               placeholder="Tekrar girin" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-lock"></i> Şifreyi Değiştir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.25rem; }
+    @media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
+    .dash-alert-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); color: var(--accent-blue); }
+    .dash-alert-success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: var(--accent-green); }
+</style>
+{% endblock %}

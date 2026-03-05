@@ -1,0 +1,1209 @@
+{% extends "base.html" %}
+{% block title %}Süper Admin Paneli — EmareCloud{% endblock %}
+{% block page_title %}Süper Admin Paneli{% endblock %}
+
+{% block head %}
+<style>
+/* ══════════════════════════════════════════════════════
+   ADMIN PANEL — EmareCloud Design System ile uyumlu
+   Dashboard ve AI sayfalarıyla aynı tasarım dili
+══════════════════════════════════════════════════════ */
+
+/* --- Hero --- */
+.ap-hero {
+    background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(147,51,234,.08));
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.ap-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.ap-hero-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #fff; flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(99,102,241,.3);
+}
+.ap-hero h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+.ap-hero p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.ap-hero-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    color: #fff; border: none; padding: 10px 20px; border-radius: 12px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99,102,241,.3);
+    transition: all .2s;
+}
+.ap-hero-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99,102,241,.4); }
+
+/* --- Stat Cards --- */
+.ap-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.ap-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex; align-items: center; gap: 14px;
+    transition: all .2s;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+.ap-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.ap-stat-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.ap-stat-icon.blue   { background: rgba(99,102,241,.12); color: #6366f1; }
+.ap-stat-icon.green  { background: rgba(34,197,94,.12); color: #22c55e; }
+.ap-stat-icon.purple { background: rgba(147,51,234,.12); color: #9333ea; }
+.ap-stat-icon.red    { background: rgba(239,68,68,.12); color: #ef4444; }
+.ap-stat-val { font-size: 24px; font-weight: 800; line-height: 1; }
+.ap-stat-lbl { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* --- Main Layout --- */
+.ap-main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+/* --- Left Panel: User List --- */
+.ap-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 80px;
+}
+.ap-panel-head {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+}
+.ap-panel-head i { color: var(--accent-blue); }
+
+.ap-search {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+.ap-search i {
+    position: absolute; left: 28px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); font-size: 13px; pointer-events: none;
+}
+.ap-search input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 9px 12px 9px 34px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    transition: all .2s;
+}
+.ap-search input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+
+.ap-ulist {
+    max-height: 500px;
+    overflow-y: auto;
+}
+.ap-ulist::-webkit-scrollbar { width: 4px; }
+.ap-ulist::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+.ap-uitem {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all .15s;
+    border-left: 3px solid transparent;
+}
+.ap-uitem:hover { background: var(--bg-hover); }
+.ap-uitem.active {
+    background: var(--bg-hover);
+    border-left-color: var(--accent-blue);
+}
+.ap-avatar {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #fff;
+    flex-shrink: 0;
+    position: relative;
+}
+.ap-avatar .dot {
+    position: absolute; bottom: -2px; right: -2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg-card);
+}
+.ap-uname { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.ap-umeta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+/* Role Badge */
+.ap-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px;
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.ap-badge-super_admin { background: rgba(99,102,241,.15); color: #6366f1; }
+.ap-badge-admin       { background: rgba(239,68,68,.12); color: #ef4444; }
+.ap-badge-operator    { background: rgba(245,158,11,.12); color: #f59e0b; }
+.ap-badge-read_only   { background: rgba(100,116,139,.12); color: #64748b; }
+[data-theme="light"] .ap-badge-super_admin { background: rgba(99,102,241,.1); color: #4f46e5; }
+
+.ap-add-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: calc(100% - 32px);
+    margin: 12px 16px;
+    padding: 9px;
+    background: none;
+    border: 1px dashed var(--accent-blue);
+    color: var(--accent-blue);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    transition: all .2s;
+}
+.ap-add-btn:hover { background: rgba(99,102,241,.06); }
+
+/* --- Right Panel --- */
+.ap-detail { min-height: 200px; }
+
+/* Empty State */
+.ap-empty {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 340px; gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+.ap-empty-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--bg-input);
+    border: 2px dashed var(--border-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--text-muted);
+}
+.ap-empty h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.ap-empty p { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* --- User Detail Header --- */
+.ap-user-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+}
+.ap-user-banner {
+    height: 72px;
+    background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(147,51,234,.1), transparent);
+}
+.ap-user-body {
+    padding: 0 24px 20px;
+    position: relative;
+}
+.ap-user-av {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 22px; color: #fff;
+    border: 3px solid var(--bg-card);
+    position: absolute; top: -28px; left: 24px;
+    box-shadow: var(--shadow-sm);
+}
+.ap-user-info { padding-top: 36px; }
+.ap-user-name { font-size: 17px; font-weight: 800; margin: 0; }
+.ap-user-sub {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap; margin-top: 4px;
+    font-size: 12px; color: var(--text-secondary);
+}
+.ap-user-sub .sep { opacity: .3; }
+.ap-user-actions {
+    position: absolute; top: 16px; right: 24px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* --- Tabs --- */
+.ap-tabs {
+    display: flex; gap: 4px;
+    background: var(--bg-input);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    width: fit-content;
+}
+.ap-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border: none; border-radius: 9px;
+    background: none; color: var(--text-muted);
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; transition: all .2s;
+}
+.ap-tab:hover { color: var(--text-primary); background: rgba(99,102,241,.05); }
+.ap-tab.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
+.ap-tab-panel { display: none; }
+.ap-tab-panel.active { display: block; }
+
+/* --- Section Card --- */
+.ap-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+}
+.ap-section-title {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+}
+.ap-section-title i { font-size: 14px; }
+
+/* --- Form --- */
+.ap-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.ap-field label {
+    display: block; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-secondary); margin-bottom: 6px;
+}
+.ap-input, .ap-select {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    outline: none; font-family: inherit;
+    transition: border-color .2s, box-shadow .2s;
+}
+.ap-input:focus, .ap-select:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+.ap-input[readonly] { opacity: .55; cursor: default; }
+.ap-select option { background: var(--bg-secondary); }
+
+/* --- Role Cards --- */
+.ap-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.ap-role-card {
+    padding: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--bg-input);
+}
+.ap-role-card:hover { border-color: rgba(99,102,241,.3); background: var(--bg-hover); }
+.ap-role-card.sel { border-color: var(--accent-blue); background: rgba(99,102,241,.06); }
+.ap-role-card input[type=radio] { display: none; }
+.ap-role-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.ap-role-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.ap-rc-super .ap-role-name { color: #6366f1; }
+.ap-rc-admin  .ap-role-name { color: #ef4444; }
+.ap-rc-op     .ap-role-name { color: #f59e0b; }
+.ap-rc-ro     .ap-role-name { color: #64748b; }
+
+.ap-role-hint {
+    border-left: 3px solid var(--accent-blue);
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border-radius: 0 10px 10px 0;
+    font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+/* --- Permission Grid --- */
+.ap-perm-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+}
+.ap-perm-bar p { font-size: 13px; color: var(--text-secondary); max-width: 480px; margin: 0; }
+.ap-perm-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.ap-perm-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+.ap-pg {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.ap-pg-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background .15s;
+}
+.ap-pg-head:hover { background: var(--bg-hover); }
+.ap-pg-left { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.ap-pg-icon {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+}
+.ap-pg-toggle {
+    font-size: 11px; color: var(--text-muted);
+    padding: 3px 8px; border-radius: 6px;
+    cursor: pointer; transition: all .15s;
+    background: none; border: none; font-family: inherit;
+}
+.ap-pg-toggle:hover { color: var(--accent-blue); background: rgba(99,102,241,.08); }
+
+.ap-pg-body { padding: 4px 0; }
+.ap-pg-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 14px; gap: 8px;
+    transition: background .12s;
+}
+.ap-pg-row:hover { background: rgba(99,102,241,.04); }
+.ap-pg-lbl { flex: 1; min-width: 0; }
+.ap-pg-lbl-main { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+.ap-pg-lbl-key { font-size: 10px; color: var(--text-muted); font-family: 'SF Mono', Monaco, Consolas, monospace; }
+
+/* Toggle Switch */
+.ap-sw { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.ap-sw input { opacity: 0; width: 0; height: 0; }
+.ap-sw-s {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--border-color); border-radius: 999px; transition: .2s;
+}
+.ap-sw-s::before {
+    content: ''; position: absolute;
+    width: 14px; height: 14px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: .2s;
+}
+.ap-sw input:checked + .ap-sw-s { background: var(--accent-blue); box-shadow: 0 0 8px rgba(99,102,241,.3); }
+.ap-sw input:checked + .ap-sw-s::before { transform: translateX(16px); }
+
+/* --- Action Buttons (inline) --- */
+.ap-btn-ghost {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-input); color: var(--text-primary);
+    border: 1px solid var(--border-color); border-radius: 10px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.ap-btn-ghost:hover { background: var(--bg-hover); border-color: rgba(99,102,241,.3); }
+.ap-btn-warn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(245,158,11,.08); color: #f59e0b;
+    border: 1px solid rgba(245,158,11,.18); border-radius: 10px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.ap-btn-warn:hover { background: rgba(245,158,11,.15); }
+.ap-btn-danger {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(239,68,68,.08); color: #ef4444;
+    border: 1px solid rgba(239,68,68,.18); border-radius: 10px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.ap-btn-danger:hover { background: rgba(239,68,68,.15); }
+.ap-btn-ok {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,.08); color: #22c55e;
+    border: 1px solid rgba(34,197,94,.18); border-radius: 10px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.ap-btn-ok:hover { background: rgba(34,197,94,.15); }
+.ap-btn-impersonate {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all .2s;
+    box-shadow: 0 2px 8px rgba(99,102,241,.3);
+}
+.ap-btn-impersonate:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(99,102,241,.4); }
+
+.ap-flex-end { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+/* --- Modal --- */
+.ap-modal {
+    position: fixed; inset: 0; z-index: 3000;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+}
+.ap-modal.open { display: flex; }
+.ap-modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%; max-width: 440px;
+    box-shadow: var(--shadow);
+    animation: ap-pop .2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.ap-modal-box.wide { max-width: 720px; }
+
+/* Collapsible permission section in modal */
+.ap-mperm-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; margin-top: 14px;
+    background: var(--bg-input); border: 1px solid var(--border-color);
+    border-radius: 10px; cursor: pointer; transition: all .2s;
+}
+.ap-mperm-toggle:hover { border-color: rgba(99,102,241,.3); }
+.ap-mperm-toggle span { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.ap-mperm-toggle .ap-chevron { transition: transform .2s; font-size: 12px; color: var(--text-muted); }
+.ap-mperm-toggle.open .ap-chevron { transform: rotate(180deg); }
+.ap-mperm-body {
+    display: none; margin-top: 10px;
+    max-height: 340px; overflow-y: auto;
+    border: 1px solid var(--border-color); border-radius: 10px;
+    background: var(--bg-input);
+}
+.ap-mperm-body.open { display: block; }
+.ap-mperm-body::-webkit-scrollbar { width: 4px; }
+.ap-mperm-body::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.ap-mperm-grp { border-bottom: 1px solid var(--border-color); }
+.ap-mperm-grp:last-child { border-bottom: none; }
+.ap-mperm-grp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--text-primary);
+    transition: background .15s;
+}
+.ap-mperm-grp-head:hover { background: var(--bg-hover); }
+.ap-mperm-grp-head .ap-mperm-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 8px;
+}
+.ap-mperm-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 12px 5px 42px; font-size: 12px;
+}
+.ap-mperm-row:hover { background: rgba(99,102,241,.03); }
+.ap-mperm-lbl { color: var(--text-primary); font-weight: 500; }
+.ap-mperm-key { color: var(--text-muted); font-size: 10px; font-family: monospace; }
+.ap-mperm-actions {
+    display: flex; gap: 6px; margin-top: 8px; padding: 0 4px;
+}
+.ap-mperm-actions button {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--border-color); background: var(--bg-input);
+    color: var(--text-secondary); cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.ap-mperm-actions button:hover { border-color: rgba(99,102,241,.3); color: var(--accent-blue); }
+@keyframes ap-pop { from { opacity:0; transform: scale(.96) translateY(6px); } to { opacity:1; transform:none; }}
+.ap-modal-x {
+    float: right;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg-input); border: 1px solid var(--border-color);
+    color: var(--text-muted); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s;
+}
+.ap-modal-x:hover { background: rgba(239,68,68,.1); color: #ef4444; }
+.ap-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.ap-modal-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; }
+
+/* --- Toast --- */
+#ap-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.ap-toast {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px; border-radius: 12px;
+    font-size: 13px; font-weight: 600;
+    min-width: 200px;
+    animation: ap-tin .25s ease;
+    box-shadow: var(--shadow);
+}
+@keyframes ap-tin { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform:none; }}
+.ap-toast-ok  { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.2); color: #22c55e; }
+.ap-toast-err { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.2); color: #ef4444; }
+.ap-toast-inf { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); }
+[data-theme="light"] .ap-toast-ok  { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+[data-theme="light"] .ap-toast-err { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+
+/* --- Responsive --- */
+@media (max-width: 960px) {
+    .ap-stats  { grid-template-columns: repeat(2, 1fr); }
+    .ap-main   { grid-template-columns: 1fr; }
+    .ap-panel  { position: static; }
+    .ap-ulist  { max-height: 240px; }
+    .ap-perm-grid  { grid-template-columns: 1fr; }
+    .ap-role-grid  { grid-template-columns: 1fr; }
+    .ap-form-grid  { grid-template-columns: 1fr; }
+    .ap-user-actions { position: static; margin-top: 12px; }
+}
+@media (max-width: 640px) {
+    .ap-stats { grid-template-columns: 1fr 1fr; }
+    .ap-hero  { padding: 20px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<meta id="ap-csrf" name="csrf-token" content="{{ session.csrf_token or '' }}">
+<div id="ap-uid" data-v="{{ current_user.id }}" hidden></div>
+<div id="ap-toast"></div>
+
+<!-- ══ MODAL: Yeni Kullanıcı ══ -->
+<div class="ap-modal" id="m-new">
+  <div class="ap-modal-box wide">
+    <button class="ap-modal-x" onclick="AP.modal.close('m-new')">&#x2715;</button>
+    <div class="ap-modal-title"><i class="fas fa-user-plus" style="color:#6366f1"></i> Yeni Kullanıcı Oluştur</div>
+    <div class="ap-form-grid">
+      <div class="ap-field">
+        <label>Kullanıcı Adı *</label>
+        <input class="ap-input" id="n-user" placeholder="kullanici_adi" autocomplete="off">
+      </div>
+      <div class="ap-field">
+        <label>E-Posta</label>
+        <input class="ap-input" id="n-email" type="email" placeholder="ornek@site.com">
+      </div>
+    </div>
+    <div class="ap-form-grid">
+      <div class="ap-field">
+        <label>Şifre * <span style="color:var(--text-muted);font-size:10px;text-transform:none;letter-spacing:0">(min 8 kr, büyük harf, rakam, özel)</span></label>
+        <input class="ap-input" id="n-pw" type="password" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;">
+      </div>
+      <div class="ap-field">
+        <label>Başlangıç Rolü</label>
+        <select class="ap-select" id="n-role">
+          {% for r in roles %}<option value="{{ r.key }}">{{ r.label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Modül İzinleri (Opsiyonel) -->
+    <div class="ap-mperm-toggle" onclick="this.classList.toggle('open');document.getElementById('n-perms-body').classList.toggle('open')">
+      <span><i class="fas fa-sliders" style="color:var(--accent-blue)"></i> Modül İzinleri (Opsiyonel)</span>
+      <i class="fas fa-chevron-down ap-chevron"></i>
+    </div>
+    <div class="ap-mperm-body" id="n-perms-body">
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:var(--text-muted)">Boş bırakılırsa rol bazlı izinler kullanılır</span>
+        <div class="ap-mperm-actions">
+          <button type="button" onclick="document.querySelectorAll('#n-perms-body input[data-np]').forEach(function(c){c.checked=true})">Tümünü Seç</button>
+          <button type="button" onclick="document.querySelectorAll('#n-perms-body input[data-np]').forEach(function(c){c.checked=false})">Temizle</button>
+        </div>
+      </div>
+      {% set gc = ['#6366f1','#ef4444','#8b5cf6','#0891b2','#059669','#d97706','#0284c7','#9333ea','#16a34a','#ca8a04','#0369a1','#a16207','#be185d','#7c3aed'] %}
+      {% for group in perm_groups %}
+      {% set c = gc[loop.index0 % 14] %}
+      <div class="ap-mperm-grp">
+        <div class="ap-mperm-grp-head" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">
+          <div style="display:flex;align-items:center">
+            <div class="ap-mperm-icon" data-color="{{ c }}">{{ group.icon }}</div>
+            {{ group.label }}
+          </div>
+          <button type="button" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border-color);background:none;color:var(--text-muted);cursor:pointer" onclick="event.stopPropagation();this.closest('.ap-mperm-grp').querySelectorAll('input[data-np]').forEach(function(c){c.checked=!c.checked})">&#x21C4;</button>
+        </div>
+        <div>
+          {% for perm_key, perm_lbl in group.perms %}
+          <div class="ap-mperm-row">
+            <div>
+              <div class="ap-mperm-lbl">{{ perm_lbl }}</div>
+              <div class="ap-mperm-key">{{ perm_key }}</div>
+            </div>
+            <label class="ap-sw">
+              <input type="checkbox" data-np="{{ perm_key }}">
+              <span class="ap-sw-s"></span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="ap-modal-foot">
+      <button class="btn btn-secondary btn-sm" onclick="AP.modal.close('m-new')">İptal</button>
+      <button class="btn btn-primary btn-sm" onclick="AP.action.create()"><i class="fas fa-plus"></i> Oluştur</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Şifre Sıfırla ══ -->
+<div class="ap-modal" id="m-pw">
+  <div class="ap-modal-box" style="max-width:380px">
+    <button class="ap-modal-x" onclick="AP.modal.close('m-pw')">&#x2715;</button>
+    <div class="ap-modal-title" id="m-pw-title"><i class="fas fa-key" style="color:#f59e0b"></i> Şifre Sıfırla</div>
+    <div class="ap-field" style="margin-bottom:14px">
+      <label>Yeni Şifre</label>
+      <input class="ap-input" id="pw1" type="password" placeholder="Yeni şifre">
+    </div>
+    <div class="ap-field">
+      <label>Şifre (Tekrar)</label>
+      <input class="ap-input" id="pw2" type="password" placeholder="Tekrar girin">
+    </div>
+    <div class="ap-modal-foot">
+      <button class="btn btn-secondary btn-sm" onclick="AP.modal.close('m-pw')">İptal</button>
+      <button class="btn btn-primary btn-sm" onclick="AP.action.resetPw()"><i class="fas fa-save"></i> Güncelle</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="ap-hero">
+  <div class="ap-hero-left">
+    <div class="ap-hero-icon"><i class="fas fa-shield-alt"></i></div>
+    <div>
+      <h2>Süper Admin Paneli</h2>
+      <p>Kullanıcıları yönetin, roller ve modül izinlerini kontrol edin.</p>
+    </div>
+  </div>
+  <button class="ap-hero-btn" onclick="AP.modal.open('m-new')"><i class="fas fa-user-plus"></i> Yeni Kullanıcı</button>
+</div>
+
+<!-- ═══════════ İSTATİSTİKLER ═══════════ -->
+<div class="ap-stats">
+  <div class="ap-stat">
+    <div class="ap-stat-icon blue"><i class="fas fa-users"></i></div>
+    <div>
+      <div class="ap-stat-val">{{ total_users }}</div>
+      <div class="ap-stat-lbl">Toplam Kullanıcı</div>
+    </div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-icon green"><i class="fas fa-user-check"></i></div>
+    <div>
+      <div class="ap-stat-val">{{ active_users }}</div>
+      <div class="ap-stat-lbl">Aktif Kullanıcı</div>
+    </div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-icon purple"><i class="fas fa-user-shield"></i></div>
+    <div>
+      <div class="ap-stat-val">{{ users|selectattr('role','eq','super_admin')|list|length }}</div>
+      <div class="ap-stat-lbl">Süper Admin</div>
+    </div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-icon red"><i class="fas fa-user-tag"></i></div>
+    <div>
+      <div class="ap-stat-val">{{ users|selectattr('role','eq','admin')|list|length }}</div>
+      <div class="ap-stat-lbl">Admin</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ANA İÇERİK ═══════════ -->
+<div class="ap-main">
+
+  <!-- ═══ SOL: Kullanıcı Listesi ═══ -->
+  <aside class="ap-panel">
+    <div class="ap-panel-head"><i class="fas fa-users"></i> Kullanıcılar ({{ total_users }})</div>
+    <div class="ap-search">
+      <i class="fas fa-search"></i>
+      <input id="ap-q" type="text" placeholder="Kullanıcı ara..." oninput="AP.ui.filter(this.value)">
+    </div>
+    <div class="ap-ulist" id="ap-ulist">
+      {% set avcolors = ['linear-gradient(135deg,#6366f1,#8b5cf6)','linear-gradient(135deg,#0891b2,#0e7490)','linear-gradient(135deg,#059669,#047857)','linear-gradient(135deg,#d97706,#b45309)','linear-gradient(135deg,#dc2626,#b91c1c)','linear-gradient(135deg,#7c3aed,#6d28d9)','linear-gradient(135deg,#0ea5e9,#0284c7)','linear-gradient(135deg,#16a34a,#15803d)'] %}
+      {% for u in users %}
+      {% set ci = loop.index0 % 8 %}
+      <div class="ap-uitem" id="li-{{ u.id }}" data-username="{{ u.username }}" data-color="{{ avcolors[ci] }}" data-uid="{{ u.id }}">
+        <div class="ap-avatar" data-bg="{{ avcolors[ci] }}">
+          {{ u.username[0]|upper }}
+          <div class="dot" data-dot="{{ '#22c55e' if u.is_active_user else '#6b7280' }}"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="ap-uname">{{ u.username }}</div>
+          <div class="ap-umeta">
+            <span class="ap-badge ap-badge-{{ u.role }}">{{ u.role }}</span>
+            {% if not u.is_active_user %}<span style="font-size:10px;color:#ef4444;font-weight:600">Pasif</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button class="ap-add-btn" onclick="AP.modal.open('m-new')">
+      <i class="fas fa-user-plus"></i> Yeni Kullanıcı Ekle
+    </button>
+  </aside>
+
+  <!-- ═══ SAĞ: Kullanıcı Detayı ═══ -->
+  <div class="ap-detail">
+
+    <!-- Boş durum -->
+    <div id="ap-empty" class="ap-empty">
+      <div class="ap-empty-icon"><i class="fas fa-mouse-pointer"></i></div>
+      <h3>Bir kullanıcı seçin</h3>
+      <p>Soldaki listeden düzenlemek istediğiniz kullanıcıya tıklayın</p>
+    </div>
+
+    <!-- Detay -->
+    <div id="ap-detail-content" style="display:none">
+
+      <!-- User Card -->
+      <div class="ap-user-card">
+        <div class="ap-user-banner" id="ap-banner"></div>
+        <div class="ap-user-body">
+          <div class="ap-user-av" id="ap-av">?</div>
+          <div class="ap-user-actions">
+            <button class="ap-btn-impersonate" id="ap-ibtn" onclick="AP.action.impersonate()"><i class="fas fa-sign-in-alt"></i> Giriş Yap</button>
+            <button class="ap-btn-ghost" onclick="AP.action.openPw()"><i class="fas fa-key"></i> Şifre Sıfırla</button>
+            <button class="ap-btn-warn" id="ap-tbtn" onclick="AP.action.toggle()"><i class="fas fa-pause"></i> Pasif Yap</button>
+            <button class="ap-btn-danger" id="ap-dbtn" onclick="AP.action.del()"><i class="fas fa-trash-alt"></i> Sil</button>
+          </div>
+          <div class="ap-user-info">
+            <h3 class="ap-user-name" id="ap-hname">—</h3>
+            <div class="ap-user-sub" id="ap-hsub">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="ap-tabs">
+        <button class="ap-tab active" id="tab-profile" onclick="AP.ui.tab('profile')"><i class="fas fa-user"></i> Profil</button>
+        <button class="ap-tab" id="tab-role" onclick="AP.ui.tab('role')"><i class="fas fa-shield-halved"></i> Rol</button>
+        <button class="ap-tab" id="tab-perms" onclick="AP.ui.tab('perms')"><i class="fas fa-sliders"></i> Modül İzinleri</button>
+      </div>
+
+      <!-- ── Tab: Profil ── -->
+      <div class="ap-tab-panel active" id="tc-profile">
+        <div class="ap-section">
+          <div class="ap-section-title"><i class="fas fa-id-card"></i> Hesap Bilgileri</div>
+          <div class="ap-form-grid">
+            <div class="ap-field"><label>Kullanıcı Adı</label><input class="ap-input" id="e-user" readonly></div>
+            <div class="ap-field"><label>E-Posta</label><input class="ap-input" id="e-email" type="email" placeholder="(opsiyonel)"></div>
+            <div class="ap-field"><label>Kayıt Tarihi</label><input class="ap-input" id="e-created" readonly></div>
+            <div class="ap-field"><label>Son Giriş</label><input class="ap-input" id="e-login" readonly></div>
+          </div>
+          <div class="ap-flex-end">
+            <button class="btn btn-primary btn-sm" onclick="AP.action.saveProfile()"><i class="fas fa-save"></i> E-Postayı Kaydet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Rol ── -->
+      <div class="ap-tab-panel" id="tc-role">
+        <div class="ap-section">
+          <div class="ap-section-title"><i class="fas fa-shield-halved"></i> Rol Seçimi</div>
+          <div class="ap-role-grid">
+            <div class="ap-role-card ap-rc-super" data-role="super_admin" onclick="AP.ui.pickRole(this)">
+              <input type="radio" name="rolep" value="super_admin">
+              <div class="ap-role-name">&#x26A1; super_admin</div>
+              <div class="ap-role-desc">Tüm yetkiler — hiçbir kısıtlama</div>
+            </div>
+            <div class="ap-role-card ap-rc-admin" data-role="admin" onclick="AP.ui.pickRole(this)">
+              <input type="radio" name="rolep" value="admin">
+              <div class="ap-role-name">&#x1F6E1;&#xFE0F; admin</div>
+              <div class="ap-role-desc">Kullanıcı yönetimi dahil geniş erişim</div>
+            </div>
+            <div class="ap-role-card ap-rc-op" data-role="operator" onclick="AP.ui.pickRole(this)">
+              <input type="radio" name="rolep" value="operator">
+              <div class="ap-role-name">&#x1F527; operator</div>
+              <div class="ap-role-desc">Sunucu & altyapı operasyonları</div>
+            </div>
+            <div class="ap-role-card ap-rc-ro" data-role="read_only" onclick="AP.ui.pickRole(this)">
+              <input type="radio" name="rolep" value="read_only">
+              <div class="ap-role-name">&#128065;&#xFE0F; read_only</div>
+              <div class="ap-role-desc">Yalnızca görüntüleme yetkisi</div>
+            </div>
+          </div>
+          <div class="ap-role-hint" id="ap-role-hint">Bir rol seçin, ardından <strong>Rolü Kaydet</strong>'e basın.</div>
+          <div class="ap-flex-end">
+            <button class="btn btn-primary btn-sm" onclick="AP.action.saveRole()"><i class="fas fa-save"></i> Rolü Kaydet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Modül İzinleri ── -->
+      <div class="ap-tab-panel" id="tc-perms">
+        <div class="ap-section">
+          <div class="ap-perm-bar">
+            <p>Özel izin atandığında kullanıcının <strong>rolü göz ardı edilir</strong>; yalnızca seçilen izinler geçerli olur.</p>
+            <div class="ap-perm-btns">
+              <button class="ap-btn-ghost" onclick="AP.ui.allPerms(true)"><i class="fas fa-check-double"></i> Tümünü Seç</button>
+              <button class="ap-btn-ghost" onclick="AP.ui.allPerms(false)"><i class="fas fa-times"></i> Tümünü Kaldır</button>
+              <button class="ap-btn-danger" onclick="AP.action.clearPerms()"><i class="fas fa-rotate-left"></i> Sıfırla</button>
+            </div>
+          </div>
+          <div class="ap-perm-grid" id="ap-perm-grid">
+            {% set gc = ['#6366f1','#ef4444','#8b5cf6','#0891b2','#059669','#d97706','#0284c7','#9333ea','#16a34a','#ca8a04','#0369a1','#a16207','#be185d','#7c3aed'] %}
+            {% for group in perm_groups %}
+            {% set c = gc[loop.index0 % 14] %}
+            <div class="ap-pg">
+              <div class="ap-pg-head" onclick="AP.ui.grpToggle('{{ group.key }}')">
+                <div class="ap-pg-left">
+                  <div class="ap-pg-icon" data-color="{{ c }}">{{ group.icon }}</div>
+                  {{ group.label }}
+                </div>
+                <button class="ap-pg-toggle" onclick="event.stopPropagation();AP.ui.grpAll('{{ group.key }}',true)">Tümü &#x25B8;</button>
+              </div>
+              <div class="ap-pg-body" id="grp-{{ group.key }}">
+                {% for perm_key, perm_lbl in group.perms %}
+                <div class="ap-pg-row">
+                  <div class="ap-pg-lbl">
+                    <div class="ap-pg-lbl-main">{{ perm_lbl }}</div>
+                    <div class="ap-pg-lbl-key">{{ perm_key }}</div>
+                  </div>
+                  <label class="ap-sw">
+                    <input type="checkbox" id="p-{{ perm_key|replace('.', '-') }}" data-perm="{{ perm_key }}">
+                    <span class="ap-sw-s"></span>
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="ap-flex-end">
+            <button class="btn btn-primary btn-sm" onclick="AP.action.savePerms()"><i class="fas fa-save"></i> İzinleri Kaydet</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /ap-detail-content -->
+  </div><!-- /ap-detail -->
+</div><!-- /ap-main -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+'use strict';
+
+/* ── data-* → inline style bootstrap ── */
+document.querySelectorAll('[data-bg]').forEach(function(el) { el.style.background = el.dataset.bg; });
+document.querySelectorAll('[data-dot]').forEach(function(el) { el.style.background = el.dataset.dot; });
+document.querySelectorAll('[data-color]').forEach(function(el) {
+    var c = el.dataset.color;
+    el.style.background = c + '18';
+    el.style.color = c;
+});
+/* ── click delegation for user items ── */
+document.querySelectorAll('.ap-uitem[data-uid]').forEach(function(el) {
+    el.addEventListener('click', function() { AP.ui.select(parseInt(el.dataset.uid, 10)); });
+});
+
+var uid = null, uobj = null;
+var csrf = function(){ var m = document.getElementById('ap-csrf'); return m ? m.content : ''; };
+var self = function(){ return parseInt(document.getElementById('ap-uid').dataset.v, 10); };
+
+/* ── Toast ── */
+function toast(msg, type) {
+    var cls = {success:'ok', error:'err', info:'inf'};
+    var icons = {ok:'fa-check-circle', err:'fa-times-circle', inf:'fa-info-circle'};
+    var t = cls[type] || 'inf';
+    var box = document.getElementById('ap-toast');
+    var el = document.createElement('div');
+    el.className = 'ap-toast ap-toast-' + t;
+    el.innerHTML = '<i class="fas ' + icons[t] + '"></i><span>' + msg + '</span>';
+    box.appendChild(el);
+    setTimeout(function(){ el.style.opacity = '0'; el.style.transform = 'translateX(16px)'; setTimeout(function(){ el.remove(); }, 200); }, 3000);
+}
+
+/* ── API ── */
+async function api(method, url, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() } };
+    if (body) opts.body = JSON.stringify(body);
+    var r = await fetch(url, opts);
+    return r.json();
+}
+
+/* ── Namespace ── */
+window.AP = {
+    modal: {
+        open: function(id) { document.getElementById(id).classList.add('open'); },
+        close: function(id) { document.getElementById(id).classList.remove('open'); }
+    },
+    ui: {
+        filter: function(q) {
+            q = q.toLowerCase();
+            document.querySelectorAll('.ap-uitem').forEach(function(el) {
+                el.style.display = el.dataset.username.toLowerCase().includes(q) ? '' : 'none';
+            });
+        },
+        tab: function(name) {
+            ['profile','role','perms'].forEach(function(n) {
+                var tabEl = document.getElementById('tab-' + n);
+                var panelEl = document.getElementById('tc-' + n);
+                if (tabEl) tabEl.classList.toggle('active', n === name);
+                if (panelEl) panelEl.classList.toggle('active', n === name);
+            });
+            if (name === 'perms' && uid) loadPerms();
+        },
+        pickRole: function(card) {
+            document.querySelectorAll('.ap-role-card').forEach(function(c) { c.classList.remove('sel'); });
+            card.classList.add('sel');
+            var hints = {
+                super_admin: 'Tüm modüllere tam erişim. Hiçbir kısıtlama uygulanmaz.',
+                admin: 'Kullanıcı yönetimi, denetim kaydı ve geniş altyapı erişimi.',
+                operator: 'Sunucu, güvenlik duvarı, VM ve terminal operasyonları.',
+                read_only: 'Yalnızca izleme; hiçbir değişiklik yapılamaz.'
+            };
+            document.getElementById('ap-role-hint').innerHTML = '<strong>' + card.dataset.role + ':</strong> ' + (hints[card.dataset.role] || '');
+        },
+        grpToggle: function(k) {
+            var el = document.getElementById('grp-' + k);
+            el.style.display = el.style.display === 'none' ? '' : 'none';
+        },
+        grpAll: function(k, v) {
+            document.querySelectorAll('#grp-' + k + ' input[data-perm]').forEach(function(c) { c.checked = v; });
+        },
+        allPerms: function(v) {
+            document.querySelectorAll('#ap-perm-grid input[data-perm]').forEach(function(c) { c.checked = v; });
+        },
+        select: function(id) {
+            uid = id;
+            document.querySelectorAll('.ap-uitem').forEach(function(el) {
+                el.classList.toggle('active', el.id === 'li-' + id);
+            });
+            fetch('/api/users').then(function(r) { return r.json(); }).then(function(d) {
+                var u = (d.users || []).find(function(x) { return x.id === id; });
+                if (!u) return;
+                uobj = u;
+                renderUser(u);
+            });
+        }
+    },
+    action: {
+        saveProfile: async function() {
+            if (!uid) return;
+            var d = await api('PUT', '/api/users/' + uid, { email: document.getElementById('e-email').value.trim() });
+            toast(d.message || (d.success ? 'Kaydedildi' : 'Hata'), d.success ? 'success' : 'error');
+        },
+        saveRole: async function() {
+            if (!uid) return;
+            var sel = document.querySelector('.ap-role-card.sel');
+            if (!sel) { toast('Bir rol seçin', 'error'); return; }
+            var d = await api('PUT', '/api/users/' + uid, { role: sel.dataset.role });
+            toast(d.message || (d.success ? 'Rol güncellendi' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) {
+                var li = document.getElementById('li-' + uid);
+                if (li) { var b = li.querySelector('.ap-badge'); if (b) { b.className = 'ap-badge ap-badge-' + sel.dataset.role; b.textContent = sel.dataset.role; } }
+                var hb = document.getElementById('ap-hsub').querySelector('.ap-badge');
+                if (hb) { hb.className = 'ap-badge ap-badge-' + sel.dataset.role; hb.textContent = sel.dataset.role; }
+            }
+        },
+        savePerms: async function() {
+            if (!uid) return;
+            var perms = [];
+            document.querySelectorAll('#ap-perm-grid input[data-perm]:checked').forEach(function(c) { perms.push(c.dataset.perm); });
+            var d = await api('PUT', '/api/users/' + uid + '/permissions', { permissions: perms });
+            toast(d.message || (d.success ? 'İzinler kaydedildi' : 'Hata'), d.success ? 'success' : 'error');
+        },
+        clearPerms: async function() {
+            if (!uid) return;
+            if (!confirm('Özel izinler silinecek, kullanıcı rol bazlı sisteme döndürülecek. Emin misiniz?')) return;
+            var d = await api('PUT', '/api/users/' + uid + '/permissions', { permissions: [] });
+            toast(d.message || (d.success ? 'Sıfırlandı' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) AP.ui.allPerms(false);
+        },
+        toggle: async function() {
+            if (!uid) return;
+            var d = await api('POST', '/api/users/' + uid + '/toggle-active');
+            toast(d.message || (d.success ? 'Güncellendi' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success && uobj) {
+                uobj.is_active = d.is_active;
+                uobj.is_active_user = d.is_active;
+                renderUser(uobj);
+                var dot = document.querySelector('#li-' + uid + ' .dot');
+                if (dot) dot.style.background = d.is_active ? '#22c55e' : '#6b7280';
+            }
+        },
+        del: async function() {
+            if (!uid) return;
+            if (!confirm('Bu kullanıcı kalıcı olarak silinecek. Geri alınamaz!')) return;
+            var d = await api('DELETE', '/api/users/' + uid);
+            toast(d.message || (d.success ? 'Silindi' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) {
+                var li = document.getElementById('li-' + uid); if (li) li.remove();
+                document.getElementById('ap-detail-content').style.display = 'none';
+                document.getElementById('ap-empty').style.display = '';
+                uid = null; uobj = null;
+            }
+        },
+        openPw: function() {
+            if (!uobj) return;
+            document.getElementById('m-pw-title').innerHTML = '<i class="fas fa-key" style="color:#f59e0b"></i> Şifre Sıfırla — ' + uobj.username;
+            document.getElementById('pw1').value = '';
+            document.getElementById('pw2').value = '';
+            AP.modal.open('m-pw');
+        },
+        resetPw: async function() {
+            var p1 = document.getElementById('pw1').value, p2 = document.getElementById('pw2').value;
+            if (p1 !== p2) { toast('Şifreler eşleşmiyor', 'error'); return; }
+            if (p1.length < 6) { toast('En az 6 karakter gerekli', 'error'); return; }
+            var d = await api('POST', '/api/users/' + uid + '/reset-password', { password: p1 });
+            toast(d.message || (d.success ? 'Şifre güncellendi' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) AP.modal.close('m-pw');
+        },
+        impersonate: async function() {
+            if (!uid) return;
+            if (uid === self()) { toast('Kendi hesab\u0131n\u0131zdas\u0131n\u0131z', 'error'); return; }
+            if (!confirm(uobj.username + ' hesab\u0131na ge\u00e7i\u015f yap\u0131lacak. Devam edilsin mi?')) return;
+            var d = await api('POST', '/api/users/' + uid + '/impersonate');
+            toast(d.message || (d.success ? 'Ge\u00e7i\u015f yap\u0131ld\u0131' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) {
+                setTimeout(function() { window.location.href = d.redirect || '/dashboard'; }, 500);
+            }
+        },
+        create: async function() {
+            // Seçili izinleri topla
+            var perms = [];
+            document.querySelectorAll('#n-perms-body input[data-np]:checked').forEach(function(c) {
+                perms.push(c.dataset.np);
+            });
+            var payload = {
+                username: document.getElementById('n-user').value.trim(),
+                email: document.getElementById('n-email').value.trim(),
+                password: document.getElementById('n-pw').value,
+                role: document.getElementById('n-role').value
+            };
+            // Sadece izin seçildiyse gönder
+            if (perms.length > 0) payload.permissions = perms;
+            var d = await api('POST', '/api/users', payload);
+            toast(d.message || (d.success ? 'Oluşturuldu' : 'Hata'), d.success ? 'success' : 'error');
+            if (d.success) {
+                AP.modal.close('m-new');
+                setTimeout(function(){ location.reload(); }, 600);
+            }
+        }
+    }
+};
+
+/* ── Render user detail ── */
+function renderUser(u) {
+    document.getElementById('ap-empty').style.display = 'none';
+    document.getElementById('ap-detail-content').style.display = '';
+
+    var col = document.getElementById('li-' + u.id).dataset.color || 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+    var av = document.getElementById('ap-av');
+    av.textContent = u.username[0].toUpperCase();
+    av.style.background = col;
+
+    // Banner gradient
+    var m = col.match(/#[0-9a-f]{6}/gi);
+    var c1 = m ? m[0] : '#6366f1', c2 = m && m[1] ? m[1] : '#8b5cf6';
+    document.getElementById('ap-banner').style.background = 'linear-gradient(135deg, ' + c1 + '20, ' + c2 + '10, transparent)';
+
+    document.getElementById('ap-hname').textContent = u.username;
+
+    var subs = [];
+    subs.push('<span class="ap-badge ap-badge-' + u.role + '">' + u.role + '</span>');
+    if (u.email) subs.push(u.email);
+    subs.push(u.is_active !== false
+        ? '<span style="color:#22c55e;font-weight:600"><i class="fas fa-circle" style="font-size:8px;vertical-align:middle;margin-right:4px"></i>Aktif</span>'
+        : '<span style="color:#ef4444;font-weight:600"><i class="fas fa-circle" style="font-size:8px;vertical-align:middle;margin-right:4px"></i>Pasif</span>');
+    document.getElementById('ap-hsub').innerHTML = subs.join(' <span class="sep">&middot;</span> ');
+
+    // Profile tab
+    document.getElementById('e-user').value = u.username;
+    document.getElementById('e-email').value = u.email || '';
+    document.getElementById('e-created').value = u.created_at ? u.created_at.split('T')[0] : '—';
+    document.getElementById('e-login').value = u.last_login ? u.last_login.split('T')[0] : 'Henüz giriş yok';
+
+    // Role cards
+    document.querySelectorAll('.ap-role-card').forEach(function(c) {
+        c.classList.toggle('sel', c.dataset.role === u.role);
+    });
+    var rc = document.querySelector('.ap-role-card[data-role="' + u.role + '"]');
+    if (rc) AP.ui.pickRole(rc);
+
+    // Action buttons
+    var isSelf = (u.id === self());
+    var tb = document.getElementById('ap-tbtn');
+    var db = document.getElementById('ap-dbtn');
+    var ib = document.getElementById('ap-ibtn');
+    tb.disabled = isSelf;
+    db.disabled = isSelf;
+    ib.disabled = isSelf;
+    if (isSelf) {
+        tb.style.opacity = '0.4';
+        db.style.opacity = '0.4';
+        ib.style.opacity = '0.4';
+    } else {
+        tb.style.opacity = '1';
+        db.style.opacity = '1';
+        ib.style.opacity = '1';
+    }
+
+    if (u.is_active === false) {
+        tb.className = 'ap-btn-ok';
+        tb.innerHTML = '<i class="fas fa-play"></i> Aktif Yap';
+    } else {
+        tb.className = 'ap-btn-warn';
+        tb.innerHTML = '<i class="fas fa-pause"></i> Pasif Yap';
+    }
+}
+
+function loadPerms() {
+    if (!uid) return;
+    fetch('/api/users/' + uid + '/permissions').then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.success) return;
+        var perms = d.permissions || [];
+        var rolePerms = d.role_permissions || [];
+        var hasWildcard = rolePerms.indexOf('*') !== -1;
+        document.querySelectorAll('#ap-perm-grid input[data-perm]').forEach(function(c) {
+            if (d.has_custom_perms) {
+                c.checked = perms.indexOf(c.dataset.perm) !== -1;
+            } else {
+                c.checked = hasWildcard || rolePerms.indexOf(c.dataset.perm) !== -1;
+            }
+        });
+    });
+}
+
+// Modal backdrop close
+document.querySelectorAll('.ap-modal').forEach(function(el) {
+    el.addEventListener('click', function(e) { if (e.target === el) el.classList.remove('open'); });
+});
+
+})();
+</script>
+{% endblock %}

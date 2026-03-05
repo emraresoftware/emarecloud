@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}AI Model Performance Skor - EmareCloud{% endblock %}
+{% block page_title %}AI Model Performance Skor{% endblock %}
+
+{% block head %}
+<style>
+.perf-container { max-width: 1100px; margin: 0 auto; }
+
+.perf-hero {
+    background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(234,88,12,0.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.perf-hero-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff; flex-shrink: 0;
+}
+.perf-hero-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.perf-hero-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Filters */
+.perf-filters {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.perf-filter-btn {
+    padding: 8px 18px; border-radius: 10px; border: 1px solid var(--border-color);
+    background: var(--bg-card); color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.perf-filter-btn:hover { border-color: #6366f1; color: #6366f1; }
+.perf-filter-btn.active { background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border-color: transparent; }
+
+/* Summary cards */
+.perf-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.perf-summary-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 20px; text-align: center;
+}
+.perf-summary-card .value { font-size: 28px; font-weight: 800; }
+.perf-summary-card .label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+/* App cards grid */
+.perf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px; }
+.perf-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 0; overflow: hidden;
+    transition: all 0.3s ease;
+}
+.perf-card:hover { border-color: #6366f1; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.10); }
+
+.perf-card-header {
+    padding: 20px 20px 12px; display: flex; align-items: center; gap: 14px;
+}
+.perf-card-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.perf-card-info { flex: 1; }
+.perf-card-name { font-size: 16px; font-weight: 700; }
+.perf-card-cat { font-size: 12px; color: var(--text-secondary); }
+.perf-card-badge {
+    padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+}
+
+/* Score ring */
+.perf-score-section { padding: 0 20px 16px; display: flex; align-items: center; gap: 20px; }
+.perf-score-ring {
+    width: 80px; height: 80px; position: relative; flex-shrink: 0;
+}
+.perf-score-ring svg { width: 80px; height: 80px; transform: rotate(-90deg); }
+.perf-score-ring circle { fill: none; stroke-width: 8; }
+.perf-score-bg { stroke: var(--border-color); }
+.perf-score-fg { stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+.perf-score-text {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: 800;
+}
+
+/* Score bars */
+.perf-metrics { flex: 1; }
+.perf-metric { margin-bottom: 8px; }
+.perf-metric-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.perf-metric-label { color: var(--text-secondary); font-weight: 600; }
+.perf-metric-val { font-weight: 700; }
+.perf-metric-bar { height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
+.perf-metric-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+/* Bottom stats */
+.perf-card-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border-color);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;
+}
+.perf-card-stat-label { font-size: 11px; color: var(--text-secondary); }
+.perf-card-stat-value { font-size: 14px; font-weight: 700; }
+
+/* Leaderboard */
+.perf-leaderboard {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+}
+.perf-leaderboard h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.perf-lb-table { width: 100%; border-collapse: collapse; }
+.perf-lb-table th { padding: 10px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); text-align: left; border-bottom: 1px solid var(--border-color); }
+.perf-lb-table td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+.perf-lb-table tr:last-child td { border-bottom: none; }
+.perf-lb-table tr:hover { background: var(--bg-hover); }
+.perf-lb-rank { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.perf-lb-rank.r1 { background: rgba(245,158,11,.15); color: #f59e0b; }
+.perf-lb-rank.r2 { background: rgba(148,163,184,.15); color: #94a3b8; }
+.perf-lb-rank.r3 { background: rgba(180,83,9,.15); color: #b45309; }
+.perf-lb-rank.rn { background: var(--bg-input); color: var(--text-secondary); }
+.perf-score-badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.perf-score-badge.excellent { background: rgba(34,197,94,.12); color: #22c55e; }
+.perf-score-badge.good { background: rgba(99,102,241,.12); color: #6366f1; }
+.perf-score-badge.average { background: rgba(245,158,11,.12); color: #f59e0b; }
+.perf-score-badge.poor { background: rgba(248,113,113,.12); color: #f87171; }
+
+@media (max-width: 768px) {
+    .perf-grid { grid-template-columns: 1fr; }
+    .perf-score-section { flex-direction: column; align-items: flex-start; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="perf-container">
+    <div class="perf-hero">
+        <div class="perf-hero-icon"><i class="fas fa-ranking-star"></i></div>
+        <div class="perf-hero-text">
+            <h2>AI Model Performance Skor Sistemi</h2>
+            <p>Market'teki tüm AI uygulamaları hız, doğruluk, kaynak kullanımı ve kullanıcı memnuniyetine göre puanlanır.</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="perf-filters">
+        <button class="perf-filter-btn active" onclick="filterPerf('all', this)">🏆 Tümü</button>
+        <button class="perf-filter-btn" onclick="filterPerf('chatbot', this)">💬 Chatbot</button>
+        <button class="perf-filter-btn" onclick="filterPerf('content', this)">✍️ İçerik</button>
+        <button class="perf-filter-btn" onclick="filterPerf('image', this)">🎨 Görsel</button>
+        <button class="perf-filter-btn" onclick="filterPerf('code', this)">💻 Kod</button>
+        <button class="perf-filter-btn" onclick="filterPerf('analytics', this)">📊 Analitik</button>
+        <button class="perf-filter-btn" onclick="filterPerf('voice', this)">🎙️ Ses</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="perf-summary">
+        <div class="perf-summary-card"><div class="value" style="color:#22c55e">92.4</div><div class="label">Ortalama Skor</div></div>
+        <div class="perf-summary-card"><div class="value" style="color:#6366f1">24</div><div class="label">Test Edilen Model</div></div>
+        <div class="perf-summary-card"><div class="value" style="color:#9333ea">18</div><div class="label">A+ Dereceli</div></div>
+        <div class="perf-summary-card"><div class="value" style="color:#f59e0b">4.8⭐</div><div class="label">Kullanıcı Puanı</div></div>
+    </div>
+
+    <!-- App cards -->
+    <div class="perf-grid" id="perfGrid"></div>
+
+    <!-- Leaderboard -->
+    <div class="perf-leaderboard">
+        <h3><i class="fas fa-trophy" style="color:#f59e0b"></i> AI Model Sıralama Tablosu</h3>
+        <div style="overflow-x:auto">
+            <table class="perf-lb-table" id="perfLeaderboard"></table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const aiModels = [
+    {
+        name: 'Ollama + Llama 3.1 70B', cat: 'chatbot', icon: '🦙',
+        iconBg: 'rgba(99,102,241,0.12)', iconColor: '#6366f1',
+        scores: { speed: 88, accuracy: 96, resource: 72, satisfaction: 95 },
+        installs: 1240, uptime: '99.8%', latency: '1.2s', badge: 'A+', badgeClass: 'excellent'
+    },
+    {
+        name: 'Stable Diffusion XL', cat: 'image', icon: '🎨',
+        iconBg: 'rgba(147,51,234,0.12)', iconColor: '#9333ea',
+        scores: { speed: 75, accuracy: 94, resource: 65, satisfaction: 92 },
+        installs: 980, uptime: '99.5%', latency: '3.8s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'Tabby + CodeLlama 34B', cat: 'code', icon: '💻',
+        iconBg: 'rgba(34,197,94,0.12)', iconColor: '#22c55e',
+        scores: { speed: 91, accuracy: 93, resource: 78, satisfaction: 94 },
+        installs: 856, uptime: '99.9%', latency: '0.8s', badge: 'A+', badgeClass: 'excellent'
+    },
+    {
+        name: 'Whisper Large v3', cat: 'voice', icon: '🎙️',
+        iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b',
+        scores: { speed: 82, accuracy: 97, resource: 70, satisfaction: 96 },
+        installs: 720, uptime: '99.7%', latency: '2.1s', badge: 'A+', badgeClass: 'excellent'
+    },
+    {
+        name: 'Open WebUI + GPT4All', cat: 'chatbot', icon: '💬',
+        iconBg: 'rgba(99,102,241,0.12)', iconColor: '#6366f1',
+        scores: { speed: 94, accuracy: 85, resource: 92, satisfaction: 88 },
+        installs: 1560, uptime: '99.6%', latency: '0.5s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'ComfyUI + ControlNet', cat: 'image', icon: '🖌️',
+        iconBg: 'rgba(236,72,153,0.12)', iconColor: '#ec4899',
+        scores: { speed: 68, accuracy: 95, resource: 60, satisfaction: 93 },
+        installs: 670, uptime: '99.3%', latency: '5.2s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'Llama 3.1 8B (Lightweight)', cat: 'chatbot', icon: '🚀',
+        iconBg: 'rgba(34,197,94,0.12)', iconColor: '#22c55e',
+        scores: { speed: 98, accuracy: 78, resource: 96, satisfaction: 82 },
+        installs: 2100, uptime: '99.9%', latency: '0.3s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'n8n + LLM İçerik Motoru', cat: 'content', icon: '✍️',
+        iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b',
+        scores: { speed: 85, accuracy: 90, resource: 82, satisfaction: 91 },
+        installs: 540, uptime: '99.4%', latency: '1.8s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'JupyterHub + PyTorch', cat: 'analytics', icon: '📊',
+        iconBg: 'rgba(99,102,241,0.12)', iconColor: '#6366f1',
+        scores: { speed: 80, accuracy: 94, resource: 68, satisfaction: 90 },
+        installs: 430, uptime: '99.2%', latency: '2.5s', badge: 'A', badgeClass: 'good'
+    },
+    {
+        name: 'Bark TTS + Voice Clone', cat: 'voice', icon: '🗣️',
+        iconBg: 'rgba(147,51,234,0.12)', iconColor: '#9333ea',
+        scores: { speed: 72, accuracy: 88, resource: 65, satisfaction: 87 },
+        installs: 340, uptime: '99.1%', latency: '4.0s', badge: 'B+', badgeClass: 'average'
+    },
+    {
+        name: 'Flux.1 Pro', cat: 'image', icon: '🌟',
+        iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b',
+        scores: { speed: 65, accuracy: 98, resource: 55, satisfaction: 97 },
+        installs: 890, uptime: '99.6%', latency: '6.5s', badge: 'A+', badgeClass: 'excellent'
+    },
+    {
+        name: 'Superset + Airflow ML', cat: 'analytics', icon: '📈',
+        iconBg: 'rgba(34,197,94,0.12)', iconColor: '#22c55e',
+        scores: { speed: 78, accuracy: 91, resource: 74, satisfaction: 89 },
+        installs: 310, uptime: '99.3%', latency: '3.2s', badge: 'A', badgeClass: 'good'
+    }
+];
+
+function getOverallScore(m) {
+    return Math.round((m.scores.speed * 0.2 + m.scores.accuracy * 0.35 + m.scores.resource * 0.15 + m.scores.satisfaction * 0.3));
+}
+
+function getScoreColor(v) {
+    if (v >= 90) return '#22c55e';
+    if (v >= 80) return '#6366f1';
+    if (v >= 70) return '#f59e0b';
+    return '#f87171';
+}
+
+function renderCards(filter) {
+    const models = filter === 'all' ? aiModels : aiModels.filter(m => m.cat === filter);
+    const sorted = [...models].sort((a, b) => getOverallScore(b) - getOverallScore(a));
+
+    const grid = document.getElementById('perfGrid');
+    let html = '';
+    sorted.forEach(m => {
+        const score = getOverallScore(m);
+        const color = getScoreColor(score);
+        const circumference = 2 * Math.PI * 32;
+        const offset = circumference - (score / 100) * circumference;
+
+        html += '<div class="perf-card" data-cat="' + m.cat + '">';
+        html += '<div class="perf-card-header">';
+        html += '<div class="perf-card-icon" style="background:'+m.iconBg+';color:'+m.iconColor+'">'+m.icon+'</div>';
+        html += '<div class="perf-card-info"><div class="perf-card-name">'+m.name+'</div><div class="perf-card-cat">'+getCatLabel(m.cat)+'</div></div>';
+        html += '<div class="perf-card-badge perf-score-badge '+m.badgeClass+'">'+m.badge+'</div>';
+        html += '</div>';
+
+        html += '<div class="perf-score-section">';
+        html += '<div class="perf-score-ring">';
+        html += '<svg viewBox="0 0 80 80"><circle class="perf-score-bg" cx="40" cy="40" r="32"/>';
+        html += '<circle class="perf-score-fg" cx="40" cy="40" r="32" stroke="'+color+'" stroke-dasharray="'+circumference+'" stroke-dashoffset="'+offset+'"/></svg>';
+        html += '<div class="perf-score-text" style="color:'+color+'">'+score+'</div></div>';
+
+        html += '<div class="perf-metrics">';
+        const metrics = [
+            { label: 'Hız', val: m.scores.speed, color: '#22c55e' },
+            { label: 'Doğruluk', val: m.scores.accuracy, color: '#6366f1' },
+            { label: 'Kaynak', val: m.scores.resource, color: '#9333ea' },
+            { label: 'Memnuniyet', val: m.scores.satisfaction, color: '#f59e0b' }
+        ];
+        metrics.forEach(mt => {
+            html += '<div class="perf-metric"><div class="perf-metric-row"><span class="perf-metric-label">'+mt.label+'</span><span class="perf-metric-val">'+mt.val+'</span></div>';
+            html += '<div class="perf-metric-bar"><div class="perf-metric-fill" style="width:'+mt.val+'%;background:'+mt.color+'"></div></div></div>';
+        });
+        html += '</div></div>';
+
+        html += '<div class="perf-card-footer">';
+        html += '<div><div class="perf-card-stat-value">'+m.installs.toLocaleString()+'</div><div class="perf-card-stat-label">Kurulum</div></div>';
+        html += '<div><div class="perf-card-stat-value">'+m.uptime+'</div><div class="perf-card-stat-label">Uptime</div></div>';
+        html += '<div><div class="perf-card-stat-value">'+m.latency+'</div><div class="perf-card-stat-label">Latency</div></div>';
+        html += '</div>';
+        html += '</div>';
+    });
+    grid.innerHTML = html;
+
+    // Leaderboard
+    const lb = document.getElementById('perfLeaderboard');
+    let lbHtml = '<thead><tr><th>#</th><th>Model</th><th>Kategori</th><th>Skor</th><th>Hız</th><th>Doğruluk</th><th>Memnuniyet</th><th>Derece</th></tr></thead><tbody>';
+    sorted.forEach((m, i) => {
+        const score = getOverallScore(m);
+        const rClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : 'rn';
+        lbHtml += '<tr><td><span class="perf-lb-rank '+rClass+'">'+(i+1)+'</span></td>';
+        lbHtml += '<td><strong>'+m.name+'</strong></td>';
+        lbHtml += '<td>'+getCatLabel(m.cat)+'</td>';
+        lbHtml += '<td><strong style="color:'+getScoreColor(score)+'">'+score+'</strong></td>';
+        lbHtml += '<td>'+m.scores.speed+'</td><td>'+m.scores.accuracy+'</td><td>'+m.scores.satisfaction+'</td>';
+        lbHtml += '<td><span class="perf-score-badge '+m.badgeClass+'">'+m.badge+'</span></td></tr>';
+    });
+    lbHtml += '</tbody>';
+    lb.innerHTML = lbHtml;
+}
+
+function getCatLabel(cat) {
+    const labels = { chatbot: '💬 Chatbot', content: '✍️ İçerik', image: '🎨 Görsel', code: '💻 Kod', analytics: '📊 Analitik', voice: '🎙️ Ses' };
+    return labels[cat] || cat;
+}
+
+function filterPerf(cat, btn) {
+    document.querySelectorAll('.perf-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCards(cat);
+}
+
+// Initial render
+renderCards('all');
+</script>
+{% endblock %}

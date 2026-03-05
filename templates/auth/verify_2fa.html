@@ -1,0 +1,50 @@
+{% extends "auth/login.html" %}
+
+{% block title %}2FA Doğrulama — EmareCloud{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <div class="login-header">
+            <h1>🔐 İki Faktörlü Doğrulama</h1>
+            <p>Authenticator uygulamanızdaki 6 haneli kodu girin</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.verify_2fa') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="form-group">
+                <label for="code">Doğrulama Kodu</label>
+                <input type="text" id="code" name="code"
+                       class="form-control"
+                       placeholder="000000"
+                       maxlength="8"
+                       autocomplete="one-time-code"
+                       autofocus
+                       required>
+                <small style="color: var(--text-muted);">
+                    6 haneli TOTP kodu veya 8 karakterlik kurtarma kodu
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                Doğrula
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1rem;">
+            <a href="{{ url_for('auth.login') }}" style="color: var(--text-muted);">
+                ← Giriş sayfasına dön
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}AI Ethics & Bias Auditor - EmareCloud{% endblock %}
+{% block page_title %}AI Ethics & Bias Auditor{% endblock %}
+
+{% block head %}
+<style>
+.ae-container{max-width:1100px;margin:0 auto}
+.ae-hero{background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.ae-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#10b981,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.ae-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.ae-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.ae-score-wrap{display:flex;align-items:center;gap:32px;flex-wrap:wrap;margin-bottom:24px;padding:24px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px}
+.ae-gauge{width:140px;height:140px;position:relative;flex-shrink:0}
+.ae-gauge svg{transform:rotate(-90deg)}
+.ae-gauge-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ae-gauge-num{font-size:32px;font-weight:900}
+.ae-gauge-lbl{font-size:11px;color:var(--text-secondary)}
+.ae-score-details{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.ae-score-item{text-align:center;padding:12px;border-radius:10px;background:var(--bg-input)}
+.ae-score-item-val{font-size:20px;font-weight:800}
+.ae-score-item-lbl{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.ae-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.ae-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ae-grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.ae-findings{display:flex;flex-direction:column;gap:10px}
+.ae-finding{padding:14px;border-radius:12px;background:var(--bg-input);display:flex;gap:14px;align-items:flex-start;transition:.2s}
+.ae-finding:hover{transform:translateX(4px)}
+.ae-finding-sev{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.ae-finding-info{flex:1}
+.ae-finding-title{font-size:13px;font-weight:700}
+.ae-finding-desc{font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.5}
+.ae-finding-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-top:6px}
+.ae-bias-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.ae-bias{padding:16px;border-radius:12px;background:var(--bg-input)}
+.ae-bias-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ae-bias-name{font-size:13px;font-weight:700}
+.ae-bias-score{font-size:13px;font-weight:800}
+.ae-bias-bar{height:6px;border-radius:3px;background:var(--border-color);overflow:hidden}
+.ae-bias-fill{height:100%;border-radius:3px;transition:width .6s}
+.ae-bias-desc{font-size:11px;color:var(--text-secondary);margin-top:6px}
+.ae-principles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.ae-principle{padding:18px;border-radius:14px;text-align:center;border:1px solid var(--border-color)}
+.ae-principle-icon{font-size:28px;margin-bottom:8px}
+.ae-principle-name{font-size:13px;font-weight:700}
+.ae-principle-status{font-size:11px;margin-top:4px}
+.ae-audit-btn{padding:10px 24px;background:linear-gradient(135deg,#10b981,#6366f1);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .3s;display:flex;align-items:center;gap:8px;margin-top:12px}
+.ae-audit-btn:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(16,185,129,.3)}
+@media(max-width:768px){.ae-grid2{grid-template-columns:1fr}.ae-score-wrap{flex-direction:column;text-align:center}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ae-container">
+    <div class="ae-hero">
+        <div class="ae-hero-icon"><i class="fas fa-scale-balanced"></i></div>
+        <div>
+            <h2>AI Ethics & Bias Auditor</h2>
+            <p>AI modellerinizi etik standartlara göre tarayın, bias (önyargı) tespit edin ve adillik raporları oluşturun.</p>
+        </div>
+    </div>
+
+    <div class="ae-score-wrap">
+        <div class="ae-gauge">
+            <svg width="140" height="140">
+                <circle cx="70" cy="70" r="58" fill="none" stroke="var(--border-color)" stroke-width="10"/>
+                <circle cx="70" cy="70" r="58" fill="none" stroke="url(#aeGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="364" stroke-dashoffset="33"/>
+                <defs><linearGradient id="aeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#6366f1"/></linearGradient></defs>
+            </svg>
+            <div class="ae-gauge-val"><div class="ae-gauge-num" style="color:#10b981">91</div><div class="ae-gauge-lbl">Etik Skoru</div></div>
+        </div>
+        <div class="ae-score-details">
+            <div class="ae-score-item"><div class="ae-score-item-val" style="color:#10b981">A+</div><div class="ae-score-item-lbl">Adillik</div></div>
+            <div class="ae-score-item"><div class="ae-score-item-val" style="color:#6366f1">94%</div><div class="ae-score-item-lbl">Şeffaflık</div></div>
+            <div class="ae-score-item"><div class="ae-score-item-val" style="color:#f59e0b">87%</div><div class="ae-score-item-lbl">Gizlilik</div></div>
+            <div class="ae-score-item"><div class="ae-score-item-val" style="color:#ec4899">96%</div><div class="ae-score-item-lbl">Güvenlik</div></div>
+            <div class="ae-score-item"><div class="ae-score-item-val" style="color:#22c55e">89%</div><div class="ae-score-item-lbl">Hesap Verebilirlik</div></div>
+        </div>
+    </div>
+
+    <div class="ae-grid2">
+        <div class="ae-card">
+            <h3><i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i> Denetim Bulguları</h3>
+            <div class="ae-findings" id="aeFindings"></div>
+            <button class="ae-audit-btn" onclick="runAudit()"><i class="fas fa-magnifying-glass"></i> Yeni Denetim Başlat</button>
+        </div>
+        <div class="ae-card">
+            <h3><i class="fas fa-chart-bar" style="color:#6366f1"></i> Bias Analizi</h3>
+            <div class="ae-bias-grid" id="aeBias"></div>
+        </div>
+    </div>
+
+    <div class="ae-card">
+        <h3><i class="fas fa-gavel" style="color:#10b981"></i> Etik İlkeler Durumu</h3>
+        <div class="ae-principles" id="aePrinciples"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const findings=[
+    {sev:'!',sevBg:'#f59e0b',title:'Dil Önyargısı Tespit Edildi',desc:'Chatbot modeli İngilizce sorulara %12 daha doğru yanıt veriyor. Türkçe veri seti artırılmalı.',tag:'Orta Risk',tagBg:'#f59e0b'},
+    {sev:'i',sevBg:'#6366f1',title:'Yaş Grubu Dağılım Dengesi',desc:'Eğitim verisi 25-45 yaş grubuna %68 ağırlıklı. Diğer yaş grupları dengelenmeli.',tag:'Düşük Risk',tagBg:'#6366f1'},
+    {sev:'✓',sevBg:'#22c55e',title:'Cinsiyet Tarafsızlığı Başarılı',desc:'Model çıktıları cinsiyet bazlı önyargı testlerini geçti. Adillik skoru: %97.',tag:'Uyumlu',tagBg:'#22c55e'},
+    {sev:'!',sevBg:'#f59e0b',title:'Veri Gizliliği Uyarısı',desc:'3 model endpoint\'i kullanıcı verisi log\'larken anonimleştirme eksik. KVKK uyumu gerekli.',tag:'Orta Risk',tagBg:'#f59e0b'},
+    {sev:'✓',sevBg:'#22c55e',title:'Açıklanabilirlik Testi',desc:'XAI (Explainable AI) testleri başarılı. Model karar süreçleri şeffaf.',tag:'Uyumlu',tagBg:'#22c55e'}
+];
+const fc=document.getElementById('aeFindings');
+fc.innerHTML=findings.map(f=>'<div class="ae-finding"><div class="ae-finding-sev" style="background:'+f.sevBg+'22;color:'+f.sevBg+'">'+f.sev+'</div><div class="ae-finding-info"><div class="ae-finding-title">'+f.title+'</div><div class="ae-finding-desc">'+f.desc+'</div><div class="ae-finding-tag" style="background:'+f.tagBg+'22;color:'+f.tagBg+'">'+f.tag+'</div></div></div>').join('');
+
+const biases=[
+    {name:'Dil Önyargısı',score:82,color:'#f59e0b',desc:'TR vs EN yanıt kalitesi farkı'},
+    {name:'Cinsiyet Tarafsızlığı',score:97,color:'#22c55e',desc:'Herhangi bir cinsiyet yanlılığı yok'},
+    {name:'Yaş Dengesi',score:71,color:'#f59e0b',desc:'25-45 yaş grubu ağırlıklı'},
+    {name:'Coğrafi Adillik',score:89,color:'#22c55e',desc:'Bölgesel dağılım dengeli'},
+    {name:'Ekonomik Adillik',score:93,color:'#22c55e',desc:'Gelir grubu bazlı fark minimal'},
+    {name:'Kültürel Duyarlılık',score:86,color:'#6366f1',desc:'Kültürel bağlam farkındalığı iyi'}
+];
+const bc=document.getElementById('aeBias');
+bc.innerHTML=biases.map(b=>'<div class="ae-bias"><div class="ae-bias-header"><div class="ae-bias-name">'+b.name+'</div><div class="ae-bias-score" style="color:'+b.color+'">'+b.score+'%</div></div><div class="ae-bias-bar"><div class="ae-bias-fill" style="width:'+b.score+'%;background:'+b.color+'"></div></div><div class="ae-bias-desc">'+b.desc+'</div></div>').join('');
+
+const principles=[
+    {icon:'⚖️',name:'Adillik & Tarafsızlık',status:'Uyumlu',statusColor:'#22c55e'},
+    {icon:'🔍',name:'Şeffaflık',status:'Uyumlu',statusColor:'#22c55e'},
+    {icon:'🔒',name:'Gizlilik & Veri Koruma',status:'İyileştirme Gerekli',statusColor:'#f59e0b'},
+    {icon:'🛡️',name:'Güvenlik',status:'Uyumlu',statusColor:'#22c55e'},
+    {icon:'📋',name:'Hesap Verebilirlik',status:'Uyumlu',statusColor:'#22c55e'},
+    {icon:'🤝',name:'İnsan Kontrolü',status:'Uyumlu',statusColor:'#22c55e'},
+    {icon:'🌱',name:'Çevresel Sürdürülebilirlik',status:'İzleniyor',statusColor:'#6366f1'},
+    {icon:'♿',name:'Erişilebilirlik',status:'Uyumlu',statusColor:'#22c55e'}
+];
+const pc=document.getElementById('aePrinciples');
+pc.innerHTML=principles.map(p=>'<div class="ae-principle"><div class="ae-principle-icon">'+p.icon+'</div><div class="ae-principle-name">'+p.name+'</div><div class="ae-principle-status" style="color:'+p.statusColor+';font-weight:700">'+p.status+'</div></div>').join('');
+
+function runAudit(){
+    const btn=event.target.closest('.ae-audit-btn');
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Denetim Çalışıyor...';
+    setTimeout(()=>{
+        btn.innerHTML='<i class="fas fa-check-circle"></i> Denetim Tamamlandı — Skor: 91/100';
+        btn.style.background='linear-gradient(135deg,#22c55e,#059669)';
+        setTimeout(()=>{
+            btn.innerHTML='<i class="fas fa-magnifying-glass"></i> Yeni Denetim Başlat';
+            btn.style.background='linear-gradient(135deg,#10b981,#6366f1)';
+        },3000);
+    },2500);
+}
+</script>
+{% endblock %}

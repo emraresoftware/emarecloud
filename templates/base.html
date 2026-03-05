@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EmareCloud{% endblock %}</title>
+    <!-- Performans: DNS prefetch & preconnect -->
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon"><span>EC</span></div>
+                <span>Emare<span class="logo-gradient">Cloud</span></span>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <a href="/">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            {% if current_user.is_authenticated and current_user.has_permission('market.view') %}
+            <li class="menu-item {% if request.endpoint == 'market_page' %}active{% endif %}">
+                <a href="/market">
+                    <i class="fas fa-cube"></i>
+                    <span>Uygulama Pazarı</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('vm.view') %}
+            <li class="menu-item {% if request.endpoint == 'virtualization_page' %}active{% endif %}">
+                <a href="/virtualization">
+                    <i class="fas fa-cubes"></i>
+                    <span>Sanallaştırma</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('storage.view') %}
+            <li class="menu-item {% if request.endpoint == 'storage_page' %}active{% endif %}">
+                <a href="/storage">
+                    <i class="fas fa-database"></i>
+                    <span>Depolama</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('monitoring.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.monitoring_page' %}active{% endif %}">
+                <a href="/monitoring">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Monitoring</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('server.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.server_map_page' %}active{% endif %}">
+                <a href="/server-map">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Sunucu Haritası</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('ai.view') %}
+            <li class="menu-section">AI Araçları</li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_wizard_page' %}active{% endif %}">
+                <a href="/ai-wizard">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>AI Wizard</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_cost_page' %}active{% endif %}">
+                <a href="/ai-cost">
+                    <i class="fas fa-calculator"></i>
+                    <span>Maliyet Tahmini</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_logs_page' %}active{% endif %}">
+                <a href="/ai-logs">
+                    <i class="fas fa-brain"></i>
+                    <span>Log Intelligence</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_revenue_page' %}active{% endif %}">
+                <a href="/ai-revenue">
+                    <i class="fas fa-coins"></i>
+                    <span>Gelir Paylaşımı</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_server_recommend_page' %}active{% endif %}">
+                <a href="/ai-server-recommend">
+                    <i class="fas fa-server"></i>
+                    <span>Sunucu Öneri</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_performance_page' %}active{% endif %}">
+                <a href="/ai-performance">
+                    <i class="fas fa-ranking-star"></i>
+                    <span>Performance Skor</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_security_page' %}active{% endif %}">
+                <a href="/ai-security">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Güvenlik Denetçisi</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_optimizer_page' %}active{% endif %}">
+                <a href="/ai-optimizer">
+                    <i class="fas fa-gauge-high"></i>
+                    <span>Kaynak Optimizer</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_marketplace_page' %}active{% endif %}">
+                <a href="/ai-marketplace">
+                    <i class="fas fa-store"></i>
+                    <span>Model Marketplace</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_saas_builder_page' %}active{% endif %}">
+                <a href="/ai-saas-builder">
+                    <i class="fas fa-rocket"></i>
+                    <span>SaaS Builder</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_gpu_pool_page' %}active{% endif %}">
+                <a href="/ai-gpu-pool">
+                    <i class="fas fa-microchip"></i>
+                    <span>GPU Pool</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_whitelabel_page' %}active{% endif %}">
+                <a href="/ai-whitelabel">
+                    <i class="fas fa-palette"></i>
+                    <span>White-Label</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_community_templates_page' %}active{% endif %}">
+                <a href="/ai-community-templates">
+                    <i class="fas fa-share-nodes"></i>
+                    <span>Şablon Paylaşımı</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_training_page' %}active{% endif %}">
+                <a href="/ai-training">
+                    <i class="fas fa-flask"></i>
+                    <span>Model Eğitim Lab</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_orchestrator_page' %}active{% endif %}">
+                <a href="/ai-orchestrator">
+                    <i class="fas fa-sitemap"></i>
+                    <span>Model Orkestratör</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_backup_page' %}active{% endif %}">
+                <a href="/ai-backup">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>Yedekleme Asistanı</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_isolation_page' %}active{% endif %}">
+                <a href="/ai-isolation">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Tenant İzolasyon</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_migration_page' %}active{% endif %}">
+                <a href="/ai-migration">
+                    <i class="fas fa-truck-fast"></i>
+                    <span>Sıfır Kesinti Göçü</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_voice_page' %}active{% endif %}">
+                <a href="/ai-voice">
+                    <i class="fas fa-microphone"></i>
+                    <span>Sesli Yönetim</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_market_intel_page' %}active{% endif %}">
+                <a href="/ai-market-intel">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Pazar İstihbaratı</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_self_healing_page' %}active{% endif %}">
+                <a href="/ai-self-healing">
+                    <i class="fas fa-heart-pulse"></i>
+                    <span>Self-Healing</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_landing_gen_page' %}active{% endif %}">
+                <a href="/ai-landing-gen">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>Landing Page AI</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_cross_cloud_page' %}active{% endif %}">
+                <a href="/ai-cross-cloud">
+                    <i class="fas fa-cloud"></i>
+                    <span>Cross-Cloud Sync</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_ethics_page' %}active{% endif %}">
+                <a href="/ai-ethics">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>Etik Denetçi</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_mastery_page' %}active{% endif %}">
+                <a href="/ai-mastery">
+                    <i class="fas fa-gamepad"></i>
+                    <span>AI Mastery Path</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'pages.ai_sandbox_page' %}active{% endif %}">
+                <a href="/ai-sandbox">
+                    <i class="fas fa-flask-vial"></i>
+                    <span>Demo Sandbox</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and (current_user.has_permission('cloudflare.view') or current_user.has_permission('dc.view')) %}
+            <li class="menu-section">Altyapı</li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('dc.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.datacenters_page' %}active{% endif %}">
+                <a href="/datacenters">
+                    <i class="fas fa-building"></i>
+                    <span>Veri Merkezleri</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('cloudflare.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.cloudflare_page' %}active{% endif %}">
+                <a href="/cloudflare">
+                    <i class="fas fa-cloud-bolt"></i>
+                    <span>Cloudflare DNS</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('token.manage') %}
+            <li class="menu-section">Abonelik</li>
+            <li class="menu-item {% if request.endpoint == 'pages.token_payment_page' %}active{% endif %}">
+                <a href="/token-payment">
+                    <i class="fas fa-gem"></i>
+                    <span>EMARE Token Öde</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.is_admin %}
+            <li class="menu-section">Yönetim</li>
+            <li class="menu-item {% if request.endpoint == 'auth.admin_users' %}active{% endif %}">
+                <a href="/admin/users">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Kullanıcılar</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'auth.audit_logs_page' %}active{% endif %}">
+                <a href="/admin/audit">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Denetim Günlüğü</span>
+                </a>
+            </li>
+            {% if current_user.role == 'super_admin' %}
+            <li class="menu-item {% if request.endpoint == 'auth.admin_panel' %}active{% endif %}">
+                <a href="/admin/panel">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>⚙️ Süper Admin Paneli</span>
+                </a>
+            </li>
+            {% endif %}
+            {% endif %}
+            <li class="menu-section">Sunucular</li>
+            {% for server in servers|default([]) %}
+            <li class="menu-item {% if request.endpoint == 'server_detail' and server.get('id') == request.view_args.get('server_id') %}active{% endif %}">
+                <a href="/server/{{ server.get('id', '') }}">
+                    <i class="fas fa-circle server-status-dot {{ 'online' if server.get('reachable', false) else 'offline' }}"></i>
+                    <span>{{ server.get('name', 'Sunucu') }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="sidebar-footer">
+            <button class="btn btn-primary btn-sm" onclick="openAddServerModal()">
+                <i class="fas fa-plus"></i> Sunucu Ekle
+            </button>
+        </div>
+    </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle-mobile" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="topbar-right">
+                <span class="clock" id="clock"></span>
+                <button class="btn-icon" onclick="toggleTheme()" title="Tema Değiştir">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <button class="btn-icon" onclick="location.reload()" title="Yenile">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                {% if current_user.is_authenticated %}
+                <div class="user-menu">
+                    <span class="role-badge role-{{ current_user.role }}">{{ current_user.role|replace('_',' ')|title }}</span>
+                    <a href="/profile" class="user-info" title="Profil">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="user-name">{{ current_user.username }}</span>
+                    </a>
+                    <a href="/logout" class="btn-icon btn-logout" title="Çıkış">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Impersonate Banner -->
+        {% if session.get('_impersonate_admin_id') %}
+        <div style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;border-radius:12px;margin:12px 24px 0">
+            <span><i class="fas fa-user-secret" style="margin-right:8px"></i> {{ current_user.username }} hesabını görüntülüyorsunuz ({{ current_user.role }})</span>
+            <a href="/admin/return" style="color:#fff;background:rgba(255,255,255,.2);padding:6px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;transition:all .2s">&#x21A9; Admin'e Dön</a>
+        </div>
+        {% endif %}
+
+        <!-- Page Content -->
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Sunucu Ekle Modal -->
+    <div class="modal-overlay" id="addServerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle"></i> Yeni Sunucu Ekle</h3>
+                <button class="modal-close" onclick="closeModal('addServerModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addServerForm" onsubmit="addServer(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sunucu Adı *</label>
+                            <input type="text" name="name" required placeholder="Örn: Web Sunucu 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Grup</label>
+                            <input type="text" name="group" placeholder="Örn: Üretim" value="Genel">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>IP Adresi / Hostname *</label>
+                            <input type="text" name="host" required placeholder="Örn: 192.168.1.100">
+                        </div>
+                        <div class="form-group">
+                            <label>Port</label>
+                            <input type="number" name="port" value="22" min="1" max="65535">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kullanıcı Adı *</label>
+                            <input type="text" name="username" required placeholder="root">
+                        </div>
+                        <div class="form-group">
+                            <label>Şifre *</label>
+                            <input type="password" name="password" required placeholder="••••••••">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Rol</label>
+                            <select name="role" style="width:100%;padding:0.55rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                                <option value="">— Seçin —</option>
+                                <option value="Web">Web</option>
+                                <option value="Veritabanı">Veritabanı</option>
+                                <option value="Cache">Cache</option>
+                                <option value="Yedekleme">Yedekleme</option>
+                                <option value="Uygulama">Uygulama</option>
+                                <option value="Genel">Genel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Lokasyon</label>
+                            <input type="text" name="location" placeholder="Örn: İstanbul, DC1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kurulum tarihi</label>
+                            <input type="date" name="installed_at" placeholder="YYYY-MM-DD">
+                        </div>
+                        <div class="form-group">
+                            <label>Sorumlu</label>
+                            <input type="text" name="responsible" placeholder="İsim veya ekip">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Hedef / Kurulum notu</label>
+                        <input type="text" name="os_planned" placeholder="Örn: Ubuntu 22.04, kurulum notları...">
+                    </div>
+                    <div class="form-group">
+                        <label>Açıklama</label>
+                        <textarea name="description" rows="2" placeholder="Sunucu hakkında not..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('addServerModal')">İptal</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Bildirimleri -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- AI Chatbot Floating Widget -->
+    {% if current_user.is_authenticated %}
+    <div class="ai-chat-fab" id="aiChatFab" onclick="toggleAIChat()" title="AI İş Ortağı">
+        <i class="fas fa-robot" id="aiChatFabIcon"></i>
+        <span class="ai-chat-fab-pulse"></span>
+    </div>
+    <div class="ai-chat-panel" id="aiChatPanel">
+        <div class="ai-chat-header">
+            <div class="ai-chat-header-left">
+                <div class="ai-chat-avatar"><i class="fas fa-robot"></i></div>
+                <div>
+                    <div class="ai-chat-title">Emare AI Asistan</div>
+                    <div class="ai-chat-status"><span class="ai-chat-status-dot"></span> Çevrimiçi</div>
+                </div>
+            </div>
+            <button class="ai-chat-close" onclick="toggleAIChat()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <div class="ai-chat-msg bot">
+                <div class="ai-chat-msg-avatar"><i class="fas fa-robot"></i></div>
+                <div class="ai-chat-msg-bubble">
+                    Merhaba! 👋 Ben Emare AI asistanınız. Size nasıl yardımcı olabilirim?
+                </div>
+            </div>
+        </div>
+        <div class="ai-chat-suggestions" id="aiChatSuggestions">
+            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">EP bakiyem ne kadar?</button>
+            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Sunucu durumum nasıl?</button>
+            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Hangi AI app'i kurmalıyım?</button>
+            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Maliyetimi nasıl düşürürüm?</button>
+        </div>
+        <div class="ai-chat-input-area">
+            <input type="text" class="ai-chat-input" id="aiChatInput" placeholder="Bir şey sorun..." onkeydown="if(event.key==='Enter')aiChatSend()">
+            <button class="ai-chat-send" onclick="aiChatSend()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

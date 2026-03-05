@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}AI Landing Page Generator - EmareCloud{% endblock %}
+{% block page_title %}AI Landing Page & Sales Funnel Generator{% endblock %}
+
+{% block head %}
+<style>
+.lg-container{max-width:1100px;margin:0 auto}
+.lg-hero{background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.lg-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.lg-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.lg-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.lg-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:24px}
+.lg-tmpl{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;overflow:hidden;cursor:pointer;transition:all .3s}
+.lg-tmpl:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,.08);border-color:#a855f7}
+.lg-tmpl.active{border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,.15)}
+.lg-tmpl-preview{height:140px;padding:16px;display:flex;flex-direction:column;justify-content:space-between}
+.lg-tmpl-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;width:fit-content}
+.lg-tmpl-title{font-size:14px;font-weight:800;margin-top:8px}
+.lg-tmpl-sub{font-size:11px;opacity:.8}
+.lg-tmpl-bottom{padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.lg-tmpl-name{font-size:12px;font-weight:700}
+.lg-tmpl-cta{font-size:11px;color:var(--text-secondary)}
+.lg-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.lg-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.lg-form{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.lg-field{display:flex;flex-direction:column;gap:4px}
+.lg-field label{font-size:12px;font-weight:700;color:var(--text-secondary)}
+.lg-field input,.lg-field select,.lg-field textarea{padding:10px 14px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-input);font-size:13px;font-family:inherit;transition:border .2s}
+.lg-field input:focus,.lg-field select:focus,.lg-field textarea:focus{border-color:#a855f7;outline:none}
+.lg-field.full{grid-column:1/-1}
+.lg-gen-btn{padding:12px 32px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;transition:all .3s;display:flex;align-items:center;gap:8px;margin-top:16px}
+.lg-gen-btn:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(168,85,247,.3)}
+.lg-preview-box{border:2px dashed var(--border-color);border-radius:16px;min-height:400px;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:.3s}
+.lg-preview-box.filled{border-style:solid;border-color:#a855f7}
+.lg-placeholder{color:var(--text-secondary);font-size:14px}
+.lg-placeholder i{font-size:48px;margin-bottom:12px;display:block;color:var(--border-color)}
+.lg-generated{width:100%;text-align:left;display:none}
+.lg-gen-header{text-align:center;padding:40px 0 24px}
+.lg-gen-header h1{font-size:28px;font-weight:900;margin-bottom:8px}
+.lg-gen-header p{font-size:15px;color:var(--text-secondary);max-width:480px;margin:0 auto}
+.lg-gen-features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+.lg-gen-feat{text-align:center;padding:20px;border-radius:12px;background:var(--bg-input)}
+.lg-gen-feat i{font-size:24px;margin-bottom:8px}
+.lg-gen-feat h4{font-size:13px;font-weight:700;margin:0 0 4px}
+.lg-gen-feat p{font-size:11px;color:var(--text-secondary);margin:0}
+.lg-gen-cta{text-align:center;padding:24px 0}
+.lg-gen-cta-btn{display:inline-block;padding:14px 40px;border-radius:12px;font-weight:800;font-size:16px;color:#fff;cursor:pointer;transition:.3s}
+.lg-gen-cta-btn:hover{transform:scale(1.05);box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.lg-gen-pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0}
+.lg-gen-price{padding:20px;border-radius:14px;border:1px solid var(--border-color);text-align:center}
+.lg-gen-price.popular{border-color:#a855f7;background:rgba(168,85,247,.04)}
+.lg-gen-price h5{font-size:14px;font-weight:700;margin:0 0 4px}
+.lg-gen-price .price{font-size:24px;font-weight:900;margin:8px 0}
+.lg-gen-price ul{list-style:none;padding:0;margin:8px 0}
+.lg-gen-price li{font-size:12px;padding:4px 0;color:var(--text-secondary)}
+.lg-funnel{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.lg-funnel-step{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.lg-funnel-num{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.lg-funnel-info{flex:1}
+.lg-funnel-name{font-size:13px;font-weight:700}
+.lg-funnel-desc{font-size:11px;color:var(--text-secondary)}
+.lg-funnel-conv{text-align:right;font-size:12px;font-weight:700}
+@media(max-width:768px){.lg-form,.lg-gen-features,.lg-gen-pricing{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lg-container">
+    <div class="lg-hero">
+        <div class="lg-hero-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+        <div>
+            <h2>AI Landing Page & Sales Funnel Generator</h2>
+            <p>SaaS ürününüz için AI ile dakikalar içinde dönüşüm oranı yüksek satış sayfaları ve funnel'lar oluşturun.</p>
+        </div>
+    </div>
+
+    <div class="lg-card">
+        <h3><i class="fas fa-palette" style="color:#a855f7"></i> Şablon Seçin</h3>
+        <div class="lg-grid3" id="lgTemplates"></div>
+    </div>
+
+    <div class="lg-card">
+        <h3><i class="fas fa-pen-nib" style="color:#ec4899"></i> Ürün Bilgileri</h3>
+        <div class="lg-form">
+            <div class="lg-field"><label>Ürün Adı</label><input type="text" id="lgName" placeholder="Ör: CloudBot AI" value="CloudBot AI"></div>
+            <div class="lg-field"><label>Kategori</label><select id="lgCategory"><option>SaaS</option><option>E-Ticaret</option><option>Mobil Uygulama</option><option>API Servisi</option></select></div>
+            <div class="lg-field full"><label>Ürün Açıklaması</label><textarea id="lgDesc" rows="3" placeholder="Ürününüzü kısaca tanımlayın...">Yapay zeka destekli müşteri destek chatbotu. 7/24 otomatik yanıt, çoklu dil desteği, entegrasyon API'leri ile dakikalar içinde kurulum.</textarea></div>
+            <div class="lg-field"><label>Hedef Kitle</label><input type="text" id="lgTarget" placeholder="Ör: SaaS kurucuları" value="SaaS kurucuları, e-ticaret siteleri"></div>
+            <div class="lg-field"><label>Ana Renk</label><input type="color" id="lgColor" value="#a855f7" style="height:40px"></div>
+        </div>
+        <button class="lg-gen-btn" onclick="generatePage()"><i class="fas fa-sparkles"></i> AI ile Oluştur</button>
+    </div>
+
+    <div class="lg-card">
+        <h3><i class="fas fa-eye" style="color:#6366f1"></i> Önizleme</h3>
+        <div class="lg-preview-box" id="lgPreview">
+            <div class="lg-placeholder"><i class="fas fa-laptop-code"></i>Ürün bilgilerini doldurun ve "AI ile Oluştur" butonuna tıklayın</div>
+            <div class="lg-generated" id="lgGenerated"></div>
+        </div>
+    </div>
+
+    <div class="lg-card">
+        <h3><i class="fas fa-filter" style="color:#f59e0b"></i> Satış Funnel Yapısı</h3>
+        <div class="lg-funnel" id="lgFunnel"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templates=[
+    {name:'Modern SaaS',badge:'Popüler',badgeBg:'#a855f7',bg:'linear-gradient(135deg,#667eea,#764ba2)',sub:'Minimalist, CTA odaklı'},
+    {name:'Dark Pro',badge:'Yeni',badgeBg:'#22c55e',bg:'linear-gradient(135deg,#0f0c29,#302b63)',sub:'Karanlık tema, premium his'},
+    {name:'Startup Fresh',badge:'Trend',badgeBg:'#f59e0b',bg:'linear-gradient(135deg,#f093fb,#f5576c)',sub:'Canlı renkler, enerjik'},
+    {name:'Enterprise',badge:'Kurumsal',badgeBg:'#3b82f6',bg:'linear-gradient(135deg,#2c3e50,#3498db)',sub:'Güvenilir, profesyonel'},
+    {name:'AI Native',badge:'AI',badgeBg:'#ec4899',bg:'linear-gradient(135deg,#6366f1,#9333ea)',sub:'Futuristik, AI temalı'}
+];
+let activeTmpl=0;
+const tc=document.getElementById('lgTemplates');
+tc.innerHTML=templates.map((t,i)=>'<div class="lg-tmpl'+(i===0?' active':'')+'" onclick="selectTmpl('+i+')"><div class="lg-tmpl-preview" style="background:'+t.bg+';color:#fff"><div class="lg-tmpl-badge" style="background:'+t.badgeBg+'22;color:'+t.badgeBg+'">'+t.badge+'</div><div><div class="lg-tmpl-title">'+t.name+'</div><div class="lg-tmpl-sub">'+t.sub+'</div></div></div><div class="lg-tmpl-bottom"><div class="lg-tmpl-name">'+t.name+'</div><div class="lg-tmpl-cta">Seç →</div></div></div>').join('');
+
+function selectTmpl(i){
+    activeTmpl=i;
+    document.querySelectorAll('.lg-tmpl').forEach((el,idx)=>el.classList.toggle('active',idx===i));
+}
+
+function generatePage(){
+    const name=document.getElementById('lgName').value||'Ürün';
+    const desc=document.getElementById('lgDesc').value||'Harika bir ürün.';
+    const color=document.getElementById('lgColor').value;
+    const tmpl=templates[activeTmpl];
+    const box=document.getElementById('lgPreview');
+    const gen=document.getElementById('lgGenerated');
+    
+    box.innerHTML='<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:'+color+'"></i><p style="margin-top:12px;color:var(--text-secondary)">AI sayfa oluşturuyor...</p></div>';
+    
+    setTimeout(()=>{
+        box.classList.add('filled');
+        box.innerHTML=`
+            <div class="lg-generated" style="display:block">
+                <div class="lg-gen-header">
+                    <div style="display:inline-block;padding:6px 16px;border-radius:8px;font-size:12px;font-weight:700;background:${color}22;color:${color};margin-bottom:12px">🚀 ${tmpl.name} Template</div>
+                    <h1 style="background:${tmpl.bg};-webkit-background-clip:text;-webkit-text-fill-color:transparent">${name}</h1>
+                    <p>${desc}</p>
+                </div>
+                <div class="lg-gen-features">
+                    <div class="lg-gen-feat"><i class="fas fa-bolt" style="color:${color}"></i><h4>Anında Kurulum</h4><p>5 dakika içinde aktif</p></div>
+                    <div class="lg-gen-feat"><i class="fas fa-language" style="color:${color}"></i><h4>Çoklu Dil</h4><p>28+ dil desteği</p></div>
+                    <div class="lg-gen-feat"><i class="fas fa-plug" style="color:${color}"></i><h4>API Entegrasyonu</h4><p>RESTful & WebSocket</p></div>
+                </div>
+                <div class="lg-gen-pricing">
+                    <div class="lg-gen-price"><h5>Başlangıç</h5><div class="price" style="color:${color}">$9<small>/ay</small></div><ul><li>1,000 mesaj/ay</li><li>1 dil</li><li>E-posta destek</li></ul></div>
+                    <div class="lg-gen-price popular"><h5>Pro ⭐</h5><div class="price" style="color:${color}">$29<small>/ay</small></div><ul><li>10,000 mesaj/ay</li><li>5 dil</li><li>Öncelikli destek</li></ul></div>
+                    <div class="lg-gen-price"><h5>Enterprise</h5><div class="price" style="color:${color}">$99<small>/ay</small></div><ul><li>Sınırsız mesaj</li><li>28+ dil</li><li>7/24 destek</li></ul></div>
+                </div>
+                <div class="lg-gen-cta"><div class="lg-gen-cta-btn" style="background:${tmpl.bg}">14 Gün Ücretsiz Dene →</div></div>
+            </div>`;
+    },2000);
+}
+
+const funnel=[
+    {num:1,numBg:'#a855f7',name:'Landing Page',desc:'Ziyaretçi çekme — SEO + reklam',conv:'100%',convColor:'#a855f7'},
+    {num:2,numBg:'#6366f1',name:'İlgi Çekme',desc:'Değer önerisi + sosyal kanıt',conv:'65%',convColor:'#6366f1'},
+    {num:3,numBg:'#3b82f6',name:'Deneme Kaydı',desc:'14 gün ücretsiz trial formu',conv:'28%',convColor:'#3b82f6'},
+    {num:4,numBg:'#22c55e',name:'Aktivasyon',desc:'Onboarding + ilk değer anı',conv:'18%',convColor:'#22c55e'},
+    {num:5,numBg:'#f59e0b',name:'Satın Alma',desc:'Fiyatlandırma + ödeme',conv:'8%',convColor:'#f59e0b'},
+    {num:6,numBg:'#ec4899',name:'Referans',desc:'Memnun müşteri paylaşımı',conv:'3%',convColor:'#ec4899'}
+];
+const fc=document.getElementById('lgFunnel');
+fc.innerHTML=funnel.map(f=>'<div class="lg-funnel-step"><div class="lg-funnel-num" style="background:'+f.numBg+'22;color:'+f.numBg+'">'+f.num+'</div><div class="lg-funnel-info"><div class="lg-funnel-name">'+f.name+'</div><div class="lg-funnel-desc">'+f.desc+'</div></div><div class="lg-funnel-conv" style="color:'+f.convColor+'">'+f.conv+'</div></div>').join('');
+</script>
+{% endblock %}

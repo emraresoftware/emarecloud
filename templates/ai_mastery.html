@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}AI Mastery Path - EmareCloud{% endblock %}
+{% block page_title %}Gamified AI Mastery Path{% endblock %}
+
+{% block head %}
+<style>
+.gm-container{max-width:1100px;margin:0 auto}
+.gm-hero{background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.gm-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#f59e0b,#ec4899);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.gm-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.gm-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.gm-profile{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding:24px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px}
+.gm-avatar{width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#f59e0b,#ec4899);display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff;flex-shrink:0;position:relative}
+.gm-avatar-lvl{position:absolute;bottom:-6px;right:-6px;width:28px;height:28px;border-radius:8px;background:#6366f1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;border:3px solid var(--bg-card)}
+.gm-profile-info{flex:1}
+.gm-profile-name{font-size:18px;font-weight:800}
+.gm-profile-title{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.gm-xp-bar{height:10px;border-radius:5px;background:var(--border-color);overflow:hidden;margin-top:8px;width:280px;max-width:100%}
+.gm-xp-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#f59e0b,#ec4899);transition:width .6s}
+.gm-xp-text{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.gm-profile-stats{display:flex;gap:20px;flex-wrap:wrap}
+.gm-p-stat{text-align:center}
+.gm-p-stat-val{font-size:22px;font-weight:900}
+.gm-p-stat-lbl{font-size:11px;color:var(--text-secondary)}
+.gm-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.gm-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.gm-badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.gm-badge{text-align:center;padding:18px 12px;border-radius:14px;background:var(--bg-input);cursor:pointer;transition:.3s;position:relative}
+.gm-badge:hover{transform:translateY(-4px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.gm-badge.locked{opacity:.4;filter:grayscale(1)}
+.gm-badge-icon{font-size:32px;margin-bottom:6px}
+.gm-badge-name{font-size:11px;font-weight:700}
+.gm-badge-date{font-size:9px;color:var(--text-secondary);margin-top:2px}
+.gm-path{position:relative;display:flex;flex-direction:column;gap:0}
+.gm-path-step{display:flex;gap:20px;padding:16px 0;position:relative}
+.gm-path-line{width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.gm-path-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:1;flex-shrink:0}
+.gm-path-connector{width:3px;flex:1;background:var(--border-color)}
+.gm-path-connector.active{background:linear-gradient(to bottom,#f59e0b,#ec4899)}
+.gm-path-content{flex:1;padding:8px 16px;border-radius:12px;background:var(--bg-input)}
+.gm-path-content.current{border:2px solid #f59e0b;background:rgba(245,158,11,.04)}
+.gm-path-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.gm-path-desc{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.gm-path-reward{display:inline-block;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;margin-top:8px}
+.gm-challenges{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.gm-challenge{padding:18px;border-radius:14px;background:var(--bg-input);transition:.2s}
+.gm-challenge:hover{transform:translateY(-2px)}
+.gm-challenge-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.gm-challenge-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.gm-challenge-name{font-size:13px;font-weight:700}
+.gm-challenge-xp{font-size:11px;font-weight:700}
+.gm-challenge-desc{font-size:11px;color:var(--text-secondary);line-height:1.5}
+.gm-challenge-progress{height:4px;border-radius:2px;background:var(--border-color);overflow:hidden;margin-top:10px}
+.gm-challenge-fill{height:100%;border-radius:2px;transition:width .6s}
+.gm-challenge-status{font-size:10px;color:var(--text-secondary);margin-top:4px;text-align:right}
+.gm-lb{display:flex;flex-direction:column;gap:8px}
+.gm-lb-row{display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--bg-input)}
+.gm-lb-row.me{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)}
+.gm-lb-rank{width:28px;text-align:center;font-weight:900;font-size:14px}
+.gm-lb-avatar{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.gm-lb-name{flex:1;font-size:13px;font-weight:700}
+.gm-lb-xp{font-size:13px;font-weight:800}
+@media(max-width:768px){.gm-profile{flex-direction:column;text-align:center}.gm-xp-bar{margin:8px auto 0}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gm-container">
+    <div class="gm-hero">
+        <div class="gm-hero-icon"><i class="fas fa-gamepad"></i></div>
+        <div>
+            <h2>Gamified AI Mastery Path</h2>
+            <p>Seviye sistemi, badge ödülleri ve liderlik tablosu ile AI becerilerinizi geliştirin.</p>
+        </div>
+    </div>
+
+    <div class="gm-profile">
+        <div class="gm-avatar">👨‍💻<div class="gm-avatar-lvl">12</div></div>
+        <div class="gm-profile-info">
+            <div class="gm-profile-name">Emre</div>
+            <div class="gm-profile-title">🏅 AI Infrastructure Master</div>
+            <div class="gm-xp-bar"><div class="gm-xp-fill" style="width:72%"></div></div>
+            <div class="gm-xp-text">7,200 / 10,000 XP — Seviye 13'e 2,800 XP</div>
+        </div>
+        <div class="gm-profile-stats">
+            <div class="gm-p-stat"><div class="gm-p-stat-val" style="color:#f59e0b">7,200</div><div class="gm-p-stat-lbl">Toplam XP</div></div>
+            <div class="gm-p-stat"><div class="gm-p-stat-val" style="color:#6366f1">18</div><div class="gm-p-stat-lbl">Badge</div></div>
+            <div class="gm-p-stat"><div class="gm-p-stat-val" style="color:#22c55e">45</div><div class="gm-p-stat-lbl">Görev</div></div>
+            <div class="gm-p-stat"><div class="gm-p-stat-val" style="color:#ec4899">12</div><div class="gm-p-stat-lbl">Gün Streak</div></div>
+        </div>
+    </div>
+
+    <div class="gm-card">
+        <h3><i class="fas fa-medal" style="color:#f59e0b"></i> Koleksiyon Rozetleri</h3>
+        <div class="gm-badges" id="gmBadges"></div>
+    </div>
+
+    <div class="gm-card">
+        <h3><i class="fas fa-route" style="color:#ec4899"></i> Öğrenme Yolu</h3>
+        <div class="gm-path" id="gmPath"></div>
+    </div>
+
+    <div class="gm-card">
+        <h3><i class="fas fa-bolt" style="color:#6366f1"></i> Aktif Görevler</h3>
+        <div class="gm-challenges" id="gmChallenges"></div>
+    </div>
+
+    <div class="gm-card">
+        <h3><i class="fas fa-ranking-star" style="color:#22c55e"></i> Liderlik Tablosu</h3>
+        <div class="gm-lb" id="gmLB"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const badges=[
+    {icon:'🚀',name:'İlk Deployment',date:'15 Haz 2025',locked:false},
+    {icon:'🐳',name:'Docker Master',date:'16 Haz 2025',locked:false},
+    {icon:'🧠',name:'AI Pioneer',date:'17 Haz 2025',locked:false},
+    {icon:'🔒',name:'Güvenlik Uzmanı',date:'18 Haz 2025',locked:false},
+    {icon:'📊',name:'Veri Analisti',date:'19 Haz 2025',locked:false},
+    {icon:'⚡',name:'Hız Şampiyonu',date:'20 Haz 2025',locked:false},
+    {icon:'🌐',name:'Multi-Cloud',date:'21 Haz 2025',locked:false},
+    {icon:'🛡️',name:'Firewall Pro',date:'22 Haz 2025',locked:false},
+    {icon:'💎',name:'Premium Builder',date:'23 Haz 2025',locked:false},
+    {icon:'🏗️',name:'Infra Architect',date:'24 Haz 2025',locked:false},
+    {icon:'🎯',name:'Optimizer',date:'25 Haz 2025',locked:false},
+    {icon:'🤖',name:'Bot Creator',date:'26 Haz 2025',locked:false},
+    {icon:'📡',name:'API Master',date:'27 Haz 2025',locked:false},
+    {icon:'🎨',name:'UI Designer',date:'27 Haz 2025',locked:false},
+    {icon:'🗄️',name:'DB Expert',date:'28 Haz 2025',locked:false},
+    {icon:'🔥',name:'Streak Hero',date:'28 Haz 2025',locked:false},
+    {icon:'👑',name:'Yönetici',date:'28 Haz 2025',locked:false},
+    {icon:'🌟',name:'Full Stack AI',date:'28 Haz 2025',locked:false},
+    {icon:'🏆',name:'Grand Master',date:null,locked:true},
+    {icon:'💫',name:'Legendary',date:null,locked:true}
+];
+document.getElementById('gmBadges').innerHTML=badges.map(b=>'<div class="gm-badge'+(b.locked?' locked':'')+'"><div class="gm-badge-icon">'+b.icon+'</div><div class="gm-badge-name">'+b.name+'</div><div class="gm-badge-date">'+(b.date||'🔒 Kilitli')+'</div></div>').join('');
+
+const path=[
+    {dot:'✓',dotBg:'#22c55e',title:'Temel Sunucu Yönetimi',desc:'SSH, Docker, sistem izleme temelleri',reward:'500 XP',rewardBg:'#22c55e',done:true,current:false},
+    {dot:'✓',dotBg:'#22c55e',title:'AI Model Deployment',desc:'Ollama kurulumu, model indirme, API kullanımı',reward:'800 XP',rewardBg:'#22c55e',done:true,current:false},
+    {dot:'✓',dotBg:'#22c55e',title:'Konteyner Orkestrasyonu',desc:'Docker Compose, multi-container, networking',reward:'1,000 XP',rewardBg:'#22c55e',done:true,current:false},
+    {dot:'→',dotBg:'#f59e0b',title:'Güvenlik & Firewall',desc:'UFW, fail2ban, SSL, güvenlik denetimi',reward:'1,200 XP',rewardBg:'#f59e0b',done:false,current:true},
+    {dot:'5',dotBg:'#94a3b8',title:'Multi-Cloud & Failover',desc:'Cross-cloud sync, otomatik failover',reward:'1,500 XP',rewardBg:'#94a3b8',done:false,current:false},
+    {dot:'6',dotBg:'#94a3b8',title:'AI Ethics & Governance',desc:'Bias testi, etik denetim, uyumluluk',reward:'1,800 XP',rewardBg:'#94a3b8',done:false,current:false}
+];
+document.getElementById('gmPath').innerHTML=path.map((p,i)=>'<div class="gm-path-step"><div class="gm-path-line"><div class="gm-path-dot" style="background:'+p.dotBg+'">'+p.dot+'</div>'+(i<path.length-1?'<div class="gm-path-connector'+(p.done?' active':'')+'"></div>':'')+'</div><div class="gm-path-content'+(p.current?' current':'')+'"><div class="gm-path-title">'+(p.current?'🔥 ':'')+p.title+'</div><div class="gm-path-desc">'+p.desc+'</div><div class="gm-path-reward" style="background:'+p.rewardBg+'22;color:'+p.rewardBg+'">'+p.reward+'</div></div></div>').join('');
+
+const challenges=[
+    {icon:'🐳',bg:'rgba(59,130,246,.12)',name:'3 Container Başlat',xp:'+200 XP',xpColor:'#f59e0b',desc:'Docker ile 3 farklı container oluştur ve çalıştır.',pct:100,color:'#22c55e',status:'Tamamlandı ✓'},
+    {icon:'🔒',bg:'rgba(239,68,68,.12)',name:'SSL Sertifikası Kur',xp:'+300 XP',xpColor:'#f59e0b',desc:'Let\'s Encrypt ile SSL sertifikası kurulumu yap.',pct:75,color:'#f59e0b',status:'3/4 adım'},
+    {icon:'📊',bg:'rgba(99,102,241,.12)',name:'İzleme Dashboard Oluştur',xp:'+250 XP',xpColor:'#f59e0b',desc:'5 farklı metriği takip eden dashboard kur.',pct:40,color:'#6366f1',status:'2/5 metrik'},
+    {icon:'🧠',bg:'rgba(147,51,234,.12)',name:'AI Model Eğit',xp:'+500 XP',xpColor:'#f59e0b',desc:'Kendi veri setinle fine-tune yaparak özel model oluştur.',pct:0,color:'#94a3b8',status:'Başlanmadı'},
+    {icon:'⚡',bg:'rgba(245,158,11,.12)',name:'Yanıt Süresini Düşür',xp:'+150 XP',xpColor:'#f59e0b',desc:'API yanıt süresini 200ms altına indir.',pct:60,color:'#f59e0b',status:'Devam ediyor'},
+    {icon:'🌐',bg:'rgba(14,165,233,.12)',name:'Multi-Region Deploy',xp:'+400 XP',xpColor:'#f59e0b',desc:'2 farklı bölgeye aynı anda deploy yap.',pct:0,color:'#94a3b8',status:'Başlanmadı'}
+];
+document.getElementById('gmChallenges').innerHTML=challenges.map(c=>'<div class="gm-challenge"><div class="gm-challenge-header"><div class="gm-challenge-icon" style="background:'+c.bg+'">'+c.icon+'</div><div style="flex:1"><div class="gm-challenge-name">'+c.name+'</div><div class="gm-challenge-xp" style="color:'+c.xpColor+'">'+c.xp+'</div></div></div><div class="gm-challenge-desc">'+c.desc+'</div><div class="gm-challenge-progress"><div class="gm-challenge-fill" style="width:'+c.pct+'%;background:'+c.color+'"></div></div><div class="gm-challenge-status">'+c.status+'</div></div>').join('');
+
+const lb=[
+    {rank:'🥇',avatar:'👨‍💻',bg:'rgba(245,158,11,.12)',name:'Emre',xp:'7,200 XP',xpColor:'#f59e0b',me:true},
+    {rank:'🥈',avatar:'👩‍💻',bg:'rgba(99,102,241,.12)',name:'Ayşe K.',xp:'6,840 XP',xpColor:'#6366f1',me:false},
+    {rank:'🥉',avatar:'🧑‍💻',bg:'rgba(34,197,94,.12)',name:'Mehmet R.',xp:'5,920 XP',xpColor:'#22c55e',me:false},
+    {rank:'4',avatar:'👨‍🔬',bg:'rgba(236,72,153,.12)',name:'Ali S.',xp:'4,100 XP',xpColor:'#ec4899',me:false},
+    {rank:'5',avatar:'👩‍🔬',bg:'rgba(14,165,233,.12)',name:'Zeynep B.',xp:'3,750 XP',xpColor:'#0ea5e9',me:false}
+];
+document.getElementById('gmLB').innerHTML=lb.map(l=>'<div class="gm-lb-row'+(l.me?' me':'')+'"><div class="gm-lb-rank">'+l.rank+'</div><div class="gm-lb-avatar" style="background:'+l.bg+'">'+l.avatar+'</div><div class="gm-lb-name">'+l.name+'</div><div class="gm-lb-xp" style="color:'+l.xpColor+'">'+l.xp+'</div></div>').join('');
+</script>
+{% endblock %}

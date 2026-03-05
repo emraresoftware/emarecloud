@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}AI Gelir Paylaşımı - EmareCloud{% endblock %}
+{% block page_title %}AI Gelir Paylaşımı{% endblock %}
+
+{% block head %}
+<style>
+.rev-container { max-width: 1100px; margin: 0 auto; }
+
+/* Hero */
+.rev-hero {
+    background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(99,102,241,0.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.rev-hero-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #22c55e, #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff; flex-shrink: 0;
+}
+.rev-hero-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.rev-hero-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Balance cards */
+.rev-balance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.rev-balance-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; position: relative; overflow: hidden;
+}
+.rev-balance-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+}
+.rev-balance-card.green::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+.rev-balance-card.purple::before { background: linear-gradient(90deg, #9333ea, #7c3aed); }
+.rev-balance-card.blue::before { background: linear-gradient(90deg, #6366f1, #4f46e5); }
+.rev-balance-card.orange::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.rev-balance-icon { font-size: 32px; margin-bottom: 12px; }
+.rev-balance-value { font-size: 32px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+.rev-balance-label { font-size: 13px; color: var(--text-secondary); }
+.rev-balance-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; margin-top: 8px; padding: 3px 10px; border-radius: 6px; }
+.rev-balance-trend.up { background: rgba(34,197,94,.12); color: #22c55e; }
+.rev-balance-trend.down { background: rgba(248,113,113,.12); color: #f87171; }
+
+/* Chart */
+.rev-chart-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+}
+.rev-chart-card h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.rev-chart-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.rev-chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 200px; padding: 0 4px; }
+.rev-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.rev-bar {
+    width: 100%; max-width: 48px; border-radius: 6px 6px 0 0;
+    transition: height 0.6s ease; cursor: pointer; position: relative; min-height: 4px;
+}
+.rev-bar:hover { opacity: 0.85; }
+.rev-bar-tip {
+    display: none; position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    white-space: nowrap; z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+.rev-bar:hover .rev-bar-tip { display: block; }
+.rev-bar-label { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+.rev-chart-legend { display: flex; gap: 20px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.rev-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.rev-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+/* Transactions */
+.rev-tx-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; overflow: hidden; margin-bottom: 24px;
+}
+.rev-tx-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.rev-tx-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.rev-tx-table { width: 100%; border-collapse: collapse; }
+.rev-tx-table th { padding: 12px 20px; text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border-color); }
+.rev-tx-table td { padding: 14px 20px; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+.rev-tx-table tr:last-child td { border-bottom: none; }
+.rev-tx-table tr:hover { background: var(--bg-hover); }
+.rev-tx-type { display: inline-flex; align-items: center; gap: 8px; }
+.rev-tx-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.rev-tx-amount { font-weight: 700; }
+.rev-tx-amount.credit { color: #22c55e; }
+.rev-tx-amount.debit { color: #f87171; }
+.rev-badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.rev-badge.completed { background: rgba(34,197,94,.12); color: #22c55e; }
+.rev-badge.pending { background: rgba(251,191,36,.12); color: #fbbf24; }
+.rev-badge.processing { background: rgba(99,102,241,.12); color: #6366f1; }
+
+/* Two col layout */
+.rev-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+/* Top earners */
+.rev-top-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px;
+}
+.rev-top-card h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.rev-top-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.rev-top-item:last-child { border-bottom: none; }
+.rev-top-rank {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; flex-shrink: 0;
+}
+.rev-top-rank.gold { background: rgba(245,158,11,.15); color: #f59e0b; }
+.rev-top-rank.silver { background: rgba(148,163,184,.15); color: #94a3b8; }
+.rev-top-rank.bronze { background: rgba(180,83,9,.15); color: #b45309; }
+.rev-top-rank.normal { background: var(--bg-input); color: var(--text-secondary); }
+.rev-top-app { flex: 1; }
+.rev-top-name { font-weight: 600; font-size: 14px; }
+.rev-top-cat { font-size: 12px; color: var(--text-secondary); }
+.rev-top-earning { font-weight: 700; color: #22c55e; font-size: 14px; }
+
+/* Payout info */
+.rev-payout-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px;
+}
+.rev-payout-card h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.rev-payout-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+.rev-payout-row:last-child { border-bottom: none; }
+.rev-payout-row span:first-child { color: var(--text-secondary); }
+.rev-payout-row strong { color: var(--text-primary); }
+
+@media (max-width: 768px) {
+    .rev-two-col { grid-template-columns: 1fr; }
+    .rev-balance-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rev-container">
+    <div class="rev-hero">
+        <div class="rev-hero-icon"><i class="fas fa-coins"></i></div>
+        <div class="rev-hero-text">
+            <h2>AI Gelir Paylaşımı Dashboard</h2>
+            <p>AI uygulamalarınızdan ve model satışlarınızdan kazandığınız geliri canlı takip edin. Platform %20 komisyon alır, %80 sizin.</p>
+        </div>
+    </div>
+
+    <!-- Balance Cards -->
+    <div class="rev-balance-grid">
+        <div class="rev-balance-card green">
+            <div class="rev-balance-icon">💰</div>
+            <div class="rev-balance-value" id="revTotal">$1,247.80</div>
+            <div class="rev-balance-label">Toplam Kazanç</div>
+            <div class="rev-balance-trend up"><i class="fas fa-arrow-up"></i> +23% bu ay</div>
+        </div>
+        <div class="rev-balance-card purple">
+            <div class="rev-balance-icon">📊</div>
+            <div class="rev-balance-value" id="revMonthly">$342.50</div>
+            <div class="rev-balance-label">Bu Ay Kazanç</div>
+            <div class="rev-balance-trend up"><i class="fas fa-arrow-up"></i> +18% geçen aya göre</div>
+        </div>
+        <div class="rev-balance-card blue">
+            <div class="rev-balance-icon">⭐</div>
+            <div class="rev-balance-value" id="revEP">2,450 EP</div>
+            <div class="rev-balance-label">Toplam EP Bakiyesi</div>
+            <div class="rev-balance-trend up"><i class="fas fa-arrow-up"></i> +350 bu ay</div>
+        </div>
+        <div class="rev-balance-card orange">
+            <div class="rev-balance-icon">🚀</div>
+            <div class="rev-balance-value" id="revApps">6</div>
+            <div class="rev-balance-label">Yayınlanan AI App</div>
+            <div class="rev-balance-trend up"><i class="fas fa-arrow-up"></i> +2 bu ay</div>
+        </div>
+    </div>
+
+    <!-- Revenue Chart -->
+    <div class="rev-chart-card">
+        <h3><i class="fas fa-chart-area" style="color:#22c55e"></i> Aylık Gelir Grafiği</h3>
+        <div class="rev-chart-subtitle">Son 12 aylık gelir dağılımı (Model Satış + App Geliri + EP Bonus)</div>
+        <div class="rev-chart-bars" id="revChart"></div>
+        <div class="rev-chart-legend">
+            <div class="rev-legend-item"><div class="rev-legend-dot" style="background:#22c55e"></div> Model Satış</div>
+            <div class="rev-legend-item"><div class="rev-legend-dot" style="background:#6366f1"></div> App Geliri</div>
+            <div class="rev-legend-item"><div class="rev-legend-dot" style="background:#9333ea"></div> EP Bonus</div>
+        </div>
+    </div>
+
+    <!-- Two col: Top Earners + Payout Info -->
+    <div class="rev-two-col">
+        <div class="rev-top-card">
+            <h3><i class="fas fa-trophy" style="color:#f59e0b"></i> En Çok Kazanan AI Uygulamalarım</h3>
+            <div class="rev-top-item">
+                <div class="rev-top-rank gold">1</div>
+                <div class="rev-top-app"><div class="rev-top-name">AI Müşteri Asistanı</div><div class="rev-top-cat">Chatbot · Ollama</div></div>
+                <div class="rev-top-earning">$487.20</div>
+            </div>
+            <div class="rev-top-item">
+                <div class="rev-top-rank silver">2</div>
+                <div class="rev-top-app"><div class="rev-top-name">Logo Generator Pro</div><div class="rev-top-cat">Görsel · Stable Diffusion</div></div>
+                <div class="rev-top-earning">$312.40</div>
+            </div>
+            <div class="rev-top-item">
+                <div class="rev-top-rank bronze">3</div>
+                <div class="rev-top-app"><div class="rev-top-name">SEO İçerik Yazarı</div><div class="rev-top-cat">İçerik · LLM</div></div>
+                <div class="rev-top-earning">$198.60</div>
+            </div>
+            <div class="rev-top-item">
+                <div class="rev-top-rank normal">4</div>
+                <div class="rev-top-app"><div class="rev-top-name">Kod Review Botu</div><div class="rev-top-cat">DevOps · Tabby</div></div>
+                <div class="rev-top-earning">$142.80</div>
+            </div>
+            <div class="rev-top-item">
+                <div class="rev-top-rank normal">5</div>
+                <div class="rev-top-app"><div class="rev-top-name">Veri Analiz Asistanı</div><div class="rev-top-cat">Analitik · Python</div></div>
+                <div class="rev-top-earning">$106.80</div>
+            </div>
+        </div>
+
+        <div class="rev-payout-card">
+            <h3><i class="fas fa-wallet" style="color:#6366f1"></i> Ödeme Bilgileri</h3>
+            <div class="rev-payout-row"><span>Platform Komisyonu</span><strong>%20</strong></div>
+            <div class="rev-payout-row"><span>Sizin Payınız</span><strong style="color:#22c55e">%80</strong></div>
+            <div class="rev-payout-row"><span>Minimum Çekim</span><strong>$50.00</strong></div>
+            <div class="rev-payout-row"><span>Çekilebilir Bakiye</span><strong style="color:#22c55e">$342.50</strong></div>
+            <div class="rev-payout-row"><span>Sonraki Ödeme Tarihi</span><strong>15 Mart 2026</strong></div>
+            <div class="rev-payout-row"><span>Ödeme Yöntemi</span><strong>Stripe (••••4242)</strong></div>
+            <div class="rev-payout-row"><span>Toplam Çekilen</span><strong>$905.30</strong></div>
+            <div style="margin-top: 16px;">
+                <button class="btn btn-primary" style="width:100%;border-radius:12px;padding:12px;" onclick="showToast('Ödeme talebi oluşturuldu!','success')">
+                    <i class="fas fa-money-bill-transfer"></i> Ödeme Talep Et
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction history -->
+    <div class="rev-tx-card">
+        <div class="rev-tx-header">
+            <h3><i class="fas fa-history" style="color:#9333ea"></i> Son İşlemler</h3>
+        </div>
+        <table class="rev-tx-table">
+            <thead>
+                <tr><th>Tarih</th><th>Tür</th><th>Detay</th><th>Tutar</th><th>Durum</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>3 Mar 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(34,197,94,.12);color:#22c55e"><i class="fas fa-robot"></i></div>Model Satış</div></td>
+                    <td>AI Müşteri Asistanı — 14 kullanıcı</td>
+                    <td class="rev-tx-amount credit">+$67.20</td>
+                    <td><span class="rev-badge completed">Tamamlandı</span></td>
+                </tr>
+                <tr>
+                    <td>2 Mar 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(99,102,241,.12);color:#6366f1"><i class="fas fa-coins"></i></div>EP Bonus</div></td>
+                    <td>Haftalık EP bonus dönüşümü (350 EP)</td>
+                    <td class="rev-tx-amount credit">+$17.50</td>
+                    <td><span class="rev-badge completed">Tamamlandı</span></td>
+                </tr>
+                <tr>
+                    <td>28 Şub 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(147,51,234,.12);color:#9333ea"><i class="fas fa-palette"></i></div>App Geliri</div></td>
+                    <td>Logo Generator Pro — 8 kullanıcı</td>
+                    <td class="rev-tx-amount credit">+$48.00</td>
+                    <td><span class="rev-badge completed">Tamamlandı</span></td>
+                </tr>
+                <tr>
+                    <td>25 Şub 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-money-bill-transfer"></i></div>Çekim</div></td>
+                    <td>Stripe ödemesi — ••••4242</td>
+                    <td class="rev-tx-amount debit">-$200.00</td>
+                    <td><span class="rev-badge completed">Tamamlandı</span></td>
+                </tr>
+                <tr>
+                    <td>22 Şub 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(34,197,94,.12);color:#22c55e"><i class="fas fa-robot"></i></div>Model Satış</div></td>
+                    <td>SEO İçerik Yazarı — 6 kullanıcı</td>
+                    <td class="rev-tx-amount credit">+$36.00</td>
+                    <td><span class="rev-badge completed">Tamamlandı</span></td>
+                </tr>
+                <tr>
+                    <td>20 Şub 2026</td>
+                    <td><div class="rev-tx-type"><div class="rev-tx-icon" style="background:rgba(99,102,241,.12);color:#6366f1"><i class="fas fa-code"></i></div>App Geliri</div></td>
+                    <td>Kod Review Botu — 3 kullanıcı</td>
+                    <td class="rev-tx-amount credit">+$24.60</td>
+                    <td><span class="rev-badge processing">İşleniyor</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    // Monthly revenue chart — last 12 months
+    const months = ['Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara','Oca','Şub'];
+    const modelSales = [45,62,78,95,120,145,168,190,215,240,280,310];
+    const appRevenue = [20,35,42,58,72,88,95,110,125,140,155,180];
+    const epBonus =    [5, 8, 10,12,15,18,20,22,25,28,32,38];
+
+    const container = document.getElementById('revChart');
+    if (!container) return;
+
+    const maxVal = Math.max(...modelSales.map((v,i) => v + appRevenue[i] + epBonus[i])) * 1.15;
+    let html = '';
+    for (let i = 0; i < 12; i++) {
+        const mH = Math.max(2, (modelSales[i] / maxVal) * 180);
+        const aH = Math.max(2, (appRevenue[i] / maxVal) * 180);
+        const eH = Math.max(1, (epBonus[i] / maxVal) * 180);
+        const total = modelSales[i] + appRevenue[i] + epBonus[i];
+        html += '<div class="rev-bar-col">';
+        html += '<div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:40px;">';
+        html += '<div class="rev-bar" style="height:'+eH+'px;background:#9333ea;border-radius:4px 4px 0 0;width:100%;"><div class="rev-bar-tip">$'+total+'</div></div>';
+        html += '<div class="rev-bar" style="height:'+aH+'px;background:#6366f1;width:100%;"></div>';
+        html += '<div class="rev-bar" style="height:'+mH+'px;background:#22c55e;width:100%;"></div>';
+        html += '</div>';
+        html += '<div class="rev-bar-label">'+months[i]+'</div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+})();
+</script>
+{% endblock %}

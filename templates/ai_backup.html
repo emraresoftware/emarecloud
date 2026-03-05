@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}AI Yedekleme Asistanı - EmareCloud{% endblock %}
+{% block page_title %}AI Otomatik Yedekleme & Restore{% endblock %}
+
+{% block head %}
+<style>
+.bk-container{max-width:1100px;margin:0 auto}
+.bk-hero{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(34,197,94,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.bk-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#22c55e);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.bk-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.bk-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.bk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.bk-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.bk-stat-val{font-size:28px;font-weight:800}
+.bk-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.bk-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.bk-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.bk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.bk-apps{display:flex;flex-direction:column;gap:10px}
+.bk-app{display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg-input);transition:all .2s}
+.bk-app:hover{transform:translateX(4px)}
+.bk-app-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.bk-app-info{flex:1}
+.bk-app-name{font-size:14px;font-weight:700}
+.bk-app-meta{font-size:11px;color:var(--text-secondary)}
+.bk-app-status{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.bk-app-actions{display:flex;gap:6px}
+.bk-app-actions button{padding:6px 10px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s}
+.bk-app-actions button:hover{opacity:.8}
+.bk-schedule{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.bk-schedule-item{padding:18px;border-radius:14px;background:var(--bg-input);border:2px solid transparent;transition:all .25s}
+.bk-schedule-item:hover{border-color:#3b82f6}
+.bk-schedule-item.active{border-color:#22c55e}
+.bk-schedule-icon{font-size:28px;margin-bottom:10px}
+.bk-schedule-name{font-size:14px;font-weight:700}
+.bk-schedule-desc{font-size:12px;color:var(--text-secondary);margin:4px 0 10px}
+.bk-toggle{width:44px;height:24px;border-radius:12px;background:var(--border-color);position:relative;cursor:pointer;transition:all .3s;display:inline-block}
+.bk-toggle.on{background:#22c55e}
+.bk-toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;left:2px;transition:all .3s}
+.bk-toggle.on::after{left:22px}
+.bk-timeline{position:relative;padding-left:24px}
+.bk-timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border-color)}
+.bk-tl-item{position:relative;padding:12px 0 16px 20px}
+.bk-tl-item::before{content:'';position:absolute;left:-20px;top:16px;width:12px;height:12px;border-radius:50%}
+.bk-tl-item.success::before{background:#22c55e}
+.bk-tl-item.warning::before{background:#f59e0b}
+.bk-tl-item.running::before{background:#3b82f6;animation:bkPulse 1.5s infinite}
+@keyframes bkPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.bk-tl-time{font-size:11px;color:var(--text-secondary);font-weight:600}
+.bk-tl-title{font-size:13px;font-weight:700;margin:2px 0}
+.bk-tl-desc{font-size:12px;color:var(--text-secondary)}
+.bk-dist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.bk-server{padding:16px;border-radius:14px;background:var(--bg-input);text-align:center;cursor:pointer;transition:all .25s;border:2px solid transparent}
+.bk-server:hover{border-color:#3b82f6;transform:translateY(-2px)}
+.bk-server.selected{border-color:#22c55e}
+.bk-server-icon{font-size:32px;margin-bottom:8px}
+.bk-server-name{font-size:14px;font-weight:700}
+.bk-server-loc{font-size:12px;color:var(--text-secondary)}
+.bk-server-stat{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;margin-top:8px}
+.bk-btn{padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.bk-btn:hover{transform:translateY(-1px);opacity:.9}
+.bk-btn-primary{background:linear-gradient(135deg,#3b82f6,#22c55e);color:#fff}
+.bk-btn-danger{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
+.bk-ai-rec{background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(34,197,94,.06));border:1px solid rgba(99,102,241,.2);border-radius:14px;padding:18px;margin-top:16px}
+.bk-ai-rec h4{margin:0 0 8px;font-size:14px;font-weight:700;color:#6366f1}
+.bk-ai-rec p{margin:0;font-size:12px;color:var(--text-secondary);line-height:1.6}
+@media(max-width:768px){.bk-grid2{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bk-container">
+    <div class="bk-hero">
+        <div class="bk-hero-icon"><i class="fas fa-shield-halved"></i></div>
+        <div>
+            <h2>AI Otomatik Yedekleme & Restore Asistanı</h2>
+            <p>"Bu app'i yedekle ve 3 sunucuya dağıt" — AI tabanlı akıllı yedekleme, zamanlanmış koruma, bir tıkla restore.</p>
+        </div>
+    </div>
+
+    <div class="bk-stats">
+        <div class="bk-stat"><div class="bk-stat-val" style="color:#3b82f6">47</div><div class="bk-stat-lbl">Toplam Yedek</div></div>
+        <div class="bk-stat"><div class="bk-stat-val" style="color:#22c55e">12.8 GB</div><div class="bk-stat-lbl">Yedek Boyutu</div></div>
+        <div class="bk-stat"><div class="bk-stat-val" style="color:#f59e0b">3</div><div class="bk-stat-lbl">Dağıtım Noktası</div></div>
+        <div class="bk-stat"><div class="bk-stat-val" style="color:#ec4899">99.9%</div><div class="bk-stat-lbl">Başarı Oranı</div></div>
+    </div>
+
+    <div class="bk-card">
+        <h3><i class="fas fa-hard-drive" style="color:#3b82f6"></i> Uygulamalar & Yedekleme Durumu</h3>
+        <div class="bk-apps" id="bkApps"></div>
+        <div class="bk-ai-rec">
+            <h4>🤖 AI Öneri</h4>
+            <p>PostgreSQL veritabanınız son 48 saatte %23 büyüdü. Yedekleme sıklığını günlük'ten 12 saatlik'e çıkarmanızı öneriyorum. Redis cache verileriniz için snapshot yeterli — tam yedek gereksiz.</p>
+        </div>
+    </div>
+
+    <div class="bk-card">
+        <h3><i class="fas fa-clock" style="color:#22c55e"></i> Zamanlama Kuralları</h3>
+        <div class="bk-schedule" id="bkSchedule"></div>
+    </div>
+
+    <div class="bk-grid2">
+        <div class="bk-card">
+            <h3><i class="fas fa-timeline" style="color:#f59e0b"></i> Yedekleme Geçmişi</h3>
+            <div class="bk-timeline" id="bkTimeline"></div>
+        </div>
+        <div class="bk-card">
+            <h3><i class="fas fa-server" style="color:#6366f1"></i> Dağıtım Sunucuları</h3>
+            <div class="bk-dist" id="bkDist"></div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+                <button class="bk-btn bk-btn-primary" onclick="distributeBackup()"><i class="fas fa-share-nodes"></i> Seçilenlere Dağıt</button>
+                <button class="bk-btn bk-btn-danger" onclick="showToast('Restore başlatıldı!','warning')"><i class="fas fa-undo"></i> Restore</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const apps=[
+    {name:'PostgreSQL Database',meta:'Last: 2 saat önce · 4.2 GB',icon:'🐘',bg:'rgba(59,130,246,.12)',status:'Güncel',statusBg:'#22c55e'},
+    {name:'Redis Cache',meta:'Last: 6 saat önce · 128 MB',icon:'🔴',bg:'rgba(239,68,68,.12)',status:'Güncel',statusBg:'#22c55e'},
+    {name:'Ollama Models',meta:'Last: 1 gün önce · 6.4 GB',icon:'🦙',bg:'rgba(99,102,241,.12)',status:'Eski',statusBg:'#f59e0b'},
+    {name:'Docker Volumes',meta:'Last: 12 saat önce · 1.8 GB',icon:'🐳',bg:'rgba(14,165,233,.12)',status:'Güncel',statusBg:'#22c55e'},
+    {name:'SSL Sertifikaları',meta:'Last: 3 gün önce · 24 KB',icon:'🔒',bg:'rgba(34,197,94,.12)',status:'Güncel',statusBg:'#22c55e'},
+    {name:'App Config & .env',meta:'Last: 1 saat önce · 12 KB',icon:'⚙️',bg:'rgba(245,158,11,.12)',status:'Güncel',statusBg:'#22c55e'}
+];
+const ac=document.getElementById('bkApps');
+ac.innerHTML=apps.map(a=>'<div class="bk-app"><div class="bk-app-icon" style="background:'+a.bg+'">'+a.icon+'</div><div class="bk-app-info"><div class="bk-app-name">'+a.name+'</div><div class="bk-app-meta">'+a.meta+'</div></div><div class="bk-app-status" style="background:'+a.statusBg+'22;color:'+a.statusBg+'">'+a.status+'</div><div class="bk-app-actions"><button style="background:rgba(59,130,246,.12);color:#3b82f6" onclick="showToast(\''+a.name+' yedekleniyor…\',\'info\')">💾 Yedekle</button><button style="background:rgba(239,68,68,.12);color:#ef4444" onclick="showToast(\'Restore başlatıldı!\',\'warning\')">🔄 Restore</button></div></div>').join('');
+
+const schedules=[
+    {icon:'⏰',name:'Her 6 Saatte',desc:'PostgreSQL + Redis',active:true},
+    {icon:'📅',name:'Günlük (03:00)',desc:'Tüm uygulamalar',active:true},
+    {icon:'📆',name:'Haftalık (Pazar)',desc:'Full sistem imajı',active:true},
+    {icon:'🌙',name:'Gece Modu',desc:'Düşük öncelikli yedekleme',active:false},
+    {icon:'🔄',name:'Değişiklik Bazlı',desc:'AI otomatik algılama',active:true},
+    {icon:'🚨',name:'Kriz Yedekleme',desc:'CPU >90% olunca otomatik',active:false}
+];
+const sc=document.getElementById('bkSchedule');
+sc.innerHTML=schedules.map(s=>'<div class="bk-schedule-item'+(s.active?' active':'')+'"><div class="bk-schedule-icon">'+s.icon+'</div><div class="bk-schedule-name">'+s.name+'</div><div class="bk-schedule-desc">'+s.desc+'</div><div class="bk-toggle'+(s.active?' on':'')+'" onclick="this.classList.toggle(\'on\');this.closest(\'.bk-schedule-item\').classList.toggle(\'active\')"></div></div>').join('');
+
+const timeline=[
+    {time:'14:32',title:'PostgreSQL Yedekleme',desc:'4.2 GB — 2 dk 14 sn — Başarılı',cls:'success'},
+    {time:'14:30',title:'AI Anomali Tespiti',desc:'Disk kullanımı normal — yedek optimize edildi',cls:'success'},
+    {time:'12:00',title:'Redis Snapshot',desc:'128 MB — 4 sn — Başarılı',cls:'success'},
+    {time:'03:00',title:'Full Sistem Yedekleme',desc:'12.8 GB — 18 dk — Başarılı',cls:'success'},
+    {time:'Şimdi',title:'Ollama Model Sync',desc:'3 sunucuya dağıtılıyor...',cls:'running'},
+    {time:'Dün 22:15',title:'Docker Volume Backup',desc:'1.8 GB — Disk uyarısı (kalan: 2GB)',cls:'warning'}
+];
+const tc=document.getElementById('bkTimeline');
+tc.innerHTML=timeline.map(t=>'<div class="bk-tl-item '+t.cls+'"><div class="bk-tl-time">'+t.time+'</div><div class="bk-tl-title">'+t.title+'</div><div class="bk-tl-desc">'+t.desc+'</div></div>').join('');
+
+const servers=[
+    {icon:'🇩🇪',name:'Frankfurt DE-1',loc:'Hetzner · 50ms',stat:'Bağlı',statBg:'#22c55e',selected:true},
+    {icon:'🇳🇱',name:'Amsterdam NL-1',loc:'DigitalOcean · 42ms',stat:'Bağlı',statBg:'#22c55e',selected:true},
+    {icon:'🇺🇸',name:'New York US-1',loc:'Vultr · 120ms',stat:'Bağlı',statBg:'#22c55e',selected:false},
+    {icon:'🇹🇷',name:'İstanbul TR-1',loc:'Turhost · 8ms',stat:'Ana Sunucu',statBg:'#6366f1',selected:true}
+];
+const dc=document.getElementById('bkDist');
+dc.innerHTML=servers.map(s=>'<div class="bk-server'+(s.selected?' selected':'')+'" onclick="this.classList.toggle(\'selected\')"><div class="bk-server-icon">'+s.icon+'</div><div class="bk-server-name">'+s.name+'</div><div class="bk-server-loc">'+s.loc+'</div><div class="bk-server-stat" style="background:'+s.statBg+'22;color:'+s.statBg+'">'+s.stat+'</div></div>').join('');
+
+function distributeBackup(){
+    const sel=document.querySelectorAll('.bk-server.selected').length;
+    showToast('Yedek '+sel+' sunucuya dağıtılıyor… Tahmini süre: '+(sel*3)+' dakika','success');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Kullanıcı Yönetimi — EmareCloud{% endblock %}
+{% block page_title %}Kullanıcı Yönetimi{% endblock %}
+
+{% block content %}
+<div class="section">
+    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2><i class="fas fa-users-cog"></i> Kullanıcılar</h2>
+        {% if current_user.is_super_admin %}
+        <button class="btn btn-primary btn-sm" onclick="openModal('createUserModal')">
+            <i class="fas fa-user-plus"></i> Yeni Kullanıcı
+        </button>
+        {% endif %}
+    </div>
+    <div class="section-body">
+        <div class="table-responsive">
+            <table class="table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>E-posta</th>
+                        <th>Rol</th>
+                        <th>Durum</th>
+                        <th>Son Giriş</th>
+                        <th>Oluşturulma</th>
+                        {% if current_user.is_super_admin %}<th>İşlem</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr id="userRow{{ user.id }}">
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == current_user.id %}
+                            <span style="font-size:0.7rem;color:var(--accent-blue);">(siz)</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.email or '—' }}</td>
+                        <td>
+                            <span class="role-badge role-{{ user.role }}">
+                                {{ user.role | replace('_', ' ') | title }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span style="color:var(--accent-green);font-size:0.82rem;">
+                                <i class="fas fa-check-circle"></i> Aktif
+                            </span>
+                            {% else %}
+                            <span style="color:var(--accent-red);font-size:0.82rem;">
+                                <i class="fas fa-ban"></i> Devre Dışı
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.82rem;color:var(--text-secondary);">
+                            {{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else '—' }}
+                        </td>
+                        <td style="font-size:0.82rem;color:var(--text-secondary);">
+                            {{ user.created_at.strftime('%d.%m.%Y') if user.created_at else '—' }}
+                        </td>
+                        {% if current_user.is_super_admin %}
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <div style="display:flex;gap:0.3rem;">
+                                <button class="btn btn-secondary btn-sm" title="Düzenle"
+                                        onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email or '' }}', '{{ user.role }}', {{ 'true' if user.is_active else 'false' }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" title="Sil"
+                                        onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- RBAC Yetki Matrisi -->
+<div class="section" style="margin-top:1.25rem;">
+    <div class="section-header">
+        <h2><i class="fas fa-shield-alt"></i> Yetki Matrisi</h2>
+    </div>
+    <div class="section-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>İşlem</th>
+                        <th>Süper Admin</th>
+                        <th>Admin</th>
+                        <th>Operatör</th>
+                        <th>Salt Okunur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set perms = [
+                        ('Sunucu ekle/sil', 'server.add'),
+                        ('Sunucu düzenle', 'server.edit'),
+                        ('SSH bağlantı', 'server.connect'),
+                        ('Komut çalıştır', 'server.execute'),
+                        ('Terminal erişimi', 'terminal.access'),
+                        ('Firewall yönet', 'firewall.manage'),
+                        ('VM yönet', 'vm.manage'),
+                        ('RAID yönet', 'raid.manage'),
+                        ('Market kurulum', 'market.install'),
+                        ('Kullanıcı yönet', 'user.view'),
+                        ('Audit log', 'audit.view'),
+                    ] %}
+                    {% for label, perm in perms %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td style="text-align:center;color:var(--accent-green);"><i class="fas fa-check"></i></td>
+                        <td style="text-align:center;">
+                            {% set admin_perms = ['server.view','server.add','server.edit','server.delete','server.connect','server.disconnect','server.execute','server.metrics','server.quick_action','firewall.view','firewall.manage','vm.view','vm.manage','market.view','market.install','storage.view','storage.manage','terminal.access','user.view','audit.view','raid.view','raid.manage'] %}
+                            {% if perm in admin_perms %}
+                            <span style="color:var(--accent-green);"><i class="fas fa-check"></i></span>
+                            {% else %}
+                            <span style="color:var(--accent-red);"><i class="fas fa-times"></i></span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% set op_perms = ['server.view','server.connect','server.disconnect','server.execute','server.metrics','server.quick_action','firewall.view','vm.view','vm.manage','market.view','market.install','storage.view','terminal.access','raid.view'] %}
+                            {% if perm in op_perms %}
+                            <span style="color:var(--accent-green);"><i class="fas fa-check"></i></span>
+                            {% else %}
+                            <span style="color:var(--accent-red);"><i class="fas fa-times"></i></span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% set ro_perms = ['server.view','server.metrics','firewall.view','vm.view','market.view','storage.view','raid.view'] %}
+                            {% if perm in ro_perms %}
+                            <span style="color:var(--accent-green);"><i class="fas fa-check"></i></span>
+                            {% else %}
+                            <span style="color:var(--accent-red);"><i class="fas fa-times"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Kullanıcı Oluştur Modal -->
+<div class="modal-overlay" id="createUserModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Yeni Kullanıcı</h3>
+            <button class="modal-close" onclick="closeModal('createUserModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Kullanıcı Adı *</label>
+                <input type="text" id="newUsername" required placeholder="En az 3 karakter" minlength="3">
+            </div>
+            <div class="form-group">
+                <label>E-posta</label>
+                <input type="email" id="newEmail" placeholder="ornek@emarecloud.com">
+            </div>
+            <div class="form-group">
+                <label>Şifre *</label>
+                <input type="password" id="newPassword" required placeholder="En az 8 karakter" minlength="8">
+            </div>
+            <div class="form-group">
+                <label>Rol *</label>
+                <select id="newRole" style="width:100%;padding:0.55rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                    {% for role in roles %}
+                    <option value="{{ role.key }}" {{ 'selected' if role.key == 'operator' }}>
+                        {{ role.label }} — {{ role.description }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closeModal('createUserModal')">İptal</button>
+                <button class="btn btn-primary" onclick="createUser()">
+                    <i class="fas fa-save"></i> Oluştur
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kullanıcı Düzenle Modal -->
+<div class="modal-overlay" id="editUserModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-edit"></i> Kullanıcı Düzenle: <span id="editUserTitle">-</span></h3>
+            <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editUserId">
+            <div class="form-group">
+                <label>E-posta</label>
+                <input type="email" id="editEmail" placeholder="ornek@emarecloud.com">
+            </div>
+            <div class="form-group">
+                <label>Rol</label>
+                <select id="editRole" style="width:100%;padding:0.55rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                    {% for role in roles %}
+                    <option value="{{ role.key }}">{{ role.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Yeni Şifre (boş bırakırsanız değişmez)</label>
+                <input type="password" id="editPassword" placeholder="Yeni şifre (opsiyonel)">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:0.5rem;">
+                    <input type="checkbox" id="editActive"> Hesap aktif
+                </label>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closeModal('editUserModal')">İptal</button>
+                <button class="btn btn-primary" onclick="updateUser()">
+                    <i class="fas fa-save"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createUser() {
+    const data = {
+        username: document.getElementById('newUsername').value.trim(),
+        email: document.getElementById('newEmail').value.trim(),
+        password: document.getElementById('newPassword').value,
+        role: document.getElementById('newRole').value,
+    };
+    if (!data.username || !data.password) { showToast('Kullanıcı adı ve şifre gerekli', 'error'); return; }
+    try {
+        const r = await fetch('/api/users', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+        const res = await r.json();
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) { closeModal('createUserModal'); location.reload(); }
+    } catch(e) { showToast('Hata: ' + e.message, 'error'); }
+}
+
+function editUser(id, username, email, role, active) {
+    document.getElementById('editUserId').value = id;
+    document.getElementById('editUserTitle').textContent = username;
+    document.getElementById('editEmail').value = email;
+    document.getElementById('editRole').value = role;
+    document.getElementById('editActive').checked = active;
+    document.getElementById('editPassword').value = '';
+    openModal('editUserModal');
+}
+
+async function updateUser() {
+    const id = document.getElementById('editUserId').value;
+    const data = {
+        email: document.getElementById('editEmail').value.trim(),
+        role: document.getElementById('editRole').value,
+        is_active: document.getElementById('editActive').checked,
+    };
+    const pw = document.getElementById('editPassword').value;
+    if (pw) data.password = pw;
+    try {
+        const r = await fetch(`/api/users/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+        const res = await r.json();
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) { closeModal('editUserModal'); location.reload(); }
+    } catch(e) { showToast('Hata: ' + e.message, 'error'); }
+}
+
+async function deleteUser(id, username) {
+    if (!confirm(`"${username}" kullanıcısını silmek istediğinize emin misiniz?`)) return;
+    try {
+        const r = await fetch(`/api/users/${id}`, {method:'DELETE'});
+        const res = await r.json();
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+            document.getElementById('userRow'+id)?.remove();
+        }
+    } catch(e) { showToast('Hata: ' + e.message, 'error'); }
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('show');
+}
+</script>
+{% endblock %}

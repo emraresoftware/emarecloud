@@ -1,0 +1,487 @@
+{% extends "base.html" %}
+{% block title %}EMARE Token ile Ödeme - EmareCloud{% endblock %}
+{% block page_title %}EMARE Token ile Abonelik{% endblock %}
+
+{% block head %}
+<style>
+/* ── Token Payment Page ────────────────────────────────── */
+.tp-container { max-width: 1000px; margin: 0 auto; }
+
+/* Hero card */
+.tp-hero {
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(147,51,234,0.12));
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 20px; padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.tp-hero-icon {
+    width: 72px; height: 72px; border-radius: 18px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; color: #fff; flex-shrink: 0;
+}
+.tp-hero-text h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+.tp-hero-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Status bar */
+.tp-status-bar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
+}
+.tp-status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.tp-status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.tp-status-dot.green { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+.tp-status-dot.red { background: #ef4444; }
+.tp-status-dot.gray { background: #9ca3af; }
+.tp-status-sep { color: var(--border-color); }
+
+/* Plan grid */
+.tp-plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 28px; }
+.tp-plan-card {
+    background: var(--bg-card); border: 2px solid var(--border-color);
+    border-radius: 18px; padding: 24px; cursor: pointer;
+    transition: all 0.2s; position: relative;
+}
+.tp-plan-card:hover { border-color: #6366f1; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(99,102,241,0.15); }
+.tp-plan-card.selected { border-color: #6366f1; background: rgba(99,102,241,0.06); }
+.tp-plan-badge {
+    position: absolute; top: 12px; right: 12px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff;
+}
+.tp-plan-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.tp-plan-price { font-size: 28px; font-weight: 900; color: #6366f1; }
+.tp-plan-price span { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.tp-plan-usd { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+.tp-plan-features { list-style: none; padding: 0; margin: 0; }
+.tp-plan-features li { font-size: 13px; color: var(--text-secondary); padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+.tp-plan-features li::before { content: "✓"; color: #22c55e; font-weight: 700; }
+
+/* Payment form */
+.tp-form-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 18px; padding: 28px; margin-bottom: 24px;
+}
+.tp-form-card h3 { margin: 0 0 20px; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.tp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.tp-form-group { display: flex; flex-direction: column; gap: 6px; }
+.tp-form-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.tp-form-group input, .tp-form-group select {
+    padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border-color);
+    background: var(--bg-input); color: var(--text-primary); font-size: 14px; transition: border-color 0.2s;
+}
+.tp-form-group input:focus, .tp-form-group select:focus { outline: none; border-color: #6366f1; }
+.tp-form-hint { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Summary box */
+.tp-summary {
+    background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(147,51,234,0.06));
+    border: 1px solid rgba(99,102,241,0.2); border-radius: 14px;
+    padding: 18px 20px; margin-bottom: 20px;
+}
+.tp-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 14px; }
+.tp-summary-row.total { font-weight: 800; font-size: 18px; color: #6366f1; border-top: 1px solid rgba(99,102,241,0.2); margin-top: 8px; padding-top: 12px; }
+
+/* Buttons */
+.tp-btn-primary {
+    width: 100%; padding: 16px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    color: #fff; font-weight: 800; font-size: 16px; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.tp-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
+.tp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Steps guide */
+.tp-steps { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+.tp-step {
+    flex: 1; min-width: 180px; background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 16px 20px; display: flex; gap: 14px; align-items: flex-start;
+}
+.tp-step-num {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 14px;
+}
+.tp-step-text strong { display: block; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.tp-step-text span { font-size: 12px; color: var(--text-secondary); }
+
+/* Toast */
+.tp-toast {
+    position: fixed; top: 24px; right: 24px; z-index: 9999;
+    padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    max-width: 360px; display: flex; align-items: center; gap: 10px;
+    animation: slideIn 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.tp-toast.success { background: #166534; color: #bbf7d0; border: 1px solid rgba(34,197,94,0.3); }
+.tp-toast.error { background: #7f1d1d; color: #fecaca; border: 1px solid rgba(239,68,68,0.3); }
+@keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Address copy */
+.tp-addr {
+    display: flex; align-items: center; gap: 8px; background: var(--bg-input);
+    border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px;
+    font-family: monospace; font-size: 13px;
+}
+.tp-addr-copy { cursor: pointer; color: #6366f1; padding: 2px 6px; border-radius: 6px; border: none; background: transparent; }
+.tp-addr-copy:hover { background: rgba(99,102,241,0.1); }
+
+@media (max-width: 640px) {
+    .tp-form-row { grid-template-columns: 1fr; }
+    .tp-plans-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tp-container"
+    id="token-payment-root"
+    data-csrf-token="{{ csrf_token }}"
+    data-payment-address="{{ payment_address }}"
+    data-user-org-id="{{ user_org.id if user_org else '' }}">
+
+    <!-- Hero -->
+    <div class="tp-hero">
+        <div class="tp-hero-icon">💎</div>
+        <div class="tp-hero-text">
+            <h2>EMARE Token ile Abonelik</h2>
+            <p>EmareToken (EMARE) ile plan satın alın — kripto ödeme, anında aktivasyon, zincir üzeri doğrulama</p>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="tp-status-bar">
+        <div class="tp-status-item">
+            <div class="tp-status-dot {% if blockchain_enabled %}green{% else %}gray{% endif %}"></div>
+            <span>Blockchain: <strong>{% if blockchain_enabled %}Bağlı{% else %}Kapalı (Test Modu){% endif %}</strong></span>
+        </div>
+        <span class="tp-status-sep">|</span>
+        <div class="tp-status-item">
+            <span>Chain ID: <strong>{{ chain_id }}</strong>
+                {% if chain_id == 31337 %}<span style="color:#f59e0b;font-size:11px;"> (Local Hardhat)</span>
+                {% elif chain_id == 97 %}<span style="color:#3b82f6;font-size:11px;"> (BSC Testnet)</span>
+                {% elif chain_id == 56 %}<span style="color:#22c55e;font-size:11px;"> (BSC Mainnet)</span>{% endif %}
+            </span>
+        </div>
+        <span class="tp-status-sep">|</span>
+        <div class="tp-status-item">
+            <span>Token: <code style="font-size:12px;">{{ token_address[:12] if token_address else 'Yapılandırılmamış' }}...</code></span>
+        </div>
+        {% if user_org %}
+        <span class="tp-status-sep">|</span>
+        <div class="tp-status-item">
+            <span>Org: <strong>{{ user_org.name }}</strong> — <span style="color:#6366f1">{{ user_org.plan_name | capitalize }}</span></span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Steps Guide -->
+    <div class="tp-steps">
+        <div class="tp-step">
+            <div class="tp-step-num">1</div>
+            <div class="tp-step-text">
+                <strong>Plan Seç</strong>
+                <span>Aylık/yıllık abonelik planını seçin</span>
+            </div>
+        </div>
+        <div class="tp-step">
+            <div class="tp-step-num">2</div>
+            <div class="tp-step-text">
+                <strong>Token Gönder</strong>
+                <span>MetaMask ile ödeme adresine EMARE gönderin</span>
+            </div>
+        </div>
+        <div class="tp-step">
+            <div class="tp-step-num">3</div>
+            <div class="tp-step-text">
+                <strong>Hash Doğrula</strong>
+                <span>TX hash'ini bu sayfaya girerek aboneliği aktifleştirin</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Cards -->
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Plan Seç</h3>
+    <div class="tp-plans-grid">
+            {% for plan in plans %}
+        {% if plan.name != 'community' %}
+        <div class="tp-plan-card" data-plan="{{ plan.name }}" id="plan-{{ plan.name }}">
+            {% if plan.name == 'enterprise' %}<div class="tp-plan-badge">Popüler</div>{% endif %}
+            {% if plan.name == 'reseller' %}<div class="tp-plan-badge">Bayi</div>{% endif %}
+            <div class="tp-plan-name">{{ plan.display_name }}</div>
+            <div class="tp-plan-price"><span id="price-{{ plan.name }}">{{ plan.price_token_monthly | int }}</span> <span>EMARE/ay</span></div>
+            <div class="tp-plan-usd">≈ ${{ plan.price_monthly }}/ay</div>
+            <ul class="tp-plan-features">
+                <li>{{ plan.max_servers }} sunucu</li>
+                <li>{{ plan.max_users }} kullanıcı</li>
+                <li>{{ plan.max_storage_gb }} GB depolama</li>
+                {% for f in plan.features %}
+                <li>{{ f }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Payment Form -->
+    <div class="tp-form-card">
+        <h3>💳 Ödeme Bilgileri</h3>
+
+        <!-- Payment Address -->
+        {% if payment_address %}
+        <div style="margin-bottom:20px;">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">
+                💰 EMARE Token Ödeme Adresi
+            </label>
+            <div class="tp-addr">
+                <span id="payment-addr">{{ payment_address }}</span>
+                <button class="tp-addr-copy" onclick="copyAddress()" title="Kopyala">📋</button>
+            </div>
+            <p style="font-size:12px;color:var(--text-secondary);margin:6px 0 0;">
+                ⚠️ Sadece EMARE Token gönderin — bu adrese başka token/coin göndermeyin
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="tp-form-row">
+            <div class="tp-form-group">
+                <label>Fatura Döngüsü</label>
+                <select id="billing-cycle" onchange="updateSummary()">
+                    <option value="monthly">Aylık</option>
+                    <option value="yearly">Yıllık (%17 indirim)</option>
+                </select>
+            </div>
+            <div class="tp-form-group">
+                <label>Seçili Plan</label>
+                <select id="plan-select" onchange="onPlanSelectChange()">
+                    <option value="">Plan seçin...</option>
+                    {% for plan in plans %}
+                    {% if plan.name != 'community' %}
+                    <option value="{{ plan.name }}"
+                            data-monthly="{{ plan.price_token_monthly }}"
+                            data-yearly="{{ plan.price_token_yearly }}"
+                            data-display="{{ plan.display_name }}">
+                        {{ plan.display_name }}
+                    </option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="tp-form-group" style="margin-bottom:16px;">
+            <label>Cüzdan Adresiniz (Gönderici)</label>
+            <input type="text" id="wallet-address" placeholder="0x..." />
+            <p class="tp-form-hint">EMARE'yi gönderdiğiniz MetaMask/cüzdan adresi</p>
+        </div>
+
+        <div class="tp-form-group" style="margin-bottom:20px;">
+            <label>İşlem Hash'i (TX Hash)</label>
+            <input type="text" id="tx-hash" placeholder="0x..." />
+            <p class="tp-form-hint">Token transferini yaptıktan sonra blockchain explorer'dan kopyalayın</p>
+        </div>
+
+        <!-- Summary -->
+        <div class="tp-summary" id="payment-summary" style="display:none;">
+            <div class="tp-summary-row"><span>Plan</span><span id="sum-plan">—</span></div>
+            <div class="tp-summary-row"><span>Döngü</span><span id="sum-cycle">—</span></div>
+            <div class="tp-summary-row"><span>Süre</span><span id="sum-duration">—</span></div>
+            <div class="tp-summary-row total"><span>Toplam</span><span id="sum-total">— EMARE</span></div>
+        </div>
+
+        <button class="tp-btn-primary" id="pay-btn" onclick="submitPayment()" disabled>
+            <span>💎</span>
+            <span id="pay-btn-text">Plan ve TX Hash Girin</span>
+        </button>
+    </div>
+
+    <!-- Dev Mode Info -->
+    {% if not blockchain_enabled %}
+    <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:16px 20px;font-size:13px;color:var(--text-secondary);">
+        ⚡ <strong>Test Modu:</strong> Blockchain doğrulaması kapalı. Herhangi bir TX hash ile ödeme kabul edilecek.
+        Prodüksiyon için <code>.env</code> dosyasında <code>BLOCKCHAIN_ENABLED=true</code> yapın.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── State ────────────────────────────────────────────────
+const rootEl = document.getElementById('token-payment-root');
+const CSRF_TOKEN = (rootEl?.dataset?.csrfToken || '').trim();
+const PAYMENT_ADDRESS = (rootEl?.dataset?.paymentAddress || '').trim();
+const USER_ORG_ID = Number.parseInt(rootEl?.dataset?.userOrgId || '', 10) || null;
+const PLANS = {};
+
+let selectedPlan = null;
+let selectedAmount = 0;
+
+// ─── Select plan from card or dropdown ────────────────────
+function selectPlan(name) {
+    selectedPlan = name;
+
+    // Highlight card
+    document.querySelectorAll('.tp-plan-card').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById('plan-' + name);
+    if (card) card.classList.add('selected');
+
+    // Sync dropdown
+    const sel = document.getElementById('plan-select');
+    sel.value = name;
+
+    updateSummary();
+}
+
+function onPlanSelectChange() {
+    const sel = document.getElementById('plan-select');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt.value) { selectedPlan = null; updateSummary(); return; }
+    selectPlan(opt.value);
+}
+
+function updateSummary() {
+    const cycle = document.getElementById('billing-cycle').value;
+    if (!selectedPlan || !PLANS[selectedPlan]) {
+        document.getElementById('payment-summary').style.display = 'none';
+        document.getElementById('pay-btn').disabled = true;
+        document.getElementById('pay-btn-text').textContent = 'Plan ve TX Hash Girin';
+        return;
+    }
+
+    const plan = PLANS[selectedPlan];
+    selectedAmount = cycle === 'yearly' ? plan.yearly : plan.monthly;
+
+    // Update card prices based on cycle
+    Object.keys(PLANS).forEach(k => {
+        const el = document.getElementById('price-' + k);
+        if (el && el.nextElementSibling) {
+            if (cycle === 'yearly') {
+                el.textContent = Math.round(PLANS[k].yearly / 12);
+                el.nextElementSibling.textContent = ' EMARE/ay (yıllık)';
+            } else {
+                el.textContent = PLANS[k].monthly;
+                el.nextElementSibling.textContent = ' EMARE/ay';
+            }
+        }
+    });
+
+    document.getElementById('sum-plan').textContent = plan.display;
+    document.getElementById('sum-cycle').textContent = cycle === 'yearly' ? 'Yıllık' : 'Aylık';
+    document.getElementById('sum-duration').textContent = cycle === 'yearly' ? '12 ay' : '30 gün';
+    document.getElementById('sum-total').textContent = selectedAmount.toLocaleString() + ' EMARE';
+    document.getElementById('payment-summary').style.display = 'block';
+
+    validateForm();
+}
+
+function validateForm() {
+    const txHash = document.getElementById('tx-hash').value.trim();
+    const wallet = document.getElementById('wallet-address').value.trim();
+    const btn = document.getElementById('pay-btn');
+    const btnText = document.getElementById('pay-btn-text');
+
+    if (selectedPlan && selectedAmount > 0 && txHash.startsWith('0x') && txHash.length >= 10 && wallet.startsWith('0x')) {
+        btn.disabled = false;
+        btnText.textContent = `✅ ${selectedAmount.toLocaleString()} EMARE Ödemesini Doğrula`;
+    } else {
+        btn.disabled = true;
+        btnText.textContent = 'Plan ve TX Hash Girin';
+    }
+}
+
+// Live validate
+document.addEventListener('DOMContentLoaded', () => {
+    const planSelect = document.getElementById('plan-select');
+    if (planSelect) {
+        Array.from(planSelect.options).forEach(opt => {
+            if (!opt.value) return;
+            PLANS[opt.value] = {
+                display: (opt.dataset.display || opt.textContent || '').trim(),
+                monthly: Number.parseFloat(opt.dataset.monthly || '0') || 0,
+                yearly: Number.parseFloat(opt.dataset.yearly || '0') || 0,
+            };
+        });
+    }
+
+    document.querySelectorAll('.tp-plan-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const planName = card.dataset.plan;
+            if (planName) selectPlan(planName);
+        });
+    });
+
+    document.getElementById('tx-hash').addEventListener('input', validateForm);
+    document.getElementById('wallet-address').addEventListener('input', validateForm);
+    document.getElementById('billing-cycle').addEventListener('change', updateSummary);
+});
+
+// ─── Submit ───────────────────────────────────────────────
+async function submitPayment() {
+    const orgId = USER_ORG_ID;
+    if (!orgId) {
+        showToast('error', '⚠️ Organizasyon bulunamadı. Lütfen bir organizasyona dahil olun.');
+        return;
+    }
+
+    const txHash = document.getElementById('tx-hash').value.trim();
+    const wallet = document.getElementById('wallet-address').value.trim();
+    const cycle = document.getElementById('billing-cycle').value;
+
+    const btn = document.getElementById('pay-btn');
+    const btnText = document.getElementById('pay-btn-text');
+    btn.disabled = true;
+    btnText.textContent = '⏳ Doğrulanıyor...';
+
+    try {
+        const resp = await fetch(`/api/organizations/${orgId}/subscription/token-pay`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({
+                tx_hash: txHash,
+                plan_name: selectedPlan,
+                billing_cycle: cycle,
+                wallet_address: wallet,
+            }),
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('success', data.message);
+            btnText.textContent = '✅ Aktif!';
+            setTimeout(() => { window.location.href = '/'; }, 2500);
+        } else {
+            showToast('error', data.message || 'Ödeme doğrulanamadı');
+            btn.disabled = false;
+            btnText.textContent = `✅ ${selectedAmount.toLocaleString()} EMARE Ödemesini Doğrula`;
+        }
+    } catch (e) {
+        showToast('error', 'Sunucu bağlantı hatası: ' + e.message);
+        btn.disabled = false;
+        btnText.textContent = `✅ ${selectedAmount.toLocaleString()} EMARE Ödemesini Doğrula`;
+    }
+}
+
+// ─── Utils ────────────────────────────────────────────────
+function copyAddress() {
+    const addr = document.getElementById('payment-addr').textContent;
+    navigator.clipboard.writeText(addr).then(() => showToast('success', '✅ Adres kopyalandı!'));
+}
+
+function showToast(type, msg) {
+    const existing = document.querySelector('.tp-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `tp-toast ${type}`;
+    toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${msg}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+</script>
+{% endblock %}

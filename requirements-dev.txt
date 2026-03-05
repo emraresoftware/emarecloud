@@ -1,0 +1,12 @@
+# EmareCloud — Geliştirme Bağımlılıkları
+# pip install -r requirements-dev.txt
+
+# Proje bağımlılıkları
+-r requirements.txt
+
+# Test
+pytest>=8.0
+pytest-cov>=5.0
+
+# Lint & Format
+ruff>=0.4

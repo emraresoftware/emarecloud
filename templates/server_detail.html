@@ -1,0 +1,824 @@
+{% extends "base.html" %}
+{% block title %}{{ server.name }} - Sunucu Yönetimi{% endblock %}
+{% block page_title %}{{ server.name }}{% endblock %}
+
+{% block content %}
+<!-- Sunucu Başlık -->
+<div class="server-header-bar">
+    <div class="server-header-info">
+        <div class="server-status-badge {{ 'online' if server.reachable else 'offline' }}">
+            <i class="fas fa-circle"></i>
+            {{ 'Çevrimiçi' if server.reachable else 'Çevrimdışı' }}
+        </div>
+        <span class="server-ip">{{ server.host }}:{{ server.port }}</span>
+        <span class="server-latency">{{ server.latency }} ms</span>
+    </div>
+    <div class="server-header-actions">
+        {% if server.connected %}
+        <button class="btn btn-danger btn-sm" onclick="disconnectServer('{{ server.id }}')">
+            <i class="fas fa-unlink"></i> Bağlantıyı Kes
+        </button>
+        {% else %}
+        <button class="btn btn-primary btn-sm" onclick="connectAndRefresh('{{ server.id }}')"
+                {{ 'disabled' if not server.reachable }}>
+            <i class="fas fa-plug"></i> Bağlan
+        </button>
+        {% endif %}
+        <a href="/terminal/{{ server.id }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-terminal"></i> Terminal
+        </a>
+        <button class="btn btn-secondary btn-sm" onclick="refreshMetrics('{{ server.id }}')">
+            <i class="fas fa-sync-alt"></i> Yenile
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="openEditServerModal()">
+            <i class="fas fa-cog"></i> Sunucuyu düzenle
+        </button>
+    </div>
+</div>
+
+{% if server.role or server.location or server.installed_at or server.responsible or server.os_planned %}
+<div class="section" style="margin-bottom:1rem;">
+    <div class="section-header">
+        <h3><i class="fas fa-tools"></i> Kurulum / Bizim ayarlar</h3>
+    </div>
+    <div class="info-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:0.75rem;">
+        {% if server.role %}<div class="info-item"><span>Rol</span><strong>{{ server.role }}</strong></div>{% endif %}
+        {% if server.location %}<div class="info-item"><span>Lokasyon</span><strong>{{ server.location }}</strong></div>{% endif %}
+        {% if server.installed_at %}<div class="info-item"><span>Kurulum tarihi</span><strong>{{ server.installed_at }}</strong></div>{% endif %}
+        {% if server.responsible %}<div class="info-item"><span>Sorumlu</span><strong>{{ server.responsible }}</strong></div>{% endif %}
+        {% if server.os_planned %}<div class="info-item"><span>Hedef / Not</span><strong>{{ server.os_planned }}</strong></div>{% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if metrics %}
+<!-- Sistem Bilgileri -->
+<div class="info-grid">
+    <div class="info-card">
+        <h4><i class="fas fa-info-circle"></i> Sistem</h4>
+        <div class="info-list">
+            {% if metrics.system.hostname %}
+            <div class="info-item"><span>Hostname</span><strong>{{ metrics.system.hostname }}</strong></div>
+            {% endif %}
+            {% if metrics.system.os %}
+            <div class="info-item"><span>İşletim Sistemi</span><strong>{{ metrics.system.os }}</strong></div>
+            {% endif %}
+            {% if metrics.system.kernel %}
+            <div class="info-item"><span>Kernel</span><strong>{{ metrics.system.kernel }}</strong></div>
+            {% endif %}
+            {% if metrics.system.uptime %}
+            <div class="info-item"><span>Uptime</span><strong>{{ metrics.system.uptime }}</strong></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Metrik Kartları -->
+<div class="metrics-grid">
+    <!-- CPU -->
+    <div class="metric-card">
+        <div class="metric-header">
+            <h4><i class="fas fa-microchip"></i> CPU</h4>
+            <span class="metric-value {{ 'danger' if metrics.cpu.get('usage_percent', 0) > 90 else 'warning' if metrics.cpu.get('usage_percent', 0) > 70 else 'success' }}">
+                {{ metrics.cpu.get('usage_percent', 0) }}%
+            </span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill {{ 'danger' if metrics.cpu.get('usage_percent', 0) > 90 else 'warning' if metrics.cpu.get('usage_percent', 0) > 70 else 'success' }}"
+                 style="width: {{ metrics.cpu.get('usage_percent', 0) }}%"></div>
+        </div>
+        <div class="metric-details">
+            {% if metrics.cpu.model %}
+            <small>{{ metrics.cpu.model }}</small>
+            {% endif %}
+            {% if metrics.cpu.cores %}
+            <small>{{ metrics.cpu.cores }} Çekirdek</small>
+            {% endif %}
+            {% if metrics.cpu.load_1m is defined %}
+            <small>Yük: {{ metrics.cpu.load_1m }} / {{ metrics.cpu.load_5m }} / {{ metrics.cpu.load_15m }}</small>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RAM -->
+    <div class="metric-card">
+        <div class="metric-header">
+            <h4><i class="fas fa-memory"></i> RAM</h4>
+            <span class="metric-value {{ 'danger' if metrics.memory.get('usage_percent', 0) > 90 else 'warning' if metrics.memory.get('usage_percent', 0) > 70 else 'success' }}">
+                {{ metrics.memory.get('usage_percent', 0) }}%
+            </span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill {{ 'danger' if metrics.memory.get('usage_percent', 0) > 90 else 'warning' if metrics.memory.get('usage_percent', 0) > 70 else 'success' }}"
+                 style="width: {{ metrics.memory.get('usage_percent', 0) }}%"></div>
+        </div>
+        <div class="metric-details">
+            <small>{{ metrics.memory.get('used_hr', '?') }} / {{ metrics.memory.get('total_hr', '?') }}</small>
+            {% if metrics.memory.swap_total is defined %}
+            <small>Swap: {{ metrics.memory.get('swap_used_hr', '?') }} / {{ metrics.memory.get('swap_total_hr', '?') }}</small>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Diskler -->
+    {% for disk in metrics.disks %}
+    <div class="metric-card">
+        <div class="metric-header">
+            <h4><i class="fas fa-hdd"></i> {{ disk.mount }}</h4>
+            <span class="metric-value {{ 'danger' if disk.usage_percent > 90 else 'warning' if disk.usage_percent > 70 else 'success' }}">
+                {{ disk.usage_percent }}%
+            </span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill {{ 'danger' if disk.usage_percent > 90 else 'warning' if disk.usage_percent > 70 else 'success' }}"
+                 style="width: {{ disk.usage_percent }}%"></div>
+        </div>
+        <div class="metric-details">
+            <small>{{ disk.used_hr }} / {{ disk.total_hr }}</small>
+            <small>Boş: {{ disk.available_hr }}</small>
+            <small>{{ disk.device }}</small>
+            {% if disk.health %}<small><span class="badge {{ 'success' if disk.health == 'PASSED' else 'danger' if disk.health == 'FAILED' else '' }}">{{ disk.health }}</span></small>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Ağ Bilgileri -->
+{% if metrics.network %}
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-network-wired"></i> Ağ</h3>
+    </div>
+    <div class="info-grid">
+        {% if metrics.network.interfaces %}
+        <div class="info-card">
+            <h4>Arayüzler</h4>
+            <div class="info-list">
+                {% for iface in metrics.network.interfaces %}
+                <div class="info-item">
+                    <span>{{ iface.name }}</span>
+                    <strong>{{ iface.ip }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if metrics.network.traffic %}
+        <div class="info-card">
+            <h4>Trafik</h4>
+            <div class="info-list">
+                {% for t in metrics.network.traffic %}
+                <div class="info-item">
+                    <span>{{ t.interface }}</span>
+                    <strong>↓ {{ t.rx_hr }} / ↑ {{ t.tx_hr }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="info-card">
+            <h4>Bağlantılar</h4>
+            <div class="info-list">
+                <div class="info-item">
+                    <span>Aktif Bağlantı</span>
+                    <strong>{{ metrics.network.get('active_connections', 0) }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Süreçler -->
+{% if metrics.processes %}
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-cogs"></i> Süreçler (En Çok CPU)</h3>
+    </div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Kullanıcı</th>
+                    <th>CPU %</th>
+                    <th>RAM %</th>
+                    <th>Komut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proc in metrics.processes %}
+                <tr>
+                    <td>{{ proc.pid }}</td>
+                    <td>{{ proc.user }}</td>
+                    <td><span class="badge {{ 'danger' if proc.cpu > 50 else 'warning' if proc.cpu > 20 else 'success' }}">{{ proc.cpu }}%</span></td>
+                    <td><span class="badge {{ 'danger' if proc.mem > 50 else 'warning' if proc.mem > 20 else 'success' }}">{{ proc.mem }}%</span></td>
+                    <td class="mono">{{ proc.command }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Servisler -->
+{% if metrics.services %}
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-puzzle-piece"></i> Servisler</h3>
+    </div>
+    <div class="service-grid">
+        {% for svc in metrics.services %}
+        <div class="service-item {{ svc.status }}">
+            <i class="fas fa-{{ 'check-circle' if svc.status == 'active' else 'times-circle' if svc.status == 'failed' else 'pause-circle' }}"></i>
+            <span class="service-name">{{ svc.name }}</span>
+            <span class="service-status">{{ svc.status }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Hızlı Eylemler -->
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-bolt"></i> Hızlı Eylemler</h3>
+    </div>
+    <div class="quick-actions">
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'check_updates')">
+            <i class="fas fa-search"></i> Güncelleme Kontrol
+        </button>
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'update')">
+            <i class="fas fa-download"></i> Güncelle
+        </button>
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'clear_cache')">
+            <i class="fas fa-broom"></i> Önbellek Temizle
+        </button>
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'disk_cleanup')">
+            <i class="fas fa-trash-alt"></i> Disk Temizliği
+        </button>
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'restart_nginx')">
+            <i class="fas fa-redo"></i> Nginx Yeniden Başlat
+        </button>
+        <button class="btn btn-action" onclick="quickAction('{{ server.id }}', 'restart_docker')">
+            <i class="fab fa-docker"></i> Docker Yeniden Başlat
+        </button>
+        <button class="btn btn-action warning" onclick="if(confirm('Sunucu yeniden başlatılacak. Emin misiniz?')) quickAction('{{ server.id }}', 'reboot')">
+            <i class="fas fa-power-off"></i> Yeniden Başlat
+        </button>
+        <button class="btn btn-action danger" onclick="if(confirm('⚠️ Sunucu kapatılacak! Emin misiniz?')) quickAction('{{ server.id }}', 'shutdown')">
+            <i class="fas fa-stop-circle"></i> Kapat
+        </button>
+    </div>
+</div>
+
+<!-- Eylem Sonuçları -->
+<div class="section" id="actionResult" style="display: none;">
+    <div class="section-header">
+        <h3><i class="fas fa-terminal"></i> Eylem Sonucu</h3>
+        <button class="btn btn-sm btn-secondary" onclick="document.getElementById('actionResult').style.display='none'">Kapat</button>
+    </div>
+    <pre class="output-box" id="actionOutput"></pre>
+</div>
+
+{% else %}
+<!-- Bağlı Değil -->
+<div class="empty-state">
+    <i class="fas fa-plug"></i>
+    <h3>Sunucuya bağlı değilsiniz</h3>
+    <p>Metrikleri görüntülemek için önce sunucuya bağlanın</p>
+    {% if server.reachable %}
+    <button class="btn btn-primary" onclick="connectAndRefresh('{{ server.id }}')">
+        <i class="fas fa-plug"></i> Bağlan
+    </button>
+    {% else %}
+    <p class="text-danger">⚠️ Sunucu erişilebilir değil</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Güvenlik Duvarı (her zaman görünür) -->
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-shield-alt"></i> Güvenlik Duvarı</h3>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="firewallLoadStatus('{{ server.id }}')">
+            <i class="fas fa-sync-alt"></i> Durumu Getir
+        </button>
+    </div>
+    <div id="firewallStatusBox">
+        <p class="text-muted" id="firewallStatusText">Güvenlik duvarı (UFW/firewalld) yönetimi. Önce sunucuya <strong>Bağlan</strong> deyin, sonra burada &quot;Durumu Getir&quot;e tıklayın.</p>
+    </div>
+    <div id="firewallContent" style="display: none;">
+        <div class="firewall-toolbar">
+            <span class="badge" id="firewallActiveBadge">-</span>
+            <span class="firewall-type" id="firewallType"></span>
+            <button type="button" class="btn btn-sm btn-success" id="fwBtnEnable" onclick="firewallEnable('{{ server.id }}')">Etkinleştir</button>
+            <button type="button" class="btn btn-sm btn-danger" id="fwBtnDisable" onclick="firewallDisable('{{ server.id }}')">Devre Dışı Bırak</button>
+        </div>
+        <h4 style="margin-top: 1rem; font-size: 0.9rem;">Kurallar</h4>
+        <div class="table-container">
+            <table class="data-table" id="firewallRulesTable">
+                <thead><tr><th>#</th><th>Kural</th><th></th></tr></thead>
+                <tbody id="firewallRulesBody"></tbody>
+            </table>
+        </div>
+        <div class="firewall-add">
+            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Kural Ekle</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Port / Servis</label>
+                    <input type="text" id="fwPort" placeholder="22 veya 80/tcp" style="width: 120px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Protokol</label>
+                    <select id="fwProtocol" style="width: 90px; padding: 0.5rem;">
+                        <option value="tcp">TCP</option>
+                        <option value="udp">UDP</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>İzin</label>
+                    <select id="fwAction" style="width: 90px; padding: 0.5rem;">
+                        <option value="allow">İzin Ver</option>
+                        <option value="deny">Engelle</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Kaynak IP (opsiyonel)</label>
+                    <input type="text" id="fwFromIp" placeholder="boş = tümü" style="width: 130px;">
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="firewallAddRule('{{ server.id }}')"><i class="fas fa-plus"></i> Ekle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sanal Makineler (LXD) - her zaman görünür -->
+<div class="section">
+    <div class="section-header">
+        <h3><i class="fas fa-cubes"></i> Sanal Makineler</h3>
+        <div>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="vmsLoadList('{{ server.id }}')">
+                <i class="fas fa-sync-alt"></i> Listeyi Getir
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="openVmCreateModal('{{ server.id }}')">
+                <i class="fas fa-plus"></i> Yeni Sanal Makine
+            </button>
+        </div>
+    </div>
+    <div id="vmsStatusBox">
+        <p class="text-muted" id="vmsStatusText">Ana sunucuda LXD ile sanal makineler (container) oluşturabilirsiniz. Önce sunucuya <strong>Bağlan</strong> deyin, Uygulama Pazarından <strong>LXD</strong> kurun, sonra &quot;Listeyi Getir&quot;e tıklayın.</p>
+    </div>
+    <div id="vmsContent" style="display: none;">
+        <div class="table-container">
+            <table class="data-table">
+                <thead><tr><th>Ad</th><th>Durum</th><th>IP</th><th>İşlem</th></tr></thead>
+                <tbody id="vmsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Container'da komut çalıştır modal -->
+<div class="modal-overlay" id="vmExecModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-terminal"></i> Komut çalıştır: <span id="vmExecName"></span></h3>
+            <button type="button" class="modal-close" onclick="closeVmExecModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Komut</label>
+                <input type="text" id="vmExecCommand" placeholder="örn: apt update && apt list --upgradable" style="width:100%;">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="vmExecSubmit()"><i class="fas fa-play"></i> Çalıştır</button>
+            <pre class="output-box" id="vmExecOutput" style="margin-top:1rem; max-height:300px; display:none;"></pre>
+        </div>
+    </div>
+</div>
+
+<!-- Yeni Sanal Makine modal -->
+<div class="modal-overlay" id="vmCreateModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus-circle"></i> Yeni Sanal Makine</h3>
+            <button type="button" class="modal-close" onclick="closeVmCreateModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Container adı *</label>
+                <input type="text" id="vmName" placeholder="örn: web01, db02">
+            </div>
+            <div class="form-group">
+                <label>Image (işletim sistemi)</label>
+                <input type="text" id="vmImage" value="ubuntu:22.04" placeholder="ubuntu:22.04, debian:12">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>RAM</label>
+                    <input type="text" id="vmMemory" value="1GB" placeholder="1GB">
+                </div>
+                <div class="form-group">
+                    <label>CPU</label>
+                    <input type="text" id="vmCpu" value="1" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label>Disk</label>
+                    <input type="text" id="vmDisk" value="10GB" placeholder="10GB">
+                </div>
+            </div>
+            <div class="form-actions" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeVmCreateModal()">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="vmCreateSubmit()"><i class="fas fa-play"></i> Oluştur</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sunucu düzenle modal -->
+<div class="modal-overlay" id="editServerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-cog"></i> Sunucuyu düzenle</h3>
+            <button type="button" class="modal-close" onclick="closeEditServerModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editServerForm" onsubmit="saveEditServer(event)">
+                <input type="hidden" name="server_id" value="{{ server.id }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sunucu adı *</label>
+                        <input type="text" name="name" value="{{ server.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Grup</label>
+                        <input type="text" name="group" value="{{ server.group | default('Genel') }}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>IP / Hostname *</label>
+                        <input type="text" name="host" value="{{ server.host }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="number" name="port" value="{{ server.port | default(22) }}" min="1" max="65535">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kullanıcı adı *</label>
+                        <input type="text" name="username" value="{{ server.username }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Şifre <small class="text-muted">(değiştirmek için doldurun)</small></label>
+                        <input type="password" name="password" placeholder="Boş bırakırsanız değişmez">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <select name="role" class="form-select-edit">
+                            <option value="">— Seçin —</option>
+                            <option value="Web" {{ 'selected' if server.role == 'Web' else '' }}>Web</option>
+                            <option value="Veritabanı" {{ 'selected' if server.role == 'Veritabanı' else '' }}>Veritabanı</option>
+                            <option value="Cache" {{ 'selected' if server.role == 'Cache' else '' }}>Cache</option>
+                            <option value="Yedekleme" {{ 'selected' if server.role == 'Yedekleme' else '' }}>Yedekleme</option>
+                            <option value="Uygulama" {{ 'selected' if server.role == 'Uygulama' else '' }}>Uygulama</option>
+                            <option value="Genel" {{ 'selected' if server.role == 'Genel' else '' }}>Genel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lokasyon</label>
+                        <input type="text" name="location" value="{{ server.location | default('') }}" placeholder="Örn: İstanbul">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kurulum tarihi</label>
+                        <input type="date" name="installed_at" value="{{ server.installed_at | default('') }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Sorumlu</label>
+                        <input type="text" name="responsible" value="{{ server.responsible | default('') }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Hedef / Kurulum notu</label>
+                    <input type="text" name="os_planned" value="{{ server.os_planned | default('') }}">
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea name="description" rows="2">{{ server.description | default('') }}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditServerModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditServerModal() {
+    document.getElementById('editServerModal').classList.add('show');
+}
+function closeEditServerModal() {
+    document.getElementById('editServerModal').classList.remove('show');
+}
+function saveEditServer(event) {
+    event.preventDefault();
+    var form = document.getElementById('editServerForm');
+    var serverId = form.querySelector('input[name="server_id"]').value;
+    var data = {
+        name: form.querySelector('input[name="name"]').value.trim(),
+        host: form.querySelector('input[name="host"]').value.trim(),
+        port: parseInt(form.querySelector('input[name="port"]').value, 10) || 22,
+        username: form.querySelector('input[name="username"]').value.trim(),
+        group: form.querySelector('input[name="group"]').value.trim() || 'Genel',
+        description: form.querySelector('textarea[name="description"]').value.trim(),
+        role: form.querySelector('select[name="role"]').value,
+        location: form.querySelector('input[name="location"]').value.trim(),
+        installed_at: form.querySelector('input[name="installed_at"]').value.trim(),
+        responsible: form.querySelector('input[name="responsible"]').value.trim(),
+        os_planned: form.querySelector('input[name="os_planned"]').value.trim()
+    };
+    var pwd = form.querySelector('input[name="password"]').value;
+    if (pwd) data.password = pwd;
+    fetch('/api/servers/' + encodeURIComponent(serverId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) setTimeout(function() { location.reload(); }, 800);
+    })
+    .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function connectAndRefresh(serverId) {
+    showToast('Bağlanılıyor...', 'info');
+    fetch(`/api/servers/${serverId}/connect`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Bağlantı başarılı!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Bağlantı hatası', 'error'));
+}
+
+function refreshMetrics(serverId) {
+    showToast('Veriler yenileniyor...', 'info');
+    location.reload();
+}
+
+function quickAction(serverId, action) {
+    showToast('Eylem çalıştırılıyor...', 'info');
+    fetch(`/api/servers/${serverId}/quick-action`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: action})
+    })
+    .then(r => r.json())
+    .then(data => {
+        const resultDiv = document.getElementById('actionResult');
+        const outputPre = document.getElementById('actionOutput');
+        resultDiv.style.display = 'block';
+
+        let output = '';
+        if (data.stdout) output += data.stdout;
+        if (data.stderr) output += '\n' + data.stderr;
+        if (!output.trim()) output = data.success ? 'Eylem başarıyla tamamlandı.' : 'Eylem başarısız.';
+
+        outputPre.textContent = output;
+        showToast(data.success ? 'Eylem tamamlandı' : 'Eylem başarısız', data.success ? 'success' : 'error');
+        resultDiv.scrollIntoView({behavior: 'smooth'});
+    })
+    .catch(err => showToast('Hata: ' + err, 'error'));
+}
+
+function firewallLoadStatus(serverId) {
+    document.getElementById('firewallStatusText').textContent = 'Yükleniyor...';
+    fetch(`/api/servers/${serverId}/firewall/status`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                document.getElementById('firewallStatusText').textContent = data.message || 'Yüklenemedi';
+                document.getElementById('firewallContent').style.display = 'none';
+                return;
+            }
+            const fw = data.firewall;
+            document.getElementById('firewallStatusText').textContent = '';
+            document.getElementById('firewallContent').style.display = 'block';
+            document.getElementById('firewallType').textContent = fw.type ? (fw.type.toUpperCase() + ' • Varsayılan gelen: ' + fw.default_incoming) : '-';
+            const badge = document.getElementById('firewallActiveBadge');
+            badge.textContent = fw.active ? 'Aktif' : 'Kapalı';
+            badge.className = 'badge ' + (fw.active ? 'success' : 'warning');
+            const tbody = document.getElementById('firewallRulesBody');
+            tbody.innerHTML = '';
+            (fw.rules || []).forEach(function(r) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + r.index + '</td><td class="mono">' + escapeHtml(r.rule) + '</td><td><button type="button" class="btn btn-sm btn-secondary" onclick="firewallDeleteRule(\'' + serverId + '\', ' + r.index + ')">Sil</button></td>';
+                tbody.appendChild(tr);
+            });
+            if (!fw.rules || fw.rules.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">Kural yok</td></tr>';
+            }
+        })
+        .catch(err => {
+            document.getElementById('firewallStatusText').textContent = 'Hata: ' + err.message;
+            document.getElementById('firewallContent').style.display = 'none';
+        });
+}
+function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function firewallEnable(serverId) {
+    showToast('Etkinleştiriliyor...', 'info');
+    fetch(`/api/servers/${serverId}/firewall/enable`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) firewallLoadStatus(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function firewallDisable(serverId) {
+    if (!confirm('Güvenlik duvarını kapatmak sunucuyu daha savunmasız bırakır. Devam?')) return;
+    showToast('Kapatılıyor...', 'info');
+    fetch(`/api/servers/${serverId}/firewall/disable`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) firewallLoadStatus(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function firewallAddRule(serverId) {
+    const port = document.getElementById('fwPort').value.trim();
+    if (!port) { showToast('Port veya servis girin', 'warning'); return; }
+    showToast('Kural ekleniyor...', 'info');
+    fetch(`/api/servers/${serverId}/firewall/rules`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            port: port,
+            protocol: document.getElementById('fwProtocol').value,
+            action: document.getElementById('fwAction').value,
+            from_ip: document.getElementById('fwFromIp').value.trim()
+        })
+    })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) { document.getElementById('fwPort').value = ''; firewallLoadStatus(serverId); } })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function firewallDeleteRule(serverId, ruleIndex) {
+    if (!confirm('Bu kuralı silmek istediğinize emin misiniz?')) return;
+    fetch(`/api/servers/${serverId}/firewall/rules/${ruleIndex}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) firewallLoadStatus(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+
+var vmsCurrentServerId = '';
+function vmsLoadList(serverId) {
+    vmsCurrentServerId = serverId;
+    document.getElementById('vmsStatusText').textContent = 'Yükleniyor...';
+    fetch(`/api/servers/${serverId}/vms`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                document.getElementById('vmsStatusText').textContent = data.message || 'Yüklenemedi';
+                document.getElementById('vmsContent').style.display = 'none';
+                return;
+            }
+            const vms = data.vms;
+            if (!vms.available) {
+                document.getElementById('vmsStatusText').textContent = vms.message || 'LXD kurulu değil. Uygulama Pazarından LXD kurun.';
+                document.getElementById('vmsContent').style.display = 'none';
+                return;
+            }
+            document.getElementById('vmsStatusText').textContent = '';
+            document.getElementById('vmsContent').style.display = 'block';
+            const tbody = document.getElementById('vmsTableBody');
+            tbody.innerHTML = '';
+            const list = vms.containers || [];
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Henüz sanal makine yok. &quot;Yeni Sanal Makine&quot; ile oluşturun.</td></tr>';
+            } else {
+                list.forEach(function(vm) {
+                    const state = (vm.state || '').toUpperCase();
+                    const name = (vm.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="mono">' + escapeHtml(vm.name) + '</td><td><span class="badge ' + (state === 'RUNNING' ? 'success' : 'warning') + '">' + state + '</span></td><td class="mono">' + escapeHtml(vm.ipv4 || '-') + '</td><td>' +
+                        (state === 'RUNNING' ? '<button type="button" class="btn btn-sm btn-secondary btn-vm-stop" data-server-id="' + serverId + '" data-vm-name="' + name + '">Durdur</button> ' : '<button type="button" class="btn btn-sm btn-success btn-vm-start" data-server-id="' + serverId + '" data-vm-name="' + name + '">Başlat</button> ') +
+                        '<button type="button" class="btn btn-sm btn-action btn-vm-exec" data-server-id="' + serverId + '" data-vm-name="' + name + '" title="Container içinde komut çalıştır"><i class="fas fa-terminal"></i></button> ' +
+                        '<button type="button" class="btn btn-sm btn-danger btn-vm-delete" data-server-id="' + serverId + '" data-vm-name="' + name + '">Sil</button></td>';
+                    tbody.appendChild(tr);
+                });
+                    tbody.querySelectorAll('.btn-vm-start').forEach(function(btn){ btn.onclick = function(){ vmStart(btn.dataset.serverId, btn.dataset.vmName); }; });
+                    tbody.querySelectorAll('.btn-vm-stop').forEach(function(btn){ btn.onclick = function(){ vmStop(btn.dataset.serverId, btn.dataset.vmName); }; });
+                    tbody.querySelectorAll('.btn-vm-delete').forEach(function(btn){ btn.onclick = function(){ vmDelete(btn.dataset.serverId, btn.dataset.vmName); }; });
+                    tbody.querySelectorAll('.btn-vm-exec').forEach(function(btn){ btn.onclick = function(){ openVmExecModal(btn.dataset.serverId, btn.dataset.vmName); }; });
+            }
+        })
+        .catch(err => {
+            document.getElementById('vmsStatusText').textContent = 'Hata: ' + err.message;
+            document.getElementById('vmsContent').style.display = 'none';
+        });
+}
+function openVmCreateModal(serverId) {
+    vmsCurrentServerId = serverId;
+    document.getElementById('vmName').value = '';
+    document.getElementById('vmImage').value = 'ubuntu:22.04';
+    document.getElementById('vmMemory').value = '1GB';
+    document.getElementById('vmCpu').value = '1';
+    document.getElementById('vmDisk').value = '10GB';
+    document.getElementById('vmCreateModal').classList.add('show');
+}
+function closeVmCreateModal() {
+    document.getElementById('vmCreateModal').classList.remove('show');
+}
+function vmCreateSubmit() {
+    const serverId = vmsCurrentServerId;
+    const name = document.getElementById('vmName').value.trim();
+    if (!name) { showToast('Container adı girin', 'warning'); return; }
+    showToast('Oluşturuluyor...', 'info');
+    fetch(`/api/servers/${serverId}/vms`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            image: document.getElementById('vmImage').value.trim() || 'ubuntu:22.04',
+            memory: document.getElementById('vmMemory').value.trim() || '1GB',
+            cpu: document.getElementById('vmCpu').value.trim() || '1',
+            disk: document.getElementById('vmDisk').value.trim() || '10GB'
+        })
+    })
+        .then(r => r.json())
+        .then(data => {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) { closeVmCreateModal(); vmsLoadList(serverId); }
+        })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function vmStart(serverId, name) {
+    showToast('Başlatılıyor...', 'info');
+    fetch(`/api/servers/${serverId}/vms/${encodeURIComponent(name)}/start`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) vmsLoadList(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function vmStop(serverId, name) {
+    showToast('Durduruluyor...', 'info');
+    fetch(`/api/servers/${serverId}/vms/${encodeURIComponent(name)}/stop`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) vmsLoadList(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function vmDelete(serverId, name) {
+    if (!confirm('"' + name + '" sanal makinesi kalıcı olarak silinecek. Emin misiniz?')) return;
+    fetch(`/api/servers/${serverId}/vms/${encodeURIComponent(name)}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => { showToast(data.message, data.success ? 'success' : 'error'); if (data.success) vmsLoadList(serverId); })
+        .catch(err => showToast('Hata: ' + err.message, 'error'));
+}
+function openVmExecModal(serverId, vmName) {
+    vmsCurrentServerId = serverId;
+    window.vmExecVmName = vmName;
+    document.getElementById('vmExecName').textContent = vmName;
+    document.getElementById('vmExecCommand').value = '';
+    document.getElementById('vmExecOutput').style.display = 'none';
+    document.getElementById('vmExecOutput').textContent = '';
+    document.getElementById('vmExecModal').classList.add('show');
+}
+function closeVmExecModal() {
+    document.getElementById('vmExecModal').classList.remove('show');
+}
+function vmExecSubmit() {
+    const serverId = vmsCurrentServerId;
+    const name = window.vmExecVmName;
+    const cmd = document.getElementById('vmExecCommand').value.trim();
+    if (!cmd) { showToast('Komut girin', 'warning'); return; }
+    const outEl = document.getElementById('vmExecOutput');
+    outEl.style.display = 'block';
+    outEl.textContent = 'Çalıştırılıyor...';
+    fetch(`/api/servers/${serverId}/vms/${encodeURIComponent(name)}/exec`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ command: cmd })
+    })
+        .then(r => r.json())
+        .then(data => {
+            let t = '';
+            if (data.stdout) t += data.stdout;
+            if (data.stderr) t += (t ? '\n' : '') + data.stderr;
+            if (!t) t = data.success ? '(çıktı yok)' : 'Hata.';
+            outEl.textContent = t;
+        })
+        .catch(err => { outEl.textContent = 'Hata: ' + err.message; });
+}
+</script>
+{% endblock %}

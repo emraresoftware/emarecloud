@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Cross-Cloud AI Sync - EmareCloud{% endblock %}
+{% block page_title %}Cross-Cloud AI Sync & Failover{% endblock %}
+
+{% block head %}
+<style>
+.cc-container{max-width:1100px;margin:0 auto}
+.cc-hero{background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.cc-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.cc-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.cc-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.cc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.cc-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.cc-stat-val{font-size:28px;font-weight:800}
+.cc-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.cc-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.cc-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cc-cloud-map{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;padding:20px 0}
+.cc-cloud-node{text-align:center;padding:20px 24px;border-radius:16px;border:2px solid var(--border-color);min-width:150px;transition:.3s;cursor:pointer;position:relative}
+.cc-cloud-node:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.cc-cloud-node.primary{border-color:#0ea5e9;background:rgba(14,165,233,.04)}
+.cc-cloud-node.secondary{border-color:#6366f1;background:rgba(99,102,241,.04)}
+.cc-cloud-node.standby{border-color:#f59e0b;background:rgba(245,158,11,.04)}
+.cc-cloud-icon{font-size:32px;margin-bottom:8px}
+.cc-cloud-name{font-size:14px;font-weight:800}
+.cc-cloud-region{font-size:11px;color:var(--text-secondary)}
+.cc-cloud-tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;margin-top:6px}
+.cc-arrow{font-size:24px;color:var(--text-secondary);animation:cc-pulse 1.5s infinite}
+@keyframes cc-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.cc-sync-table{width:100%;border-collapse:collapse}
+.cc-sync-table th{text-align:left;padding:10px;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border-color)}
+.cc-sync-table td{padding:12px 10px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.03)}
+.cc-sync-status{padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700;display:inline-block}
+.cc-progress{height:6px;border-radius:3px;background:var(--border-color);overflow:hidden;width:120px}
+.cc-progress-fill{height:100%;border-radius:3px;transition:width .6s}
+.cc-failover{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cc-scenario{padding:18px;border-radius:14px;background:var(--bg-input);display:flex;gap:14px;align-items:flex-start;transition:.2s}
+.cc-scenario:hover{transform:translateX(4px)}
+.cc-scenario-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cc-scenario-name{font-size:13px;font-weight:700}
+.cc-scenario-desc{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.cc-scenario-time{font-size:11px;font-weight:700;margin-top:4px}
+.cc-test-btn{padding:10px 24px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .3s;display:flex;align-items:center;gap:8px;margin-top:16px}
+.cc-test-btn:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(14,165,233,.3)}
+@media(max-width:768px){.cc-failover{grid-template-columns:1fr}.cc-cloud-map{flex-direction:column;gap:16px}.cc-arrow{transform:rotate(90deg)}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cc-container">
+    <div class="cc-hero">
+        <div class="cc-hero-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+        <div>
+            <h2>Cross-Cloud AI Sync & Failover</h2>
+            <p>Çoklu bulut sağlayıcıları arasında gerçek zamanlı veri senkronizasyonu ve otomatik failover yönetimi.</p>
+        </div>
+    </div>
+
+    <div class="cc-stats">
+        <div class="cc-stat"><div class="cc-stat-val" style="color:#0ea5e9">3</div><div class="cc-stat-lbl">Aktif Cloud</div></div>
+        <div class="cc-stat"><div class="cc-stat-val" style="color:#22c55e">99.99%</div><div class="cc-stat-lbl">Global Uptime</div></div>
+        <div class="cc-stat"><div class="cc-stat-val" style="color:#6366f1">12ms</div><div class="cc-stat-lbl">Sync Latency</div></div>
+        <div class="cc-stat"><div class="cc-stat-val" style="color:#f59e0b">0</div><div class="cc-stat-lbl">Failover Olayı</div></div>
+    </div>
+
+    <div class="cc-card">
+        <h3><i class="fas fa-network-wired" style="color:#0ea5e9"></i> Cloud Topolojisi</h3>
+        <div class="cc-cloud-map">
+            <div class="cc-cloud-node primary">
+                <div class="cc-cloud-icon">🇹🇷</div>
+                <div class="cc-cloud-name">EmareCloud TR</div>
+                <div class="cc-cloud-region">İstanbul, Turkey</div>
+                <div class="cc-cloud-tag" style="background:#0ea5e922;color:#0ea5e9">Primary</div>
+            </div>
+            <div class="cc-arrow"><i class="fas fa-arrows-left-right"></i></div>
+            <div class="cc-cloud-node secondary">
+                <div class="cc-cloud-icon">🇩🇪</div>
+                <div class="cc-cloud-name">EmareCloud DE</div>
+                <div class="cc-cloud-region">Frankfurt, Germany</div>
+                <div class="cc-cloud-tag" style="background:#6366f122;color:#6366f1">Secondary</div>
+            </div>
+            <div class="cc-arrow"><i class="fas fa-arrows-left-right"></i></div>
+            <div class="cc-cloud-node standby">
+                <div class="cc-cloud-icon">🇺🇸</div>
+                <div class="cc-cloud-name">EmareCloud US</div>
+                <div class="cc-cloud-region">Virginia, USA</div>
+                <div class="cc-cloud-tag" style="background:#f59e0b22;color:#f59e0b">Standby</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cc-card">
+        <h3><i class="fas fa-rotate" style="color:#22c55e"></i> Senkronizasyon Durumu</h3>
+        <table class="cc-sync-table">
+            <thead><tr><th>Kaynak</th><th>Hedef</th><th>Veri Tipi</th><th>Durum</th><th>İlerleme</th><th>Son Sync</th></tr></thead>
+            <tbody id="ccSync"></tbody>
+        </table>
+    </div>
+
+    <div class="cc-card">
+        <h3><i class="fas fa-shield-halved" style="color:#ef4444"></i> Failover Senaryoları</h3>
+        <div class="cc-failover" id="ccFailover"></div>
+        <button class="cc-test-btn" onclick="testFailover()"><i class="fas fa-vial"></i> Failover Testi Başlat</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const syncs=[
+    {src:'TR Primary',dst:'DE Secondary',type:'Database',status:'Güncel',statusBg:'#22c55e',pct:100,last:'2 dk önce'},
+    {src:'TR Primary',dst:'US Standby',type:'Database',status:'Güncel',statusBg:'#22c55e',pct:100,last:'5 dk önce'},
+    {src:'TR Primary',dst:'DE Secondary',type:'Object Storage',status:'Senkronize',statusBg:'#0ea5e9',pct:87,last:'Devam ediyor'},
+    {src:'TR Primary',dst:'US Standby',type:'Object Storage',status:'Güncel',statusBg:'#22c55e',pct:100,last:'12 dk önce'},
+    {src:'TR Primary',dst:'DE Secondary',type:'Config & Secrets',status:'Güncel',statusBg:'#22c55e',pct:100,last:'1 dk önce'},
+    {src:'TR Primary',dst:'DE Secondary',type:'AI Model Weights',status:'Senkronize',statusBg:'#0ea5e9',pct:64,last:'Devam ediyor'}
+];
+const sc=document.getElementById('ccSync');
+sc.innerHTML=syncs.map(s=>'<tr><td style="font-weight:700">'+s.src+'</td><td>'+s.dst+'</td><td>'+s.type+'</td><td><span class="cc-sync-status" style="background:'+s.statusBg+'22;color:'+s.statusBg+'">'+s.status+'</span></td><td><div class="cc-progress"><div class="cc-progress-fill" style="width:'+s.pct+'%;background:'+s.statusBg+'"></div></div></td><td style="font-size:12px;color:var(--text-secondary)">'+s.last+'</td></tr>').join('');
+
+const scenarios=[
+    {icon:'⚡',bg:'rgba(239,68,68,.12)',name:'Network Partition',desc:'Primary sunucu ağ bağlantısını kaybederse Secondary otomatik devralır',time:'Failover: ~3s'},
+    {icon:'💾',bg:'rgba(245,158,11,.12)',name:'Disk Failure',desc:'Primary disk arızasında veri bütünlüğü korunarak Secondary aktifleşir',time:'Failover: ~5s'},
+    {icon:'🔥',bg:'rgba(239,68,68,.12)',name:'Full DC Outage',desc:'Data center tamamen çökerse en yakın bölge otomatik aktifleşir',time:'Failover: ~8s'},
+    {icon:'🐛',bg:'rgba(99,102,241,.12)',name:'Software Bug',desc:'Uygulama seviyesinde hata algılanırsa önceki stabil sürüme rollback',time:'Rollback: ~10s'},
+    {icon:'🌊',bg:'rgba(14,165,233,.12)',name:'Traffic Spike',desc:'Aşırı trafik yükünde otomatik load balancing + standby aktifleşme',time:'Scale: ~4s'},
+    {icon:'🔒',bg:'rgba(236,72,153,.12)',name:'Security Breach',desc:'Güvenlik ihlali algılanırsa izole et + temiz instance başlat',time:'İzolasyon: ~2s'}
+];
+const fc=document.getElementById('ccFailover');
+fc.innerHTML=scenarios.map(s=>'<div class="cc-scenario"><div class="cc-scenario-icon" style="background:'+s.bg+'">'+s.icon+'</div><div><div class="cc-scenario-name">'+s.name+'</div><div class="cc-scenario-desc">'+s.desc+'</div><div class="cc-scenario-time" style="color:#0ea5e9">'+s.time+'</div></div></div>').join('');
+
+function testFailover(){
+    const btn=event.target.closest('.cc-test-btn');
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Failover Testi Çalışıyor...';
+    btn.style.background='linear-gradient(135deg,#f59e0b,#ef4444)';
+    setTimeout(()=>{
+        btn.innerHTML='<i class="fas fa-check-circle"></i> Test Başarılı — Failover 3.2s';
+        btn.style.background='linear-gradient(135deg,#22c55e,#059669)';
+        setTimeout(()=>{
+            btn.innerHTML='<i class="fas fa-vial"></i> Failover Testi Başlat';
+            btn.style.background='linear-gradient(135deg,#0ea5e9,#6366f1)';
+        },3000);
+    },3000);
+}
+</script>
+{% endblock %}

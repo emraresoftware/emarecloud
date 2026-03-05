@@ -1,0 +1,784 @@
+{% extends "base.html" %}
+{% block title %}Cloudflare Yönetimi - EmareCloud{% endblock %}
+{% block page_title %}Cloudflare DNS & CDN Yönetimi{% endblock %}
+
+{% block head %}
+<style>
+.cf-container{max-width:1100px;margin:0 auto}
+.cf-hero{background:linear-gradient(135deg,rgba(249,115,22,.08),rgba(59,130,246,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.cf-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#f97316,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.cf-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.cf-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.cf-hero-actions{margin-left:auto;display:flex;gap:8px}
+.cf-hero-actions button{padding:8px 16px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px}
+.cf-hero-actions button:hover{transform:scale(1.02)}
+
+/* API Key Config */
+.cf-api-bar{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;margin-bottom:20px;flex-wrap:wrap}
+.cf-api-bar label{font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap}
+.cf-api-bar input{flex:1;min-width:200px;padding:8px 14px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);font-size:12px;font-family:'JetBrains Mono',monospace}
+.cf-api-bar .cf-conn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px}
+.cf-api-bar button{padding:8px 18px;background:linear-gradient(135deg,#f97316,#3b82f6);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s}
+.cf-api-bar button:hover{transform:scale(1.02)}
+
+/* Stats */
+.cf-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:24px}
+.cf-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.cf-stat-val{font-size:26px;font-weight:800}
+.cf-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.cf-stat-sub{font-size:11px;font-weight:700;margin-top:4px}
+
+/* Tabs */
+.cf-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+.cf-tab{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary)}
+.cf-tab:hover{border-color:var(--primary)}
+.cf-tab.active{background:linear-gradient(135deg,#f97316,#3b82f6);color:#fff;border-color:transparent}
+
+/* Card */
+.cf-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px;display:none}
+.cf-card.active{display:block}
+.cf-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+
+/* DNS Records */
+.cf-dns-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.cf-dns-toolbar input{padding:8px 14px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);font-size:12px;flex:1;min-width:150px}
+.cf-dns-toolbar select{padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);font-size:12px}
+.cf-add-btn{padding:8px 16px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s}
+.cf-add-btn:hover{transform:scale(1.02);background:#ea580c}
+
+.cf-table{width:100%;border-collapse:collapse}
+.cf-table th{text-align:left;padding:10px;font-size:11px;color:var(--text-secondary);border-bottom:1px solid var(--border-color);text-transform:uppercase;letter-spacing:.5px}
+.cf-table td{padding:12px 10px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.03)}
+.cf-table tr:hover{background:rgba(249,115,22,.02)}
+.cf-type{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;min-width:50px;text-align:center}
+.cf-type-A{background:#f9731622;color:#f97316}
+.cf-type-AAAA{background:#8b5cf622;color:#8b5cf6}
+.cf-type-CNAME{background:#3b82f622;color:#3b82f6}
+.cf-type-MX{background:#22c55e22;color:#22c55e}
+.cf-type-TXT{background:#94a3b822;color:#64748b}
+.cf-type-NS{background:#ec489922;color:#ec4899}
+.cf-type-SRV{background:#f59e0b22;color:#f59e0b}
+.cf-proxy{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+.cf-proxy:hover{opacity:.8}
+.cf-proxy.on{background:#f9731622;color:#f97316}
+.cf-proxy.off{background:var(--border-color);color:var(--text-secondary)}
+.cf-actions{display:flex;gap:6px}
+.cf-actions button{padding:5px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;transition:.2s}
+.cf-actions button:hover{transform:scale(1.05)}
+
+/* SSL */
+.cf-ssl-modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.cf-ssl-mode{padding:18px;border-radius:14px;border:2px solid var(--border-color);cursor:pointer;transition:.3s;text-align:center}
+.cf-ssl-mode:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.cf-ssl-mode.active{border-color:#22c55e;background:rgba(34,197,94,.04)}
+.cf-ssl-icon{font-size:28px;margin-bottom:8px}
+.cf-ssl-name{font-size:14px;font-weight:800}
+.cf-ssl-desc{font-size:11px;color:var(--text-secondary);margin-top:4px;line-height:1.4}
+.cf-ssl-tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;margin-top:8px}
+
+/* Cache */
+.cf-cache-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.cf-cache-item{padding:16px;border-radius:12px;background:var(--bg-input);display:flex;align-items:center;gap:14px}
+.cf-cache-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cf-cache-info{flex:1}
+.cf-cache-name{font-size:13px;font-weight:700}
+.cf-cache-desc{font-size:11px;color:var(--text-secondary)}
+.cf-toggle{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0}
+.cf-toggle input{display:none}
+.cf-toggle-s{position:absolute;inset:0;background:var(--border-color);border-radius:12px;transition:.3s}
+.cf-toggle-s::before{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.3s}
+.cf-toggle input:checked+.cf-toggle-s{background:#f97316}
+.cf-toggle input:checked+.cf-toggle-s::before{transform:translateX(20px)}
+
+/* Firewall */
+.cf-fw-rules{display:flex;flex-direction:column;gap:10px}
+.cf-fw-rule{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input);transition:.2s}
+.cf-fw-rule:hover{transform:translateX(4px)}
+.cf-fw-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.cf-fw-info{flex:1}
+.cf-fw-name{font-size:13px;font-weight:700}
+.cf-fw-expr{font-size:11px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.cf-fw-action{padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700}
+
+/* Analytics */
+.cf-analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cf-chart{height:160px;display:flex;align-items:flex-end;gap:4px;padding:10px 0}
+.cf-chart-bar{flex:1;border-radius:3px 3px 0 0;transition:height .3s;cursor:pointer;position:relative;min-width:8px}
+.cf-chart-bar:hover::after{content:attr(data-val);position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:var(--bg-card);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap;border:1px solid var(--border-color)}
+.cf-chart-labels{display:flex;gap:4px;margin-top:4px}
+.cf-chart-labels span{flex:1;text-align:center;font-size:9px;color:var(--text-secondary)}
+.cf-threats{display:flex;flex-direction:column;gap:8px}
+.cf-threat{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;background:var(--bg-input)}
+.cf-threat-country{font-size:18px}
+.cf-threat-info{flex:1}
+.cf-threat-name{font-size:12px;font-weight:700}
+.cf-threat-count{font-size:11px;color:var(--text-secondary)}
+.cf-threat-bar{height:4px;border-radius:2px;background:var(--border-color);overflow:hidden;width:60px}
+.cf-threat-fill{height:100%;border-radius:2px}
+
+/* Page Rules */
+.cf-rules{display:flex;flex-direction:column;gap:10px}
+.cf-rule{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.cf-rule-num{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.cf-rule-info{flex:1}
+.cf-rule-match{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.cf-rule-action{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+/* Modal */
+.cf-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9998;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.cf-modal-overlay.show{display:flex}
+.cf-modal{background:var(--bg-card);border-radius:20px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.cf-modal h3{margin:0 0 20px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.cf-modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-secondary);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.cf-modal-close:hover{background:var(--bg-input)}
+.cf-modal-form{display:flex;flex-direction:column;gap:12px}
+.cf-modal-form label{font-size:12px;font-weight:700;color:var(--text-secondary)}
+.cf-modal-form input,.cf-modal-form select{padding:10px 14px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-input);font-size:13px}
+.cf-modal-form input:focus,.cf-modal-form select:focus{border-color:#f97316;outline:none}
+.cf-modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cf-modal-submit{padding:12px;background:linear-gradient(135deg,#f97316,#3b82f6);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px;transition:.2s}
+.cf-modal-submit:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(249,115,22,.3)}
+
+/* Toast */
+.cf-toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;color:#fff;animation:cfFadeIn .3s}
+@keyframes cfFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:768px){.cf-analytics-grid{grid-template-columns:1fr}.cf-modal-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cf-container">
+    <!-- Hero -->
+    <div class="cf-hero">
+        <div class="cf-hero-icon"><i class="fas fa-cloud-bolt"></i></div>
+        <div>
+            <h2>Cloudflare DNS & CDN Yönetimi</h2>
+            <p>DNS kayıtları, SSL/TLS, cache, firewall kuralları ve analytics — tek panelden yönetin.</p>
+        </div>
+        <div class="cf-hero-actions">
+            <button style="background:#22c55e22;color:#22c55e" onclick="purgeAll()"><i class="fas fa-broom"></i> Cache Temizle</button>
+            <button style="background:#f9731622;color:#f97316" onclick="devMode()"><i class="fas fa-code"></i> Dev Mode</button>
+        </div>
+    </div>
+
+    <!-- API Key -->
+    <div class="cf-api-bar">
+        <label><i class="fas fa-key"></i> API Token:</label>
+        <input type="password" id="cfApiKey" placeholder="Cloudflare API Token (Bearer)">
+        <label><i class="fas fa-globe"></i> Zone:</label>
+        <select id="cfZone" style="max-width:220px;padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);font-size:12px">
+            <option value="">Önce bağlanın...</option>
+        </select>
+        <div class="cf-conn" id="cfConn" style="background:#ef444422;color:#ef4444"><i class="fas fa-circle" style="font-size:8px"></i> Bağlı Değil</div>
+        <button onclick="connectCF()"><i class="fas fa-plug"></i> Bağlan</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="cf-stats">
+        <div class="cf-stat"><div class="cf-stat-val" id="statDns" style="color:#f97316">—</div><div class="cf-stat-lbl">DNS Kayıtları</div><div class="cf-stat-sub" id="statDnsSub" style="color:var(--text-secondary)">Bağlantı bekleniyor</div></div>
+        <div class="cf-stat"><div class="cf-stat-val" id="statSSL" style="color:#22c55e">—</div><div class="cf-stat-lbl">SSL Modu</div><div class="cf-stat-sub" id="statSSLSub" style="color:var(--text-secondary)">—</div></div>
+        <div class="cf-stat"><div class="cf-stat-val" id="statCache" style="color:#3b82f6">—</div><div class="cf-stat-lbl">Cache Hit</div><div class="cf-stat-sub" id="statCacheSub" style="color:var(--text-secondary)">—</div></div>
+        <div class="cf-stat"><div class="cf-stat-val" id="statThreats" style="color:#ef4444">—</div><div class="cf-stat-lbl">Engellenen Tehdit</div><div class="cf-stat-sub" id="statThreatsSub" style="color:var(--text-secondary)">—</div></div>
+        <div class="cf-stat"><div class="cf-stat-val" id="statBW" style="color:#8b5cf6">—</div><div class="cf-stat-lbl">Bant Genişliği</div><div class="cf-stat-sub" id="statBWSub" style="color:var(--text-secondary)">—</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="cf-tabs">
+        <div class="cf-tab active" onclick="switchTab('dns')"><i class="fas fa-server"></i> DNS</div>
+        <div class="cf-tab" onclick="switchTab('ssl')"><i class="fas fa-lock"></i> SSL/TLS</div>
+        <div class="cf-tab" onclick="switchTab('cache')"><i class="fas fa-bolt"></i> Cache</div>
+        <div class="cf-tab" onclick="switchTab('firewall')"><i class="fas fa-shield"></i> Firewall</div>
+        <div class="cf-tab" onclick="switchTab('analytics')"><i class="fas fa-chart-area"></i> Analytics</div>
+        <div class="cf-tab" onclick="switchTab('pagerules')"><i class="fas fa-route"></i> Page Rules</div>
+    </div>
+
+    <!-- DNS Tab -->
+    <div class="cf-card active" id="tab-dns">
+        <h3><i class="fas fa-server" style="color:#f97316"></i> DNS Kayıtları</h3>
+        <div class="cf-dns-toolbar">
+            <input type="text" id="cfDnsSearch" placeholder="Kayıt ara..." oninput="filterDNS()">
+            <select id="cfDnsFilter" onchange="filterDNS()"><option value="">Tüm Tipler</option><option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>NS</option></select>
+            <button class="cf-add-btn" onclick="openAddDNS()"><i class="fas fa-plus"></i> Kayıt Ekle</button>
+        </div>
+        <table class="cf-table">
+            <thead><tr><th>Tip</th><th>Ad</th><th>İçerik</th><th>TTL</th><th>Proxy</th><th>İşlem</th></tr></thead>
+            <tbody id="cfDnsTable"></tbody>
+        </table>
+    </div>
+
+    <!-- SSL Tab -->
+    <div class="cf-card" id="tab-ssl">
+        <h3><i class="fas fa-lock" style="color:#22c55e"></i> SSL/TLS Modu</h3>
+        <div class="cf-ssl-modes" id="cfSSL"></div>
+        <div style="margin-top:20px">
+            <h3><i class="fas fa-certificate" style="color:#3b82f6"></i> Sertifika Detayları</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px" id="cfCerts"></div>
+        </div>
+    </div>
+
+    <!-- Cache Tab -->
+    <div class="cf-card" id="tab-cache">
+        <h3><i class="fas fa-bolt" style="color:#f59e0b"></i> Cache Ayarları</h3>
+        <div class="cf-cache-grid" id="cfCache"></div>
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="cf-add-btn" style="background:#ef4444" onclick="purgeAll()"><i class="fas fa-trash"></i> Tüm Cache'i Temizle</button>
+            <button class="cf-add-btn" style="background:#f59e0b" onclick="purgeURL()"><i class="fas fa-link"></i> URL ile Temizle</button>
+        </div>
+    </div>
+
+    <!-- Firewall Tab -->
+    <div class="cf-card" id="tab-firewall">
+        <h3><i class="fas fa-shield" style="color:#ef4444"></i> Firewall Kuralları</h3>
+        <button class="cf-add-btn" style="margin-bottom:14px" onclick="addFWRule()"><i class="fas fa-plus"></i> Kural Ekle</button>
+        <div class="cf-fw-rules" id="cfFirewall"></div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div class="cf-card" id="tab-analytics">
+        <h3><i class="fas fa-chart-area" style="color:#8b5cf6"></i> Trafik Analizi (Son 24 Saat)</h3>
+        <div class="cf-analytics-grid">
+            <div>
+                <h4 style="font-size:13px;margin:0 0 8px;color:var(--text-secondary)">İstek Sayısı</h4>
+                <div class="cf-chart" id="cfChartReq"></div>
+                <div class="cf-chart-labels" id="cfChartReqLbl"></div>
+            </div>
+            <div>
+                <h4 style="font-size:13px;margin:0 0 8px;color:var(--text-secondary)">Bant Genişliği (GB)</h4>
+                <div class="cf-chart" id="cfChartBw"></div>
+                <div class="cf-chart-labels" id="cfChartBwLbl"></div>
+            </div>
+        </div>
+        <div style="margin-top:20px">
+            <h4 style="font-size:13px;margin:0 0 10px;color:var(--text-secondary)">Tehdit Kaynakları</h4>
+            <div class="cf-threats" id="cfThreats"></div>
+        </div>
+    </div>
+
+    <!-- Page Rules Tab -->
+    <div class="cf-card" id="tab-pagerules">
+        <h3><i class="fas fa-route" style="color:#6366f1"></i> Page Rules</h3>
+        <button class="cf-add-btn" style="margin-bottom:14px" onclick="addPageRule()"><i class="fas fa-plus"></i> Kural Ekle</button>
+        <div class="cf-rules" id="cfPageRules"></div>
+    </div>
+</div>
+
+<!-- Add DNS Modal -->
+<div class="cf-modal-overlay" id="cfDnsModal">
+    <div class="cf-modal">
+        <button class="cf-modal-close" onclick="closeDnsModal()">✕</button>
+        <h3><i class="fas fa-plus-circle" style="color:#f97316"></i> DNS Kaydı Ekle</h3>
+        <div class="cf-modal-form">
+            <div class="cf-modal-row">
+                <div><label>Tip</label><select id="newDnsType" style="width:100%"><option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>SRV</option></select></div>
+                <div><label>TTL</label><select id="newDnsTTL" style="width:100%"><option value="auto">Otomatik</option><option value="300">5 dk</option><option value="3600">1 saat</option><option value="86400">1 gün</option></select></div>
+            </div>
+            <div><label>Ad (Subdomain)</label><input type="text" id="newDnsName" placeholder="@ veya subdomain"></div>
+            <div><label>İçerik (IP / Değer)</label><input type="text" id="newDnsContent" placeholder="185.189.54.104 veya CNAME hedefi"></div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <label class="cf-toggle"><input type="checkbox" id="newDnsProxy" checked><span class="cf-toggle-s"></span></label>
+                <span style="font-size:12px;font-weight:700">Cloudflare Proxy (CDN + WAF)</span>
+            </div>
+            <button class="cf-modal-submit" onclick="saveDNS()"><i class="fas fa-save"></i> Kaydet</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ══════════════════════════════════════════════════════════════
+   EmareCloud — Cloudflare Gerçek API Entegrasyonu
+   Tüm veriler /api/cloudflare/* endpoint'lerinden çekilir.
+   ══════════════════════════════════════════════════════════════ */
+
+let cfToken = '';
+let cfZoneId = '';
+let cfZoneName = '';
+let dnsRecords = [];
+let connected = false;
+
+/* ── Yardımcılar ── */
+function getAuth() { return { token: cfToken, zone_id: cfZoneId }; }
+
+async function cfApi(path, opts = {}) {
+    const method = opts.method || 'POST';
+    const body = { ...getAuth(), ...(opts.body || {}) };
+    try {
+        const r = await fetch('/api/cloudflare' + path, {
+            method, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return await r.json();
+    } catch (e) {
+        toast('API Hatası: ' + e.message, '#ef4444');
+        return { success: false, errors: [{ message: e.message }] };
+    }
+}
+
+function fmtBytes(b) {
+    if (b > 1e12) return (b / 1e12).toFixed(1) + ' TB';
+    if (b > 1e9) return (b / 1e9).toFixed(1) + ' GB';
+    if (b > 1e6) return (b / 1e6).toFixed(1) + ' MB';
+    if (b > 1e3) return (b / 1e3).toFixed(1) + ' KB';
+    return b + ' B';
+}
+
+function fmtNum(n) { return n ? n.toLocaleString('tr-TR') : '0'; }
+
+/* ── Bağlantı ── */
+async function connectCF() {
+    const tokenInput = document.getElementById('cfApiKey');
+    cfToken = tokenInput.value.trim();
+    if (!cfToken) { toast('Lütfen API Token girin', '#ef4444'); return; }
+
+    const conn = document.getElementById('cfConn');
+    conn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:10px"></i> Doğrulanıyor...';
+    conn.style.background = '#f59e0b22'; conn.style.color = '#f59e0b';
+
+    /* 1) Token doğrula */
+    const verify = await cfApi('/verify', { body: { token: cfToken } });
+    if (!verify.success) {
+        conn.innerHTML = '<i class="fas fa-times-circle" style="font-size:10px"></i> Geçersiz Token';
+        conn.style.background = '#ef444422'; conn.style.color = '#ef4444';
+        toast('API Token geçersiz: ' + (verify.errors?.[0]?.message || 'Hata'), '#ef4444');
+        return;
+    }
+
+    /* 2) Zone'ları çek */
+    conn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:10px"></i> Zone\'lar yükleniyor...';
+    const zones = await cfApi('/zones', { body: { token: cfToken } });
+    if (!zones.success || !zones.zones?.length) {
+        conn.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:10px"></i> Zone bulunamadı';
+        conn.style.background = '#ef444422'; conn.style.color = '#ef4444';
+        toast('Hesapta zone bulunamadı', '#ef4444');
+        return;
+    }
+
+    /* 3) Zone dropdown doldur */
+    const sel = document.getElementById('cfZone');
+    sel.innerHTML = zones.zones.map(z =>
+        `<option value="${z.id}">${z.name} (${z.status}) — ${z.plan || 'Free'}</option>`
+    ).join('');
+    cfZoneId = zones.zones[0].id;
+    cfZoneName = zones.zones[0].name;
+    sel.onchange = function () {
+        cfZoneId = this.value;
+        cfZoneName = this.options[this.selectedIndex].text.split(' (')[0];
+        loadAll();
+    };
+
+    connected = true;
+    conn.innerHTML = '<i class="fas fa-circle" style="font-size:8px"></i> Bağlı';
+    conn.style.background = '#22c55e22'; conn.style.color = '#22c55e';
+    toast('Cloudflare bağlantısı başarılı — ' + cfZoneName, '#22c55e');
+
+    loadAll();
+}
+
+/* ── Tümünü Yükle ── */
+async function loadAll() {
+    if (!connected) return;
+    await Promise.all([loadDNS(), loadSSL(), loadCache(), loadFirewall(), loadAnalytics(), loadPageRules()]);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DNS
+   ══════════════════════════════════════════════════════════════ */
+async function loadDNS() {
+    const resp = await cfApi('/dns');
+    if (!resp.success) { toast('DNS yüklenemedi', '#ef4444'); return; }
+    dnsRecords = resp.records || [];
+    document.getElementById('statDns').textContent = dnsRecords.length;
+    document.getElementById('statDnsSub').textContent = 'Tümü aktif';
+    document.getElementById('statDnsSub').style.color = '#22c55e';
+    renderDNS(dnsRecords);
+}
+
+function renderDNS(records) {
+    const tb = document.getElementById('cfDnsTable');
+    if (!records.length) {
+        tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-secondary)">DNS kaydı bulunamadı</td></tr>';
+        return;
+    }
+    tb.innerHTML = records.map(r => {
+        const ttl = r.ttl === 1 ? 'Auto' : r.ttl + 's';
+        return `<tr data-id="${r.id}">
+        <td><span class="cf-type cf-type-${r.type}">${r.type}</span></td>
+        <td style="font-weight:700;font-size:12px">${r.name}</td>
+        <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text-secondary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.content}">${r.content}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${ttl}</td>
+        <td><span class="cf-proxy ${r.proxied ? 'on' : 'off'}" onclick="toggleProxy('${r.id}',${!r.proxied},'${r.type}','${r.name}','${r.content}',${r.ttl})">${r.proxied ? '<i class="fas fa-cloud"></i> CDN' : '<i class="fas fa-cloud-xmark"></i> DNS'}</span></td>
+        <td><div class="cf-actions"><button style="background:#ef444422;color:#ef4444" onclick="deleteDNS('${r.id}','${r.name}')"><i class="fas fa-trash"></i></button></div></td>
+    </tr>`;
+    }).join('');
+}
+
+function filterDNS() {
+    const q = document.getElementById('cfDnsSearch').value.toLowerCase();
+    const t = document.getElementById('cfDnsFilter').value;
+    const f = dnsRecords.filter(r => {
+        const matchQ = !q || r.name.toLowerCase().includes(q) || r.content.toLowerCase().includes(q);
+        const matchT = !t || r.type === t;
+        return matchQ && matchT;
+    });
+    renderDNS(f);
+}
+
+async function toggleProxy(id, proxied, type, name, content, ttl) {
+    const resp = await cfApi('/dns/update', { method: 'PUT', body: { record_id: id, type, name, content, ttl, proxied } });
+    if (resp.success) { toast(name + ' proxy ' + (proxied ? 'açıldı' : 'kapatıldı'), '#f97316'); loadDNS(); }
+    else toast('Proxy güncellenemedi', '#ef4444');
+}
+
+async function deleteDNS(id, name) {
+    if (!confirm(name + ' kaydını silmek istediğinize emin misiniz?')) return;
+    const resp = await cfApi('/dns/delete', { method: 'DELETE', body: { record_id: id } });
+    if (resp.success) { toast(name + ' silindi', '#ef4444'); loadDNS(); }
+    else toast('Silinemedi: ' + (resp.errors?.[0]?.message || 'Hata'), '#ef4444');
+}
+
+function openAddDNS() { document.getElementById('cfDnsModal').classList.add('show'); }
+function closeDnsModal() { document.getElementById('cfDnsModal').classList.remove('show'); }
+
+async function saveDNS() {
+    const type = document.getElementById('newDnsType').value;
+    const name = document.getElementById('newDnsName').value || '@';
+    const content = document.getElementById('newDnsContent').value;
+    const ttlVal = document.getElementById('newDnsTTL').value;
+    const proxied = document.getElementById('newDnsProxy').checked;
+    if (!content) { toast('İçerik (IP/değer) zorunlu', '#ef4444'); return; }
+
+    const resp = await cfApi('/dns/create', {
+        body: { record_type: type, name, content, ttl: ttlVal === 'auto' ? 1 : parseInt(ttlVal), proxied }
+    });
+    if (resp.success) {
+        toast('DNS kaydı eklendi: ' + name, '#22c55e');
+        closeDnsModal();
+        document.getElementById('newDnsName').value = '';
+        document.getElementById('newDnsContent').value = '';
+        loadDNS();
+    } else {
+        toast('Eklenemedi: ' + (resp.errors?.[0]?.message || 'Hata'), '#ef4444');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SSL / TLS
+   ══════════════════════════════════════════════════════════════ */
+const sslMeta = {
+    off:      { icon: '🔓', desc: 'Şifreleme yok. Trafik düz metin.', tag: 'Tavsiye Edilmez', tagBg: '#ef4444' },
+    flexible: { icon: '🔒', desc: 'Cloudflare↔Ziyaretçi şifreli. Origin şifresiz.', tag: 'Temel', tagBg: '#f59e0b' },
+    full:     { icon: '🔐', desc: 'Uçtan uca şifreleme. Self-signed kabul.', tag: 'İyi', tagBg: '#3b82f6' },
+    strict:   { icon: '🛡️', desc: 'Uçtan uca + geçerli sertifika zorunlu.', tag: 'En Güvenli', tagBg: '#22c55e' }
+};
+const sslKeys = ['off', 'flexible', 'full', 'strict'];
+
+async function loadSSL() {
+    const resp = await cfApi('/ssl');
+    if (!resp.success) return;
+    const ssl = resp.ssl;
+    const currentMode = ssl.mode || 'off';
+
+    document.getElementById('statSSL').textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
+    document.getElementById('statSSLSub').textContent = ssl.universal_enabled ? 'Universal SSL Aktif' : '';
+    document.getElementById('statSSLSub').style.color = '#22c55e';
+
+    document.getElementById('cfSSL').innerHTML = sslKeys.map(key => {
+        const m = sslMeta[key];
+        const active = currentMode === key;
+        return `<div class="cf-ssl-mode${active ? ' active' : ''}" onclick="setSSL('${key}')">
+            <div class="cf-ssl-icon">${m.icon}</div><div class="cf-ssl-name">${key === 'strict' ? 'Full (Strict)' : key.charAt(0).toUpperCase() + key.slice(1)}</div>
+            <div class="cf-ssl-desc">${m.desc}</div>
+            <div class="cf-ssl-tag" style="background:${m.tagBg}22;color:${m.tagBg}">${active ? 'Aktif ✓' : m.tag}</div>
+        </div>`;
+    }).join('');
+
+    /* Sertifika paketleri */
+    const certsEl = document.getElementById('cfCerts');
+    if (ssl.certificate_packs?.length) {
+        const certColors = { active: '#22c55e', pending_validation: '#f59e0b', expired: '#ef4444' };
+        certsEl.innerHTML = ssl.certificate_packs.map(c => {
+            const color = certColors[c.status] || '#64748b';
+            return `<div style="padding:16px;border-radius:12px;background:var(--bg-input);display:flex;gap:12px;align-items:center">
+                <div style="width:36px;height:36px;border-radius:10px;background:${color}18;display:flex;align-items:center;justify-content:center;font-size:16px">🔒</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:700">${c.type || 'Certificate'}</div>
+                <div style="font-size:11px;color:var(--text-secondary)">${(c.hosts || []).join(', ')}</div></div>
+                <span style="padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;background:${color}22;color:${color}">${c.status}</span>
+            </div>`;
+        }).join('');
+    } else {
+        certsEl.innerHTML = '<div style="padding:16px;color:var(--text-secondary);font-size:13px">Sertifika bilgisi yüklenemedi</div>';
+    }
+}
+
+async function setSSL(mode) {
+    const resp = await cfApi('/ssl/mode', { method: 'PATCH', body: { mode } });
+    if (resp.success) { toast('SSL modu → ' + mode, '#22c55e'); loadSSL(); }
+    else toast('SSL güncellenemedi', '#ef4444');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CACHE
+   ══════════════════════════════════════════════════════════════ */
+const cacheUI = {
+    minify:           { icon: '⚡', bg: 'rgba(245,158,11,.12)', name: 'Auto Minify', desc: 'HTML, CSS, JS otomatik küçültme' },
+    brotli:           { icon: '🎯', bg: 'rgba(99,102,241,.12)', name: 'Brotli Sıkıştırma', desc: 'Gelişmiş sıkıştırma algoritması' },
+    polish:           { icon: '📸', bg: 'rgba(236,72,153,.12)', name: 'Polish (Görsel Opt.)', desc: 'WebP + lossy/lossless optimizasyon' },
+    rocket_loader:    { icon: '🚄', bg: 'rgba(34,197,94,.12)', name: 'Rocket Loader', desc: 'JS yükleme optimizasyonu' },
+    always_online:    { icon: '🔄', bg: 'rgba(249,115,22,.12)', name: 'Always Online', desc: "Origin çökerse cache'den sun" },
+    early_hints:      { icon: '🌐', bg: 'rgba(14,165,233,.12)', name: 'Early Hints (103)', desc: 'Preload kaynakları erken yolla' },
+    development_mode: { icon: '🛠️', bg: 'rgba(239,68,68,.12)', name: 'Development Mode', desc: 'Cache devre dışı (3 saat)' }
+};
+
+async function loadCache() {
+    const resp = await cfApi('/cache/settings');
+    if (!resp.success) return;
+    const s = resp.settings || {};
+    const el = document.getElementById('cfCache');
+    el.innerHTML = Object.entries(cacheUI).map(([key, ui]) => {
+        let isOn = false;
+        const val = s[key];
+        if (key === 'minify') isOn = val && (val.html === 'on' || val.css === 'on' || val.js === 'on');
+        else if (key === 'polish') isOn = val && val !== 'off';
+        else if (key === 'development_mode') isOn = val === 'on';
+        else if (typeof val === 'string') isOn = val === 'on';
+        else isOn = !!val;
+
+        return `<div class="cf-cache-item"><div class="cf-cache-icon" style="background:${ui.bg}">${ui.icon}</div>
+            <div class="cf-cache-info"><div class="cf-cache-name">${ui.name}</div><div class="cf-cache-desc">${ui.desc}</div></div>
+            <label class="cf-toggle"><input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleCacheSetting('${key}',this.checked)"><span class="cf-toggle-s"></span></label></div>`;
+    }).join('');
+}
+
+async function toggleCacheSetting(setting, on) {
+    let value;
+    if (setting === 'minify') value = { html: on ? 'on' : 'off', css: on ? 'on' : 'off', js: on ? 'on' : 'off' };
+    else if (setting === 'polish') value = on ? 'lossy' : 'off';
+    else value = on ? 'on' : 'off';
+
+    const resp = await cfApi('/cache/settings/update', { method: 'PATCH', body: { setting, value } });
+    if (resp.success) toast(cacheUI[setting]?.name + (on ? ' açıldı' : ' kapatıldı'), on ? '#22c55e' : '#ef4444');
+    else toast('Ayar güncellenemedi', '#ef4444');
+}
+
+async function purgeAll() {
+    if (!connected) { toast('Önce Cloudflare\'a bağlanın', '#ef4444'); return; }
+    if (!confirm('Tüm cache temizlensin mi?')) return;
+    const resp = await cfApi('/cache/purge');
+    if (resp.success) toast('Tüm cache temizlendi', '#ef4444');
+    else toast('Cache temizlenemedi', '#ef4444');
+}
+
+async function purgeURL() {
+    if (!connected) { toast('Önce Cloudflare\'a bağlanın', '#ef4444'); return; }
+    const urls = prompt('Temizlenecek URL\'leri virgülle girin:');
+    if (!urls) return;
+    const resp = await cfApi('/cache/purge', { body: { files: urls.split(',').map(u => u.trim()) } });
+    if (resp.success) toast('Belirtilen URL\'ler temizlendi', '#22c55e');
+    else toast('Temizlenemedi', '#ef4444');
+}
+
+async function devMode() {
+    if (!connected) { toast('Önce Cloudflare\'a bağlanın', '#ef4444'); return; }
+    const resp = await cfApi('/dev-mode', { method: 'PATCH', body: { enabled: true } });
+    if (resp.success) toast('Development Mode: 3 saat aktif — cache devre dışı', '#f97316');
+    else toast('Dev mode açılamadı', '#ef4444');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FIREWALL
+   ══════════════════════════════════════════════════════════════ */
+const actionColors = { block: '#ef4444', challenge: '#f59e0b', js_challenge: '#6366f1', allow: '#22c55e', log: '#3b82f6', managed_challenge: '#8b5cf6' };
+const actionIcons = { block: '🛡️', challenge: '🤖', js_challenge: '⚡', allow: '✅', log: '📋', managed_challenge: '🔒' };
+
+async function loadFirewall() {
+    const resp = await cfApi('/firewall/rules');
+    if (!resp.success) return;
+    const rules = resp.rules || [];
+    const el = document.getElementById('cfFirewall');
+    if (!rules.length) {
+        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Firewall kuralı bulunamadı</div>';
+        return;
+    }
+    el.innerHTML = rules.map(r => {
+        const color = actionColors[r.action] || '#64748b';
+        const icon = actionIcons[r.action] || '🔒';
+        const expr = r.filter?.expression || '—';
+        return `<div class="cf-fw-rule">
+            <div class="cf-fw-icon" style="background:${color}18">${icon}</div>
+            <div class="cf-fw-info"><div class="cf-fw-name">${r.description || 'Kural'}</div><div class="cf-fw-expr">${expr}</div></div>
+            <span class="cf-fw-action" style="background:${color}22;color:${color}">${r.action}</span>
+            <label class="cf-toggle" style="margin-left:8px"><input type="checkbox" ${!r.paused ? 'checked' : ''} onchange="toggleFW('${r.id}',!this.checked)"><span class="cf-toggle-s"></span></label>
+            <button style="background:#ef444422;color:#ef4444;border:none;border-radius:6px;padding:5px 8px;cursor:pointer;margin-left:4px" onclick="deleteFW('${r.id}')"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }).join('');
+}
+
+async function toggleFW(id, paused) {
+    const resp = await cfApi('/firewall/rules/toggle', { method: 'PATCH', body: { rule_id: id, paused } });
+    if (resp.success) toast('Kural ' + (paused ? 'pasif' : 'aktif'), paused ? '#ef4444' : '#22c55e');
+    else toast('Güncellenemedi', '#ef4444');
+}
+
+async function deleteFW(id) {
+    if (!confirm('Firewall kuralını silmek istediğinize emin misiniz?')) return;
+    const resp = await cfApi('/firewall/rules/delete', { method: 'DELETE', body: { rule_id: id } });
+    if (resp.success) { toast('Kural silindi', '#ef4444'); loadFirewall(); }
+    else toast('Silinemedi', '#ef4444');
+}
+
+async function addFWRule() {
+    if (!connected) { toast('Önce Cloudflare\'a bağlanın', '#ef4444'); return; }
+    const desc = prompt('Kural adı:');
+    if (!desc) return;
+    const expression = prompt('Firewall expression (ör: ip.src eq 1.2.3.4):');
+    if (!expression) return;
+    const action = prompt('Aksiyon (block, challenge, js_challenge, allow, log):', 'block');
+    if (!action) return;
+
+    const resp = await cfApi('/firewall/rules/create', { body: { description: desc, expression, action } });
+    if (resp.success) { toast('Kural oluşturuldu: ' + desc, '#22c55e'); loadFirewall(); }
+    else toast('Oluşturulamadı: ' + (resp.errors?.[0]?.message || 'Hata'), '#ef4444');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ANALYTICS
+   ══════════════════════════════════════════════════════════════ */
+async function loadAnalytics() {
+    const resp = await cfApi('/analytics');
+    if (!resp.success) return;
+    const a = resp.analytics;
+
+    /* Stats bar güncelle */
+    const totalReq = a.requests?.all || 0;
+    const cachedReq = a.requests?.cached || 0;
+    const cacheHit = totalReq > 0 ? Math.round((cachedReq / totalReq) * 100) : 0;
+    document.getElementById('statCache').textContent = cacheHit + '%';
+    document.getElementById('statCacheSub').textContent = 'Cache Hit';
+    document.getElementById('statCacheSub').style.color = '#22c55e';
+
+    document.getElementById('statThreats').textContent = fmtNum(a.threats?.all);
+    document.getElementById('statThreatsSub').textContent = 'Son 24 saat';
+    document.getElementById('statThreatsSub').style.color = a.threats?.all > 0 ? '#ef4444' : '#22c55e';
+
+    document.getElementById('statBW').textContent = fmtBytes(a.bandwidth?.all || 0);
+    document.getElementById('statBWSub').textContent = fmtBytes(a.bandwidth?.cached || 0) + ' cached';
+    document.getElementById('statBWSub').style.color = '#22c55e';
+
+    /* Grafik */
+    const ts = a.timeseries || [];
+    if (ts.length) {
+        const reqData = ts.map(t => t.requests);
+        const bwData = ts.map(t => t.bandwidth);
+        const maxReq = Math.max(...reqData, 1);
+        const maxBw = Math.max(...bwData, 1);
+
+        document.getElementById('cfChartReq').innerHTML = reqData.map(v =>
+            `<div class="cf-chart-bar" style="height:${Math.max((v / maxReq) * 140, 2)}px;background:linear-gradient(to top,#f97316,#3b82f6)" data-val="${fmtNum(v)} req"></div>`
+        ).join('');
+        document.getElementById('cfChartReqLbl').innerHTML = ts.map(t => {
+            const d = new Date(t.since);
+            return `<span>${String(d.getHours()).padStart(2, '0')}</span>`;
+        }).join('');
+
+        document.getElementById('cfChartBw').innerHTML = bwData.map(v =>
+            `<div class="cf-chart-bar" style="height:${Math.max((v / maxBw) * 140, 2)}px;background:linear-gradient(to top,#22c55e,#3b82f6)" data-val="${fmtBytes(v)}"></div>`
+        ).join('');
+        document.getElementById('cfChartBwLbl').innerHTML = ts.map(t => {
+            const d = new Date(t.since);
+            return `<span>${String(d.getHours()).padStart(2, '0')}</span>`;
+        }).join('');
+    } else {
+        document.getElementById('cfChartReq').innerHTML = '<div style="padding:20px;color:var(--text-secondary);font-size:12px">Veri yok</div>';
+        document.getElementById('cfChartBw').innerHTML = '<div style="padding:20px;color:var(--text-secondary);font-size:12px">Veri yok</div>';
+    }
+
+    /* Tehdit ülkeleri */
+    const countries = a.threats?.country || {};
+    const threatEntries = Object.entries(countries).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxThreat = threatEntries.length ? threatEntries[0][1] : 1;
+    const threatColors = ['#ef4444', '#f97316', '#f59e0b', '#6366f1', '#3b82f6'];
+    document.getElementById('cfThreats').innerHTML = threatEntries.length
+        ? threatEntries.map(([country, count], i) =>
+            `<div class="cf-threat"><div class="cf-threat-country" style="font-size:14px;font-weight:700">${country}</div>
+            <div class="cf-threat-info"><div class="cf-threat-name">${country}</div><div class="cf-threat-count">${count} tehdit</div></div>
+            <div class="cf-threat-bar"><div class="cf-threat-fill" style="width:${(count / maxThreat) * 100}%;background:${threatColors[i] || '#64748b'}"></div></div></div>`
+        ).join('')
+        : '<div style="padding:16px;color:var(--text-secondary);font-size:13px;text-align:center">Tehdit kaydı yok</div>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PAGE RULES
+   ══════════════════════════════════════════════════════════════ */
+const prColors = ['#f97316', '#3b82f6', '#22c55e', '#8b5cf6', '#ec4899', '#6366f1'];
+
+async function loadPageRules() {
+    const resp = await cfApi('/pagerules');
+    if (!resp.success) return;
+    const rules = resp.rules || [];
+    const el = document.getElementById('cfPageRules');
+    if (!rules.length) {
+        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Page rule bulunamadı</div>';
+        return;
+    }
+    el.innerHTML = rules.map((r, i) => {
+        const color = prColors[i % prColors.length];
+        const actionsStr = (r.actions || []).map(a => `${a.id}: ${typeof a.value === 'object' ? JSON.stringify(a.value) : a.value || 'on'}`).join(', ');
+        return `<div class="cf-rule">
+            <div class="cf-rule-num" style="background:${color}22;color:${color}">${r.priority || (i + 1)}</div>
+            <div class="cf-rule-info"><div class="cf-rule-match">${r.url || '—'}</div><div class="cf-rule-action">${actionsStr}</div></div>
+            <div class="cf-actions">
+                <span style="padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;background:${r.status === 'active' ? '#22c55e22' : '#ef444422'};color:${r.status === 'active' ? '#22c55e' : '#ef4444'}">${r.status}</span>
+                <button style="background:#ef444422;color:#ef4444;border:none;border-radius:6px;padding:5px 8px;cursor:pointer" onclick="deletePageRule('${r.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function addPageRule() {
+    if (!connected) { toast('Önce Cloudflare\'a bağlanın', '#ef4444'); return; }
+    const url = prompt('URL pattern (ör: *emarecloud.com/static/*):');
+    if (!url) return;
+    const actionId = prompt('Action ID (ör: always_use_https, forwarding_url, cache_level):', 'always_use_https');
+    if (!actionId) return;
+    let actionValue = null;
+    if (actionId !== 'always_use_https') {
+        actionValue = prompt('Action value:') || 'on';
+    }
+    const actions = [{ id: actionId }];
+    if (actionValue) actions[0].value = actionValue;
+
+    const resp = await cfApi('/pagerules/create', { body: { url, actions } });
+    if (resp.success) { toast('Page rule oluşturuldu', '#22c55e'); loadPageRules(); }
+    else toast('Oluşturulamadı: ' + (resp.errors?.[0]?.message || 'Hata'), '#ef4444');
+}
+
+async function deletePageRule(id) {
+    if (!confirm('Page rule silinsin mi?')) return;
+    const resp = await cfApi('/pagerules/delete', { method: 'DELETE', body: { rule_id: id } });
+    if (resp.success) { toast('Page rule silindi', '#ef4444'); loadPageRules(); }
+    else toast('Silinemedi', '#ef4444');
+}
+
+/* ── Tab Switching ── */
+function switchTab(id) {
+    document.querySelectorAll('.cf-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.cf-card').forEach(c => c.classList.remove('active'));
+    event.target.closest('.cf-tab').classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+}
+
+/* ── Toast ── */
+function toast(msg, bg) {
+    const t = document.createElement('div');
+    t.className = 'cf-toast'; t.style.background = bg; t.textContent = msg;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+
+/* ── Sayfa yüklendiğinde bağlantı durumunu göster ── */
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('cfApiKey').addEventListener('keydown', e => { if (e.key === 'Enter') connectCF(); });
+});
+</script>
+{% endblock %}

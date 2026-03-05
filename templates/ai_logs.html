@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}AI Log Intelligence - EmareCloud{% endblock %}
+{% block page_title %}AI Log Intelligence{% endblock %}
+
+{% block head %}
+<style>
+/* ── AI Log Intelligence ──────────────────────────────── */
+.log-container { max-width: 1100px; margin: 0 auto; }
+
+.log-header {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(34,197,94,0.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.log-header-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1, #22c55e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff; flex-shrink: 0;
+}
+.log-header-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.log-header-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Stats */
+.log-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.log-stat-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 20px; display: flex; align-items: center; gap: 14px;
+}
+.log-stat-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+}
+.log-stat-icon.red { background: rgba(248,113,113,0.12); color: #f87171; }
+.log-stat-icon.orange { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.log-stat-icon.blue { background: rgba(99,102,241,0.12); color: #6366f1; }
+.log-stat-icon.green { background: rgba(34,197,94,0.12); color: #22c55e; }
+.log-stat-icon.purple { background: rgba(147,51,234,0.12); color: #9333ea; }
+.log-stat-value { font-size: 24px; font-weight: 800; color: var(--text-primary); }
+.log-stat-label { font-size: 12px; color: var(--text-secondary); }
+
+/* Anomaly timeline */
+.log-timeline-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+}
+.log-timeline-card h3 { margin: 0 0 20px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+.log-anomaly-list { display: flex; flex-direction: column; gap: 12px; }
+.log-anomaly-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);
+    transition: all 0.2s; position: relative;
+}
+.log-anomaly-item:hover { border-color: #6366f1; background: rgba(99,102,241,0.02); }
+.log-anomaly-item.critical { border-left: 4px solid #f87171; }
+.log-anomaly-item.warning { border-left: 4px solid #fbbf24; }
+.log-anomaly-item.info { border-left: 4px solid #6366f1; }
+.log-anomaly-item.resolved { border-left: 4px solid #22c55e; opacity: 0.7; }
+
+.log-anomaly-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.log-anomaly-item.critical .log-anomaly-icon { background: rgba(248,113,113,0.12); color: #f87171; }
+.log-anomaly-item.warning .log-anomaly-icon { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.log-anomaly-item.info .log-anomaly-icon { background: rgba(99,102,241,0.12); color: #6366f1; }
+.log-anomaly-item.resolved .log-anomaly-icon { background: rgba(34,197,94,0.12); color: #22c55e; }
+
+.log-anomaly-content { flex: 1; }
+.log-anomaly-title { font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
+.log-anomaly-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
+.log-anomaly-meta { display: flex; gap: 16px; flex-wrap: wrap; }
+.log-anomaly-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 6px;
+    font-weight: 600; text-transform: uppercase;
+}
+.log-anomaly-tag.critical { background: rgba(248,113,113,0.12); color: #f87171; }
+.log-anomaly-tag.warning { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.log-anomaly-tag.info { background: rgba(99,102,241,0.12); color: #6366f1; }
+.log-anomaly-tag.resolved { background: rgba(34,197,94,0.12); color: #22c55e; }
+.log-anomaly-time { font-size: 12px; color: var(--text-secondary); }
+
+/* Pattern analysis */
+.log-patterns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.log-pattern-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 20px;
+}
+.log-pattern-card h4 { margin: 0 0 16px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+/* Frequency bar */
+.log-freq-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.log-freq-label { font-size: 13px; color: var(--text-primary); min-width: 120px; }
+.log-freq-bar-bg { flex: 1; height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+.log-freq-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.log-freq-count { font-size: 12px; font-weight: 700; color: var(--text-secondary); min-width: 40px; text-align: right; }
+
+/* Health score */
+.log-health-ring { text-align: center; padding: 10px 0; }
+.log-health-ring svg { width: 120px; height: 120px; }
+.log-health-score { font-size: 28px; font-weight: 800; }
+.log-health-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* AI suggestions */
+.log-ai-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px;
+}
+.log-ai-card h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.log-ai-suggestion {
+    display: flex; gap: 14px; padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.log-ai-suggestion:last-child { border-bottom: none; }
+.log-ai-sug-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    background: rgba(99,102,241,0.12); color: #6366f1;
+}
+.log-ai-sug-text strong { display: block; margin-bottom: 2px; font-size: 14px; }
+.log-ai-sug-text span { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.log-ai-sug-action {
+    margin-left: auto; align-self: center;
+    padding: 6px 14px; border-radius: 8px; border: 1px solid #6366f1;
+    color: #6366f1; font-size: 12px; font-weight: 600; cursor: pointer;
+    background: transparent; transition: all 0.2s; white-space: nowrap;
+}
+.log-ai-sug-action:hover { background: #6366f1; color: #fff; }
+
+/* Live log */
+.log-live-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; overflow: hidden; margin-top: 24px;
+}
+.log-live-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.log-live-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.log-live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #22c55e; font-weight: 600; }
+.log-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: logPulse 2s infinite; }
+@keyframes logPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.log-live-feed {
+    background: #0f172a; padding: 16px; max-height: 300px; overflow-y: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px;
+    line-height: 1.8; color: #94a3b8;
+}
+.log-live-feed .log-line { display: flex; gap: 8px; }
+.log-line-time { color: #475569; min-width: 80px; }
+.log-line-level { min-width: 50px; font-weight: 700; }
+.log-line-level.error { color: #f87171; }
+.log-line-level.warn { color: #fbbf24; }
+.log-line-level.info { color: #6366f1; }
+.log-line-level.ok { color: #22c55e; }
+.log-line-msg { color: #e2e8f0; }
+.log-line-highlight { background: rgba(248,113,113,0.1); padding: 2px 4px; border-radius: 3px; }
+
+@media (max-width: 640px) {
+    .log-header { flex-direction: column; text-align: center; }
+    .log-stats { grid-template-columns: repeat(2, 1fr); }
+    .log-patterns-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="log-container">
+    <!-- Header -->
+    <div class="log-header">
+        <div class="log-header-icon"><i class="fas fa-brain"></i></div>
+        <div class="log-header-text">
+            <h2>AI Log Intelligence</h2>
+            <p>Yapay zeka ile log analizi, anomali tespiti ve proaktif sorun çözümü. Destek yükünü azaltır, akıllı altyapı algısı oluşturur.</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="log-stats" id="logStats">
+        <div class="log-stat-card">
+            <div class="log-stat-icon red"><i class="fas fa-exclamation-circle"></i></div>
+            <div><div class="log-stat-value" id="logCritical">3</div><div class="log-stat-label">Kritik Anomali</div></div>
+        </div>
+        <div class="log-stat-card">
+            <div class="log-stat-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+            <div><div class="log-stat-value" id="logWarnings">12</div><div class="log-stat-label">Uyarı</div></div>
+        </div>
+        <div class="log-stat-card">
+            <div class="log-stat-icon blue"><i class="fas fa-file-alt"></i></div>
+            <div><div class="log-stat-value" id="logTotal">2.847</div><div class="log-stat-label">Toplam Log (24h)</div></div>
+        </div>
+        <div class="log-stat-card">
+            <div class="log-stat-icon green"><i class="fas fa-shield-alt"></i></div>
+            <div><div class="log-stat-value" id="logResolved">28</div><div class="log-stat-label">Otomatik Çözülen</div></div>
+        </div>
+        <div class="log-stat-card">
+            <div class="log-stat-icon purple"><i class="fas fa-brain"></i></div>
+            <div><div class="log-stat-value" id="logScore">94</div><div class="log-stat-label">Sağlık Skoru</div></div>
+        </div>
+    </div>
+
+    <!-- Anomaly Timeline -->
+    <div class="log-timeline-card">
+        <h3><i class="fas fa-timeline" style="color:#f87171"></i> Anomali Zaman Çizelgesi</h3>
+        <div class="log-anomaly-list" id="logAnomalies">
+            <div class="log-anomaly-item critical">
+                <div class="log-anomaly-icon"><i class="fas fa-memory"></i></div>
+                <div class="log-anomaly-content">
+                    <div class="log-anomaly-title">RAM Kullanımı Ani Artış</div>
+                    <div class="log-anomaly-desc">Son 15 dakikada RAM kullanımı %45'ten %87'ye çıktı. Olası bellek sızıntısı tespit edildi. <code>gunicorn</code> worker'ları kontrol edilmeli.</div>
+                    <div class="log-anomaly-meta">
+                        <span class="log-anomaly-tag critical">Kritik</span>
+                        <span class="log-anomaly-time"><i class="fas fa-clock"></i> 3 dk önce</span>
+                    </div>
+                </div>
+            </div>
+            <div class="log-anomaly-item warning">
+                <div class="log-anomaly-icon"><i class="fas fa-network-wired"></i></div>
+                <div class="log-anomaly-content">
+                    <div class="log-anomaly-title">SSH Brute-Force Girişimi</div>
+                    <div class="log-anomaly-desc">Son 1 saatte 47 başarısız SSH giriş denemesi algılandı. Kaynak IP: 185.220.101.x. Fail2ban kuralı önerilir.</div>
+                    <div class="log-anomaly-meta">
+                        <span class="log-anomaly-tag warning">Uyarı</span>
+                        <span class="log-anomaly-time"><i class="fas fa-clock"></i> 18 dk önce</span>
+                    </div>
+                </div>
+            </div>
+            <div class="log-anomaly-item warning">
+                <div class="log-anomaly-icon"><i class="fas fa-hdd"></i></div>
+                <div class="log-anomaly-content">
+                    <div class="log-anomaly-title">Disk I/O Yoğunluğu</div>
+                    <div class="log-anomaly-desc">Docker container log dosyaları hızla büyüyor. <code>/var/lib/docker/containers</code> üzerinde %340 artış. Log rotation önerilir.</div>
+                    <div class="log-anomaly-meta">
+                        <span class="log-anomaly-tag warning">Uyarı</span>
+                        <span class="log-anomaly-time"><i class="fas fa-clock"></i> 42 dk önce</span>
+                    </div>
+                </div>
+            </div>
+            <div class="log-anomaly-item info">
+                <div class="log-anomaly-icon"><i class="fas fa-bolt"></i></div>
+                <div class="log-anomaly-content">
+                    <div class="log-anomaly-title">Nginx 502 Spike</div>
+                    <div class="log-anomaly-desc">Son 30 dakikada 23 adet 502 Bad Gateway hatası. Gunicorn worker timeout olasılığı. Worker sayısı artırılabilir.</div>
+                    <div class="log-anomaly-meta">
+                        <span class="log-anomaly-tag info">Bilgi</span>
+                        <span class="log-anomaly-time"><i class="fas fa-clock"></i> 1 saat önce</span>
+                    </div>
+                </div>
+            </div>
+            <div class="log-anomaly-item resolved">
+                <div class="log-anomaly-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="log-anomaly-content">
+                    <div class="log-anomaly-title">CPU Spike — Otomatik Çözüldü</div>
+                    <div class="log-anomaly-desc">CPU %95 spike tespit edildi, zombie process otomatik temizlendi. Sistem normale döndü.</div>
+                    <div class="log-anomaly-meta">
+                        <span class="log-anomaly-tag resolved">Çözüldü</span>
+                        <span class="log-anomaly-time"><i class="fas fa-clock"></i> 2 saat önce</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Analysis -->
+    <div class="log-patterns-grid">
+        <!-- Error frequency -->
+        <div class="log-pattern-card">
+            <h4><i class="fas fa-chart-bar" style="color:#f87171"></i> Hata Dağılımı (24 saat)</h4>
+            <div id="logFreqChart">
+                <div class="log-freq-item">
+                    <span class="log-freq-label">SSH Auth</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:85%;background:#f87171;"></div></div>
+                    <span class="log-freq-count">47</span>
+                </div>
+                <div class="log-freq-item">
+                    <span class="log-freq-label">Nginx 502</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:42%;background:#fbbf24;"></div></div>
+                    <span class="log-freq-count">23</span>
+                </div>
+                <div class="log-freq-item">
+                    <span class="log-freq-label">OOM Kill</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:18%;background:#f87171;"></div></div>
+                    <span class="log-freq-count">10</span>
+                </div>
+                <div class="log-freq-item">
+                    <span class="log-freq-label">Disk Warning</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:14%;background:#fbbf24;"></div></div>
+                    <span class="log-freq-count">8</span>
+                </div>
+                <div class="log-freq-item">
+                    <span class="log-freq-label">Docker Error</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:9%;background:#6366f1;"></div></div>
+                    <span class="log-freq-count">5</span>
+                </div>
+                <div class="log-freq-item">
+                    <span class="log-freq-label">Cron Failed</span>
+                    <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:5%;background:#6366f1;"></div></div>
+                    <span class="log-freq-count">3</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Score -->
+        <div class="log-pattern-card">
+            <h4><i class="fas fa-heartbeat" style="color:#22c55e"></i> Sistem Sağlık Skoru</h4>
+            <div class="log-health-ring">
+                <svg viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-color)" stroke-width="10"/>
+                    <circle cx="60" cy="60" r="50" fill="none"
+                            stroke="#22c55e" stroke-width="10"
+                            stroke-dasharray="295 315"
+                            stroke-linecap="round"
+                            transform="rotate(-90 60 60)"
+                            id="logHealthCircle"/>
+                    <text x="60" y="55" text-anchor="middle" class="log-health-score" fill="var(--text-primary)" font-size="28" font-weight="800">94</text>
+                    <text x="60" y="74" text-anchor="middle" fill="var(--text-secondary)" font-size="12">/100</text>
+                </svg>
+                <div class="log-health-label">Son 24 saatlik analiz bazında</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span style="color:var(--text-secondary)">CPU Stabilitesi</span>
+                    <strong style="color:#22c55e">98/100</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span style="color:var(--text-secondary)">RAM Sağlığı</span>
+                    <strong style="color:#fbbf24">82/100</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span style="color:var(--text-secondary)">Disk Durumu</span>
+                    <strong style="color:#22c55e">97/100</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span style="color:var(--text-secondary)">Ağ Güvenliği</span>
+                    <strong style="color:#fbbf24">89/100</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span style="color:var(--text-secondary)">Servis Uptime</span>
+                    <strong style="color:#22c55e">100/100</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Suggestions -->
+    <div class="log-ai-card">
+        <h3><i class="fas fa-wand-magic-sparkles" style="color:#9333ea"></i> AI Öneriler</h3>
+        <div class="log-ai-suggestion">
+            <div class="log-ai-sug-icon"><i class="fas fa-shield-alt"></i></div>
+            <div class="log-ai-sug-text">
+                <strong>Fail2ban Kuralı Ekleyin</strong>
+                <span>47 SSH brute-force denemesi tespit edildi. Fail2ban ile 3 başarısız denemede IP'yi 24 saat blokla.</span>
+            </div>
+            <button class="log-ai-sug-action" onclick="showToast('Fail2ban kuralı Market üzerinden kurulabilir.','info')">Uygula</button>
+        </div>
+        <div class="log-ai-suggestion">
+            <div class="log-ai-sug-icon"><i class="fas fa-arrows-rotate"></i></div>
+            <div class="log-ai-sug-text">
+                <strong>Docker Log Rotation Aktifleştirin</strong>
+                <span>Container logları kontrolsüz büyüyor. <code>max-size: 10m, max-file: 3</code> yapılandırması önerilir.</span>
+            </div>
+            <button class="log-ai-sug-action" onclick="showToast('Log rotation yapılandırması için Monitoring > Görevler\'i kullanın.','info')">Uygula</button>
+        </div>
+        <div class="log-ai-suggestion">
+            <div class="log-ai-sug-icon"><i class="fas fa-memory"></i></div>
+            <div class="log-ai-sug-text">
+                <strong>Gunicorn Worker Optimizasyonu</strong>
+                <span>RAM spike ve 502 hataları ilişkili. Worker sayısını 4→2'ye düşürüp gevent kullanmaya devam edin.</span>
+            </div>
+            <button class="log-ai-sug-action" onclick="showToast('gunicorn.conf.py dosyasını kontrol edin.','info')">İncele</button>
+        </div>
+        <div class="log-ai-suggestion">
+            <div class="log-ai-sug-icon"><i class="fas fa-bell"></i></div>
+            <div class="log-ai-sug-text">
+                <strong>RAM Alarm Kuralı Oluşturun</strong>
+                <span>RAM %80 üzeri için alarm kuralı yok. Monitoring > Alarmlar'dan kural ekleyin.</span>
+            </div>
+            <button class="log-ai-sug-action" onclick="window.location='/monitoring'">Oluştur</button>
+        </div>
+    </div>
+
+    <!-- Live Log Feed -->
+    <div class="log-live-card">
+        <div class="log-live-header">
+            <h3><i class="fas fa-terminal" style="color:#6366f1"></i> Canlı Log Akışı</h3>
+            <div class="log-live-indicator">
+                <span class="log-live-dot"></span> Canlı
+            </div>
+        </div>
+        <div class="log-live-feed" id="logLiveFeed">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    // Simulated live log feed
+    const logSamples = [
+        { time: null, level: 'info', msg: 'nginx: GET /api/monitoring/overview 200 0.023s' },
+        { time: null, level: 'ok', msg: 'emarecloud: Health check passed — all workers alive' },
+        { time: null, level: 'info', msg: 'sshd: Accepted publickey for root from 185.189.54.1 port 52341' },
+        { time: null, level: 'warn', msg: 'sshd: Failed password for invalid user admin from 185.220.101.45 port 43210' },
+        { time: null, level: 'info', msg: 'docker: Container ubuntu-9378 healthy — uptime 3d 14h' },
+        { time: null, level: 'ok', msg: 'firewalld: Reload complete — 8 rules active' },
+        { time: null, level: 'info', msg: 'nginx: GET /market 200 0.045s — User-Agent: Mozilla/5.0' },
+        { time: null, level: 'warn', msg: 'kernel: TCP: out of memory — consider increasing tcp_mem' },
+        { time: null, level: 'error', msg: 'nginx: upstream timed out (110: Connection timed out) while reading from upstream' },
+        { time: null, level: 'info', msg: 'crond: (root) CMD (/opt/emarecloud/backup.sh > /dev/null 2>&1)' },
+        { time: null, level: 'ok', msg: 'systemd: emarecloud.service: Main process exited, code=exited, status=0/SUCCESS' },
+        { time: null, level: 'info', msg: 'pm2: emare-dapp — CPU: 0.2% — MEM: 62.7 MB — restart: 0' },
+        { time: null, level: 'warn', msg: 'Docker: container log file exceeds 50MB — /var/lib/docker/containers/abc123' },
+        { time: null, level: 'error', msg: 'gunicorn: Worker timeout — PID 12345 killed' },
+        { time: null, level: 'ok', msg: 'certbot: Certificate not due for renewal yet (expires 2026-06-15)' },
+        { time: null, level: 'info', msg: 'nginx: GET /ai-wizard 200 0.012s' },
+        { time: null, level: 'info', msg: 'docker: Network bridge connected — 2 endpoints active' },
+        { time: null, level: 'warn', msg: 'audit: SELinux denying access to /tmp/emarecloud.sock' },
+        { time: null, level: 'ok', msg: 'systemd: nginx.service: Started successfully' },
+        { time: null, level: 'info', msg: 'EmareCloud: User admin logged in from 185.189.54.1' },
+    ];
+
+    const feed = document.getElementById('logLiveFeed');
+    if (!feed) return;
+
+    // Initial lines
+    function addLogLine() {
+        const sample = logSamples[Math.floor(Math.random() * logSamples.length)];
+        const now = new Date();
+        const time = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        const isError = sample.level === 'error';
+        line.innerHTML =
+            '<span class="log-line-time">' + time + '</span>' +
+            '<span class="log-line-level ' + sample.level + '">[' + sample.level.toUpperCase() + ']</span>' +
+            '<span class="log-line-msg' + (isError ? ' log-line-highlight' : '') + '">' + sample.msg + '</span>';
+        feed.appendChild(line);
+        // Keep max 50 lines
+        while (feed.children.length > 50) feed.removeChild(feed.firstChild);
+        feed.scrollTop = feed.scrollHeight;
+    }
+
+    // Add 8 initial lines
+    for (let i = 0; i < 8; i++) addLogLine();
+
+    // Add new line every 2-5 seconds
+    setInterval(addLogLine, 2000 + Math.random() * 3000);
+
+    // Refresh anomaly data from server (mock — in production would be API call)
+    function refreshLogStats() {
+        // In production: fetch('/api/log-intelligence').then(...)
+        // For now, demo data is static
+    }
+    refreshLogStats();
+})();
+</script>
+{% endblock %}

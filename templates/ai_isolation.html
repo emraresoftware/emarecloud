@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}AI Multi-Tenant Isolation Guard - EmareCloud{% endblock %}
+{% block page_title %}Multi-Tenant Isolation Guard{% endblock %}
+
+{% block head %}
+<style>
+.iso-container{max-width:1100px;margin:0 auto}
+.iso-hero{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.iso-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#ef4444,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.iso-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.iso-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.iso-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.iso-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.iso-stat-val{font-size:28px;font-weight:800}
+.iso-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.iso-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.iso-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.iso-tenants{display:flex;flex-direction:column;gap:12px}
+.iso-tenant{display:flex;align-items:center;gap:16px;padding:18px;border-radius:14px;background:var(--bg-input);transition:all .2s;border-left:4px solid transparent}
+.iso-tenant:hover{transform:translateX(4px)}
+.iso-tenant.healthy{border-left-color:#22c55e}
+.iso-tenant.warning{border-left-color:#f59e0b}
+.iso-tenant.critical{border-left-color:#ef4444}
+.iso-tenant-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.iso-tenant-info{flex:1}
+.iso-tenant-name{font-size:14px;font-weight:700}
+.iso-tenant-meta{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.iso-tenant-resources{display:flex;gap:12px;flex-wrap:wrap}
+.iso-resource{text-align:center;min-width:60px}
+.iso-resource-bar{width:48px;height:6px;border-radius:3px;background:var(--border-color);margin:4px auto;overflow:hidden}
+.iso-resource-fill{height:100%;border-radius:3px}
+.iso-resource-val{font-size:11px;font-weight:700}
+.iso-resource-lbl{font-size:10px;color:var(--text-secondary)}
+.iso-tenant-status{padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700}
+.iso-rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.iso-rule{padding:18px;border-radius:14px;background:var(--bg-input);display:flex;align-items:center;gap:14px}
+.iso-rule-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.iso-rule-info{flex:1}
+.iso-rule-name{font-size:13px;font-weight:700}
+.iso-rule-desc{font-size:11px;color:var(--text-secondary)}
+.iso-toggle{width:44px;height:24px;border-radius:12px;background:var(--border-color);position:relative;cursor:pointer;transition:all .3s;flex-shrink:0}
+.iso-toggle.on{background:#22c55e}
+.iso-toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;left:2px;transition:all .3s}
+.iso-toggle.on::after{left:22px}
+.iso-matrix{display:grid;grid-template-columns:auto repeat(6,1fr);gap:1px;background:var(--border-color);border-radius:12px;overflow:hidden;margin-top:16px}
+.iso-matrix-cell{padding:10px;text-align:center;font-size:12px;background:var(--bg-card)}
+.iso-matrix-header{font-weight:700;background:var(--bg-input)}
+.iso-matrix-cell.allowed{color:#22c55e}
+.iso-matrix-cell.blocked{color:#ef4444}
+.iso-events{display:flex;flex-direction:column;gap:8px}
+.iso-event{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:var(--bg-input);font-size:13px}
+.iso-event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.iso-event-time{font-size:11px;color:var(--text-secondary);min-width:60px}
+@media(max-width:768px){.iso-tenant{flex-wrap:wrap}.iso-tenant-resources{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="iso-container">
+    <div class="iso-hero">
+        <div class="iso-hero-icon"><i class="fas fa-lock"></i></div>
+        <div>
+            <h2>Multi-Tenant Isolation Guard</h2>
+            <p>Farklı kullanıcıların AI uygulamaları arasında otomatik container izolasyonu + kaynak sınırı. Güvenlik ve stabilite maksimumda.</p>
+        </div>
+    </div>
+
+    <div class="iso-stats">
+        <div class="iso-stat"><div class="iso-stat-val" style="color:#6366f1">8</div><div class="iso-stat-lbl">Aktif Tenant</div></div>
+        <div class="iso-stat"><div class="iso-stat-val" style="color:#22c55e">24</div><div class="iso-stat-lbl">İzole Container</div></div>
+        <div class="iso-stat"><div class="iso-stat-val" style="color:#f59e0b">0</div><div class="iso-stat-lbl">İhlal (24s)</div></div>
+        <div class="iso-stat"><div class="iso-stat-val" style="color:#ef4444">99.99%</div><div class="iso-stat-lbl">İzolasyon Skoru</div></div>
+    </div>
+
+    <div class="iso-card">
+        <h3><i class="fas fa-users-rectangle" style="color:#6366f1"></i> Tenant Durumları</h3>
+        <div class="iso-tenants" id="isoTenants"></div>
+    </div>
+
+    <div class="iso-card">
+        <h3><i class="fas fa-shield-halved" style="color:#ef4444"></i> İzolasyon Kuralları</h3>
+        <div class="iso-rules" id="isoRules"></div>
+    </div>
+
+    <div class="iso-card">
+        <h3><i class="fas fa-table-cells" style="color:#22c55e"></i> Erişim Matrisi</h3>
+        <div class="iso-matrix" id="isoMatrix"></div>
+    </div>
+
+    <div class="iso-card">
+        <h3><i class="fas fa-clock-rotate-left" style="color:#f59e0b"></i> Son Olaylar</h3>
+        <div class="iso-events" id="isoEvents"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const tenants=[
+    {name:'TurkAI Solutions',icon:'🏢',bg:'rgba(99,102,241,.12)',containers:5,cpu:62,ram:71,gpu:45,disk:38,status:'Sağlıklı',statusBg:'#22c55e',cls:'healthy'},
+    {name:'CloudServis Ltd.',icon:'☁️',bg:'rgba(34,197,94,.12)',containers:4,cpu:78,ram:65,gpu:82,disk:52,status:'Uyarı',statusBg:'#f59e0b',cls:'warning'},
+    {name:'DataMinds AI',icon:'🧠',bg:'rgba(236,72,153,.12)',containers:3,cpu:34,ram:42,gpu:28,disk:21,status:'Sağlıklı',statusBg:'#22c55e',cls:'healthy'},
+    {name:'E-Ticaret Pro',icon:'🛒',bg:'rgba(245,158,11,.12)',containers:4,cpu:55,ram:48,gpu:0,disk:67,status:'Sağlıklı',statusBg:'#22c55e',cls:'healthy'},
+    {name:'MedTech AI',icon:'🏥',bg:'rgba(14,165,233,.12)',containers:3,cpu:88,ram:91,gpu:76,disk:44,status:'Kritik',statusBg:'#ef4444',cls:'critical'},
+    {name:'GameStudio X',icon:'🎮',bg:'rgba(168,85,247,.12)',containers:2,cpu:41,ram:35,gpu:92,disk:28,status:'Uyarı',statusBg:'#f59e0b',cls:'warning'},
+    {name:'FinanceBot Corp',icon:'💰',bg:'rgba(34,197,94,.12)',containers:2,cpu:22,ram:31,gpu:0,disk:15,status:'Sağlıklı',statusBg:'#22c55e',cls:'healthy'},
+    {name:'EduLearn AI',icon:'📚',bg:'rgba(59,130,246,.12)',containers:1,cpu:18,ram:24,gpu:12,disk:8,status:'Sağlıklı',statusBg:'#22c55e',cls:'healthy'}
+];
+function barColor(v){return v>80?'#ef4444':v>60?'#f59e0b':'#22c55e'}
+const tc=document.getElementById('isoTenants');
+tc.innerHTML=tenants.map(t=>{
+    const res=[{l:'CPU',v:t.cpu},{l:'RAM',v:t.ram},{l:'GPU',v:t.gpu},{l:'Disk',v:t.disk}];
+    return '<div class="iso-tenant '+t.cls+'"><div class="iso-tenant-icon" style="background:'+t.bg+'">'+t.icon+'</div><div class="iso-tenant-info"><div class="iso-tenant-name">'+t.name+'</div><div class="iso-tenant-meta">'+t.containers+' container</div></div><div class="iso-tenant-resources">'+res.map(r=>'<div class="iso-resource"><div class="iso-resource-val" style="color:'+barColor(r.v)+'">'+r.v+'%</div><div class="iso-resource-bar"><div class="iso-resource-fill" style="width:'+r.v+'%;background:'+barColor(r.v)+'"></div></div><div class="iso-resource-lbl">'+r.l+'</div></div>').join('')+'</div><div class="iso-tenant-status" style="background:'+t.statusBg+'22;color:'+t.statusBg+'">'+t.status+'</div></div>';
+}).join('');
+
+const rules=[
+    {icon:'🔒',bg:'rgba(239,68,68,.12)',name:'Network İzolasyonu',desc:'Tenant-arası ağ trafiği engellenir',on:true},
+    {icon:'💾',bg:'rgba(99,102,241,.12)',name:'Disk Kotası',desc:'Her tenanta maks 50GB disk limiti',on:true},
+    {icon:'🧠',bg:'rgba(34,197,94,.12)',name:'RAM Limiti',desc:'Container başına maks 8GB RAM',on:true},
+    {icon:'⚡',bg:'rgba(245,158,11,.12)',name:'CPU Throttling',desc:'Aşırı CPU kullanımında auto-throttle',on:true},
+    {icon:'🎮',bg:'rgba(168,85,247,.12)',name:'GPU Paylaşım Kontrolü',desc:'GPU VRAM izolasyonu (MIG/vGPU)',on:false},
+    {icon:'🔥',bg:'rgba(236,72,153,.12)',name:'OOM Killer Koruması',desc:'Bir tenant diğerini etkileyemez',on:true},
+    {icon:'📡',bg:'rgba(14,165,233,.12)',name:'API Rate Limit',desc:'Tenant bazlı istek sınırlaması',on:true},
+    {icon:'🛡️',bg:'rgba(34,197,94,.12)',name:'Seccomp Profilleri',desc:'Tehlikeli syscall engelleme',on:true}
+];
+const rc=document.getElementById('isoRules');
+rc.innerHTML=rules.map(r=>'<div class="iso-rule"><div class="iso-rule-icon" style="background:'+r.bg+'">'+r.icon+'</div><div class="iso-rule-info"><div class="iso-rule-name">'+r.name+'</div><div class="iso-rule-desc">'+r.desc+'</div></div><div class="iso-toggle'+(r.on?' on':'')+'" onclick="this.classList.toggle(\'on\')"></div></div>').join('');
+
+const matrixTenants=['TurkAI','CloudServis','DataMinds','E-Ticaret','MedTech','GameStudio'];
+const access=[
+    ['Network',1,0,0,0,0,0],[' Storage',0,1,0,0,0,0],['GPU',0,0,1,0,0,1],['API',1,1,1,1,1,1],['Logs',1,0,0,0,0,0],['Config',0,0,0,0,0,0]
+];
+const mc=document.getElementById('isoMatrix');
+let mh='<div class="iso-matrix-cell iso-matrix-header"></div>';
+matrixTenants.forEach(t=>{mh+='<div class="iso-matrix-cell iso-matrix-header">'+t+'</div>'});
+access.forEach(row=>{
+    mh+='<div class="iso-matrix-cell iso-matrix-header">'+row[0]+'</div>';
+    for(let i=1;i<row.length;i++){
+        const a=row[i];mh+='<div class="iso-matrix-cell '+(a?'allowed':'blocked')+'">'+(a?'<i class="fas fa-check"></i>':'<i class="fas fa-ban"></i>')+'</div>';
+    }
+});
+mc.innerHTML=mh;
+
+const events=[
+    {dot:'#ef4444',time:'2 dk',text:'⚠️ MedTech AI — RAM %91 — Auto-throttle aktif'},
+    {dot:'#f59e0b',time:'8 dk',text:'🔒 CloudServis → DataMinds — Ağ erişimi engellendi'},
+    {dot:'#22c55e',time:'15 dk',text:'✅ TurkAI — Yeni container izole edildi (ollama-v2)'},
+    {dot:'#22c55e',time:'32 dk',text:'✅ GameStudio — GPU VRAM paylaşımı dengelendi'},
+    {dot:'#6366f1',time:'1 sa',text:'📊 Günlük izolasyon raporu oluşturuldu — 0 ihlal'},
+    {dot:'#f59e0b',time:'2 sa',text:'🛡️ OOM Killer — FinanceBot container korundu'},
+    {dot:'#22c55e',time:'4 sa',text:'✅ EduLearn AI — Seccomp profili güncellendi'}
+];
+const ec=document.getElementById('isoEvents');
+ec.innerHTML=events.map(e=>'<div class="iso-event"><div class="iso-event-dot" style="background:'+e.dot+'"></div><div class="iso-event-time">'+e.time+'</div><div>'+e.text+'</div></div>').join('');
+</script>
+{% endblock %}

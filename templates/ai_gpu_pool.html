@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}AI Auto-Scaling GPU Pool - EmareCloud{% endblock %}
+{% block page_title %}GPU Auto-Scaling{% endblock %}
+
+{% block head %}
+<style>
+.gpu-container{max-width:1100px;margin:0 auto}
+.gpu-hero{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(14,165,233,.08));border:1px solid var(--border-color);border-radius:20px;padding:32px;margin-bottom:28px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.gpu-hero-icon{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;flex-shrink:0}
+.gpu-hero-text h2{margin:0 0 4px;font-size:22px;font-weight:800}
+.gpu-hero-text p{margin:0;color:var(--text-secondary);font-size:14px}
+.gpu-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+.gpu-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:22px;position:relative;overflow:hidden}
+.gpu-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.gpu-stat.b::before{background:#3b82f6}
+.gpu-stat.g::before{background:#22c55e}
+.gpu-stat.p::before{background:#9333ea}
+.gpu-stat.o::before{background:#f59e0b}
+.gpu-stat-val{font-size:28px;font-weight:800}
+.gpu-stat-label{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.gpu-stat-sub{font-size:12px;margin-top:6px;padding:3px 8px;border-radius:6px;display:inline-block;font-weight:600}
+.gpu-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:24px}
+.gpu-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.gpu-pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.gpu-node{background:var(--bg-input);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:all .2s;border:2px solid transparent}
+.gpu-node:hover{border-color:#3b82f6}
+.gpu-node-header{display:flex;align-items:center;justify-content:space-between}
+.gpu-node-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.gpu-node-status{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.gpu-node-status.active{background:rgba(34,197,94,.12);color:#22c55e}
+.gpu-node-status.scaling{background:rgba(59,130,246,.12);color:#3b82f6}
+.gpu-node-status.idle{background:rgba(245,158,11,.12);color:#f59e0b}
+.gpu-node-status.off{background:var(--bg-input);color:var(--text-secondary)}
+.gpu-node-specs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gpu-node-spec{font-size:12px}
+.gpu-node-spec-label{color:var(--text-secondary)}
+.gpu-node-spec-val{font-weight:700}
+.gpu-node-bar{height:6px;background:var(--border-color);border-radius:3px;overflow:hidden}
+.gpu-node-bar-fill{height:100%;border-radius:3px;transition:width .8s}
+.gpu-rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.gpu-rule{display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg-input)}
+.gpu-rule-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.gpu-rule-info{flex:1}
+.gpu-rule-name{font-size:14px;font-weight:700}
+.gpu-rule-desc{font-size:12px;color:var(--text-secondary)}
+.gpu-rule-toggle{width:44px;height:24px;border-radius:12px;background:var(--border-color);position:relative;cursor:pointer;transition:all .2s}
+.gpu-rule-toggle.on{background:#22c55e}
+.gpu-rule-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:all .2s}
+.gpu-rule-toggle.on::after{left:22px}
+.gpu-usage-chart{display:flex;align-items:flex-end;gap:4px;height:160px;padding:0 4px}
+.gpu-chart-col{flex:1;display:flex;flex-direction:column;align-items:center}
+.gpu-chart-bar{width:100%;max-width:36px;border-radius:4px 4px 0 0;transition:height .6s;position:relative;cursor:pointer}
+.gpu-chart-bar:hover{opacity:.85}
+.gpu-chart-tip{display:none;position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border-color);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;z-index:5}
+.gpu-chart-bar:hover .gpu-chart-tip{display:block}
+.gpu-chart-label{font-size:10px;color:var(--text-secondary);margin-top:4px}
+.gpu-two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:768px){.gpu-two{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gpu-container">
+    <div class="gpu-hero">
+        <div class="gpu-hero-icon"><i class="fas fa-microchip"></i></div>
+        <div class="gpu-hero-text">
+            <h2>AI Auto-Scaling GPU Pool</h2>
+            <p>GPU yönetmeyin — yük artınca sistem otomatik node açar, azalınca kapatır. Kurumsal güç, startup maliyeti.</p>
+        </div>
+    </div>
+
+    <div class="gpu-stats">
+        <div class="gpu-stat b"><div class="gpu-stat-val">4 / 8</div><div class="gpu-stat-label">Aktif GPU Node</div><div class="gpu-stat-sub" style="background:rgba(59,130,246,.12);color:#3b82f6">Auto-scaling aktif</div></div>
+        <div class="gpu-stat g"><div class="gpu-stat-val">67%</div><div class="gpu-stat-label">Ortalama GPU Kullanımı</div><div class="gpu-stat-sub" style="background:rgba(34,197,94,.12);color:#22c55e">Normal</div></div>
+        <div class="gpu-stat p"><div class="gpu-stat-val">384 GB</div><div class="gpu-stat-label">Toplam VRAM</div><div class="gpu-stat-sub" style="background:rgba(147,51,234,.12);color:#9333ea">247 GB kullanılıyor</div></div>
+        <div class="gpu-stat o"><div class="gpu-stat-val">$0.42</div><div class="gpu-stat-label">Şu An Maliyet/Saat</div><div class="gpu-stat-sub" style="background:rgba(245,158,11,.12);color:#f59e0b">%28 tasarruf</div></div>
+    </div>
+
+    <div class="gpu-card">
+        <h3><i class="fas fa-server" style="color:#3b82f6"></i> GPU Node Havuzu</h3>
+        <div class="gpu-pool-grid" id="gpuPool"></div>
+    </div>
+
+    <div class="gpu-two">
+        <div class="gpu-card">
+            <h3><i class="fas fa-chart-area" style="color:#9333ea"></i> Son 24 Saat GPU Kullanımı</h3>
+            <div class="gpu-usage-chart" id="gpuChart"></div>
+        </div>
+        <div class="gpu-card">
+            <h3><i class="fas fa-sliders" style="color:#22c55e"></i> Auto-Scaling Kuralları</h3>
+            <div class="gpu-rules" id="gpuRules"></div>
+        </div>
+    </div>
+
+    <div class="gpu-card">
+        <h3><i class="fas fa-clock-rotate-left" style="color:#f59e0b"></i> Scaling Geçmişi</h3>
+        <div id="gpuHistory" style="display:grid;gap:10px"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    // GPU Nodes
+    const nodes=[
+        {name:'GPU-Node-01',gpu:'NVIDIA A100 80GB',status:'active',usage:82,vram:'65/80 GB',temp:'72°C',model:'Llama 3.1 70B'},
+        {name:'GPU-Node-02',gpu:'NVIDIA A100 80GB',status:'active',usage:71,vram:'58/80 GB',temp:'68°C',model:'Stable Diffusion XL'},
+        {name:'GPU-Node-03',gpu:'NVIDIA A100 40GB',status:'active',usage:55,vram:'22/40 GB',temp:'58°C',model:'Whisper Large v3'},
+        {name:'GPU-Node-04',gpu:'NVIDIA T4 16GB',status:'active',usage:45,vram:'12/16 GB',temp:'52°C',model:'CodeLlama 34B'},
+        {name:'GPU-Node-05',gpu:'NVIDIA A100 40GB',status:'scaling',usage:0,vram:'0/40 GB',temp:'—',model:'Provizyon ediliyor...'},
+        {name:'GPU-Node-06',gpu:'NVIDIA T4 16GB',status:'idle',usage:8,vram:'2/16 GB',temp:'38°C',model:'Idle — otomatik kapanacak'},
+        {name:'GPU-Node-07',gpu:'NVIDIA A100 80GB',status:'off',usage:0,vram:'0/80 GB',temp:'—',model:'Kapalı — gerekince açılır'},
+        {name:'GPU-Node-08',gpu:'NVIDIA A100 80GB',status:'off',usage:0,vram:'0/80 GB',temp:'—',model:'Kapalı — gerekince açılır'}
+    ];
+    const pc=document.getElementById('gpuPool');
+    let ph='';
+    nodes.forEach(n=>{
+        const barColor=n.usage>75?'#ef4444':n.usage>50?'#f59e0b':'#22c55e';
+        const statusLabel={active:'Aktif',scaling:'Scaling',idle:'Idle',off:'Kapalı'}[n.status];
+        ph+='<div class="gpu-node"><div class="gpu-node-header"><div class="gpu-node-name">'+n.name+'</div><div class="gpu-node-status '+n.status+'">'+statusLabel+'</div></div>';
+        ph+='<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">'+n.gpu+'</div>';
+        ph+='<div class="gpu-node-bar"><div class="gpu-node-bar-fill" style="width:'+n.usage+'%;background:'+barColor+'"></div></div>';
+        ph+='<div class="gpu-node-specs"><div class="gpu-node-spec"><div class="gpu-node-spec-label">VRAM</div><div class="gpu-node-spec-val">'+n.vram+'</div></div><div class="gpu-node-spec"><div class="gpu-node-spec-label">Sıcaklık</div><div class="gpu-node-spec-val">'+n.temp+'</div></div></div>';
+        ph+='<div style="font-size:12px;color:var(--text-secondary)">'+n.model+'</div></div>';
+    });
+    pc.innerHTML=ph;
+
+    // Usage chart
+    const hours=[];for(let i=0;i<24;i++)hours.push(String(i).padStart(2,'0')+':00');
+    const usage=[35,28,22,18,15,12,20,45,62,78,85,82,75,80,88,92,85,78,72,65,55,48,42,38];
+    const cc=document.getElementById('gpuChart');
+    let ch='';
+    usage.forEach((v,i)=>{
+        const h=Math.max(4,(v/100)*140);
+        const col=v>80?'#ef4444':v>60?'#f59e0b':v>40?'#3b82f6':'#22c55e';
+        ch+='<div class="gpu-chart-col"><div class="gpu-chart-bar" style="height:'+h+'px;background:'+col+'"><div class="gpu-chart-tip">'+v+'%</div></div><div class="gpu-chart-label">'+hours[i].slice(0,2)+'</div></div>';
+    });
+    cc.innerHTML=ch;
+
+    // Rules
+    const rules=[
+        {icon:'📈',bg:'rgba(59,130,246,.12)',name:'Scale Up: GPU > %80',desc:'5 dakika üstünde kalırsa yeni node aç',on:true},
+        {icon:'📉',bg:'rgba(34,197,94,.12)',name:'Scale Down: GPU < %20',desc:'15 dakika altında kalırsa node kapat',on:true},
+        {icon:'🌡️',bg:'rgba(239,68,68,.12)',name:'Sıcaklık Koruması: > 85°C',desc:'Yükü başka node\'a aktar',on:true},
+        {icon:'💰',bg:'rgba(245,158,11,.12)',name:'Maliyet Limiti: $50/gün',desc:'Günlük bütçe aşılırsa uyar',on:false},
+        {icon:'🔄',bg:'rgba(147,51,234,.12)',name:'VRAM Balancing',desc:'Node\'lar arası VRAM dengeleme',on:true},
+        {icon:'🌙',bg:'rgba(99,102,241,.12)',name:'Gece Modu (22:00-06:00)',desc:'Min 2 node, geri kalanı kapat',on:true}
+    ];
+    const rc=document.getElementById('gpuRules');
+    let rh='';
+    rules.forEach((r,i)=>{
+        rh+='<div class="gpu-rule"><div class="gpu-rule-icon" style="background:'+r.bg+'">'+r.icon+'</div><div class="gpu-rule-info"><div class="gpu-rule-name">'+r.name+'</div><div class="gpu-rule-desc">'+r.desc+'</div></div><div class="gpu-rule-toggle '+(r.on?'on':'')+'" onclick="this.classList.toggle(\'on\')"></div></div>';
+    });
+    rc.innerHTML=rh;
+
+    // History
+    const history=[
+        {time:'14:32',type:'up',text:'GPU-Node-05 provizyon başlatıldı',reason:'GPU kullanımı %88 — threshold aşıldı'},
+        {time:'12:15',type:'down',text:'GPU-Node-06 idle moduna alındı',reason:'15dk boyunca <%20 kullanım'},
+        {time:'10:48',type:'balance',text:'VRAM dengeleme: Node-01 → Node-03',reason:'Node-01 VRAM %95, Node-03 %45'},
+        {time:'06:00',type:'up',text:'Gece modundan çıkış: 4 node aktif',reason:'Sabah trafiği başladı'},
+        {time:'22:00 (dün)',type:'down',text:'Gece modu: 6 node → 2 node',reason:'Gece modu kuralı tetiklendi'},
+        {time:'18:30 (dün)',type:'up',text:'GPU-Node-04 otomatik açıldı',reason:'Stable Diffusion batch queue > 10'},
+    ];
+    const hc=document.getElementById('gpuHistory');
+    let hh='';
+    history.forEach(h=>{
+        const colors={up:'#3b82f6',down:'#f59e0b',balance:'#9333ea'};
+        const icons={up:'fa-arrow-up',down:'fa-arrow-down',balance:'fa-arrows-rotate'};
+        hh+='<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;background:var(--bg-input)"><div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;color:'+(colors[h.type]||'#6366f1')+';flex-shrink:0"><i class="fas '+(icons[h.type]||'fa-circle')+'"></i></div><div style="flex:1"><div style="font-size:14px;font-weight:600">'+h.text+'</div><div style="font-size:12px;color:var(--text-secondary)">'+h.reason+'</div></div><div style="font-size:12px;color:var(--text-secondary);white-space:nowrap">'+h.time+'</div></div>';
+    });
+    hc.innerHTML=hh;
+})();
+</script>
+{% endblock %}

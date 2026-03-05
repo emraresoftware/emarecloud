@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% block title %}Depolama - Sunucu Yönetimi{% endblock %}
+{% block page_title %}Depolama{% endblock %}
+
+{% block content %}
+<p class="market-intro">RAID protokollerini yönetin, sunucu disklerini ve yazılım RAID (mdadm) durumunu tek ekrandan izleyin.</p>
+
+<!-- Sekmeler -->
+<div class="storage-tabs">
+    <button type="button" class="storage-tab active" data-tab="protocols"><i class="fas fa-layer-group"></i> RAID Protokolleri</button>
+    <button type="button" class="storage-tab" data-tab="disks"><i class="fas fa-hdd"></i> Sunucu diskleri</button>
+    <button type="button" class="storage-tab" data-tab="raid"><i class="fas fa-server"></i> RAID durumu</button>
+</div>
+
+<!-- RAID Protokolleri -->
+<div id="panel-protocols" class="storage-panel">
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-layer-group"></i> Protokol listesi</h2>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Protokol adı</th>
+                        <th>Diskler arası gecikme</th>
+                        <th>RAID seviyesi</th>
+                        <th>Min. disk</th>
+                        <th>Açıklama</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="protocolTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-header">
+            <h3><i class="fas fa-plus-circle"></i> Yeni protokol ekle</h3>
+        </div>
+        <form id="raidProtocolForm" class="form-grid" style="margin-top:0.5rem;">
+            <div class="form-group">
+                <label>Protokol adı *</label>
+                <input type="text" id="protoName" required placeholder="örn: RAID-D4ms">
+            </div>
+            <div class="form-group">
+                <label>Diskler arası gecikme (ms) *</label>
+                <input type="number" id="protoDelayMs" value="4" min="0" max="1000" step="1" required>
+            </div>
+            <div class="form-group">
+                <label>RAID seviyesi</label>
+                <select id="protoRaidLevel" class="form-select">
+                    <option value="Özel">Özel</option>
+                    <option value="0">RAID 0 (Striping)</option>
+                    <option value="1">RAID 1 (Mirroring)</option>
+                    <option value="5">RAID 5</option>
+                    <option value="6">RAID 6</option>
+                    <option value="10">RAID 10</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Minimum disk sayısı</label>
+                <input type="number" id="protoMinDisks" value="2" min="2" max="32">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+                <label>Açıklama</label>
+                <input type="text" id="protoDescription" placeholder="Kısa açıklama">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+                <label>Notlar</label>
+                <textarea id="protoNotes" rows="2" placeholder="Yazma gecikmesi, senkronizasyon notları..."></textarea>
+            </div>
+            <div class="form-actions" style="grid-column:1/-1;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Protokol ekle</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Sunucu diskleri -->
+<div id="panel-disks" class="storage-panel" style="display:none;">
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-hdd"></i> Disk kullanımı</h2>
+        </div>
+        <div class="virt-toolbar">
+            <select id="storageServerSelect" class="virt-select">
+                <option value="">— Sunucu seçin —</option>
+                {% for s in servers %}
+                <option value="{{ s.id }}" data-connected="{{ 'true' if s.connected else 'false' }}">{{ s.name }} ({{ s.host }}) {% if s.connected %}• Bağlı{% endif %}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="btn btn-secondary" id="storageConnectBtn" onclick="storageConnect()" style="display:none;"><i class="fas fa-plug"></i> Bağlan</button>
+            <button type="button" class="btn btn-primary" onclick="storageLoadDisks()"><i class="fas fa-sync-alt"></i> Diskleri getir</button>
+        </div>
+        <p class="text-muted" id="storageDisksHint">Sunucu seçin, gerekirse Bağlan deyin, ardından Diskleri getir ile listeyi yükleyin.</p>
+        <div id="storageDisksBox" style="display:none; margin-top:1rem;">
+            <div class="storage-disks-summary" id="storageDisksSummary"></div>
+            <p class="text-muted" style="font-size:0.85rem; margin-bottom:0.5rem;">
+                <span id="storageLastUpdate"></span>
+                <label class="storage-auto-refresh-label"><input type="checkbox" id="storageAutoRefresh"> Anlık güncelleme (30 sn)</label>
+            </p>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>Bağlama noktası</th><th>Cihaz</th><th>Kullanım</th><th>Kullanılan / Toplam</th><th>Boş</th><th>Sağlık</th></tr></thead>
+                    <tbody id="storageDisksBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RAID durumu (mdadm) -->
+<div id="panel-raid" class="storage-panel" style="display:none;">
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-server"></i> Yazılım RAID (mdadm) durumu</h2>
+        </div>
+        <div class="virt-toolbar">
+            <select id="raidServerSelect" class="virt-select">
+                <option value="">— Sunucu seçin —</option>
+                {% for s in servers %}
+                <option value="{{ s.id }}" data-connected="{{ 'true' if s.connected else 'false' }}">{{ s.name }} ({{ s.host }}) {% if s.connected %}• Bağlı{% endif %}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="btn btn-secondary" id="raidConnectBtn" onclick="raidConnect()" style="display:none;"><i class="fas fa-plug"></i> Bağlan</button>
+            <button type="button" class="btn btn-primary" onclick="raidLoadStatus()"><i class="fas fa-sync-alt"></i> RAID durumunu getir</button>
+        </div>
+        <div id="raidStatusBox" style="display:none; margin-top:1rem;">
+            <div id="raidArraysTable" class="table-container"></div>
+            <div class="virt-status-box" style="margin-top:1rem;">
+                <h4 style="margin-bottom:0.5rem;"><i class="fas fa-terminal"></i> /proc/mdstat</h4>
+                <pre id="raidRawOutput" style="margin:0; font-size:0.8rem; white-space:pre-wrap; max-height:200px; overflow:auto;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Protokol düzenleme modal -->
+<div class="modal-overlay" id="editProtocolModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Protokolü düzenle</h3>
+            <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editProtoId" value="">
+            <div class="form-group">
+                <label>Protokol adı *</label>
+                <input type="text" id="editProtoName" required>
+            </div>
+            <div class="form-group">
+                <label>Diskler arası gecikme (ms)</label>
+                <input type="number" id="editProtoDelayMs" min="0" max="1000">
+            </div>
+            <div class="form-group">
+                <label>RAID seviyesi</label>
+                <select id="editProtoRaidLevel" class="form-select">
+                    <option value="Özel">Özel</option>
+                    <option value="0">RAID 0</option>
+                    <option value="1">RAID 1</option>
+                    <option value="5">RAID 5</option>
+                    <option value="6">RAID 6</option>
+                    <option value="10">RAID 10</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Minimum disk sayısı</label>
+                <input type="number" id="editProtoMinDisks" min="2" max="32">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <input type="text" id="editProtoDescription">
+            </div>
+            <div class="form-group">
+                <label>Notlar</label>
+                <textarea id="editProtoNotes" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditProtocol()"><i class="fas fa-save"></i> Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    loadProtocols();
+    document.getElementById('raidProtocolForm').onsubmit = function(e) { e.preventDefault(); addProtocol(); };
+    document.querySelectorAll('.storage-tab').forEach(function(tab) {
+        tab.onclick = function() {
+            document.querySelectorAll('.storage-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.storage-panel').forEach(function(p) { p.style.display = 'none'; });
+            tab.classList.add('active');
+            var panel = document.getElementById('panel-' + tab.dataset.tab);
+            if (panel) panel.style.display = 'block';
+        };
+    });
+    document.getElementById('storageServerSelect').addEventListener('change', function() {
+        var opt = this.options[this.selectedIndex];
+        document.getElementById('storageConnectBtn').style.display = (this.value && opt && opt.dataset.connected !== 'true') ? 'inline-flex' : 'none';
+    });
+    document.getElementById('raidServerSelect').addEventListener('change', function() {
+        var opt = this.options[this.selectedIndex];
+        document.getElementById('raidConnectBtn').style.display = (this.value && opt && opt.dataset.connected !== 'true') ? 'inline-flex' : 'none';
+    });
+})();
+
+function loadProtocols() {
+    fetch('/api/raid-protocols').then(function(r) { return r.json(); }).then(function(data) {
+        var tbody = document.getElementById('protocolTableBody');
+        if (!data.success || !data.protocols || !data.protocols.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Henüz protokol yok. Aşağıdan ekleyin.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = '';
+        data.protocols.forEach(function(p) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + esc(p.name) + '</strong></td>' +
+                '<td>' + (p.inter_disk_delay_ms != null ? p.inter_disk_delay_ms + ' ms' : '-') + '</td>' +
+                '<td>' + esc(p.raid_level || '-') + '</td>' +
+                '<td>' + (p.min_disks != null ? p.min_disks : '-') + '</td>' +
+                '<td class="text-muted">' + esc((p.description || '').substring(0, 40)) + ((p.description || '').length > 40 ? '…' : '') + '</td>' +
+                '<td><button type="button" class="btn btn-sm btn-secondary" onclick="openEditModal(\'' + esc(p.id) + '\')">Düzenle</button> ' +
+                '<button type="button" class="btn btn-sm btn-danger" onclick="deleteProtocol(\'' + esc(p.id) + '\', \'' + esc(p.name || '').replace(/'/g, "\\'") + '\')">Sil</button></td>';
+            tbody.appendChild(tr);
+        });
+    }).catch(function() {
+        document.getElementById('protocolTableBody').innerHTML = '<tr><td colspan="6" class="text-muted">Liste yüklenemedi.</td></tr>';
+    });
+}
+
+function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+}
+
+function addProtocol() {
+    var name = document.getElementById('protoName').value.trim();
+    if (!name) { showToast('Protokol adı girin', 'warning'); return; }
+    var delay = parseInt(document.getElementById('protoDelayMs').value, 10);
+    if (isNaN(delay) || delay < 0) delay = 4;
+    fetch('/api/raid-protocols', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: name,
+            description: document.getElementById('protoDescription').value.trim(),
+            inter_disk_delay_ms: delay,
+            raid_level: document.getElementById('protoRaidLevel').value,
+            min_disks: parseInt(document.getElementById('protoMinDisks').value, 10) || 2,
+            notes: document.getElementById('protoNotes').value.trim()
+        })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        showToast(data.message, data.success ? 'success' : 'error');
+        if (data.success) {
+            loadProtocols();
+            document.getElementById('protoName').value = '';
+            document.getElementById('protoDescription').value = '';
+            document.getElementById('protoNotes').value = '';
+            document.getElementById('protoDelayMs').value = '4';
+        }
+    }).catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function openEditModal(id) {
+    fetch('/api/raid-protocols').then(function(r) { return r.json(); }).then(function(data) {
+        var p = (data.protocols || []).find(function(x) { return x.id === id; });
+        if (!p) return;
+        document.getElementById('editProtoId').value = p.id;
+        document.getElementById('editProtoName').value = p.name || '';
+        document.getElementById('editProtoDelayMs').value = p.inter_disk_delay_ms != null ? p.inter_disk_delay_ms : 4;
+        document.getElementById('editProtoRaidLevel').value = p.raid_level || 'Özel';
+        document.getElementById('editProtoMinDisks').value = p.min_disks != null ? p.min_disks : 2;
+        document.getElementById('editProtoDescription').value = p.description || '';
+        document.getElementById('editProtoNotes').value = p.notes || '';
+        document.getElementById('editProtocolModal').classList.add('show');
+    });
+}
+
+function closeEditModal() {
+    document.getElementById('editProtocolModal').classList.remove('show');
+}
+
+function saveEditProtocol() {
+    var id = document.getElementById('editProtoId').value;
+    if (!id) return;
+    fetch('/api/raid-protocols/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: document.getElementById('editProtoName').value.trim(),
+            inter_disk_delay_ms: parseInt(document.getElementById('editProtoDelayMs').value, 10),
+            raid_level: document.getElementById('editProtoRaidLevel').value,
+            min_disks: parseInt(document.getElementById('editProtoMinDisks').value, 10),
+            description: document.getElementById('editProtoDescription').value.trim(),
+            notes: document.getElementById('editProtoNotes').value.trim()
+        })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        showToast(data.message, data.success ? 'success' : 'error');
+        if (data.success) { closeEditModal(); loadProtocols(); }
+    }).catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function deleteProtocol(id, name) {
+    if (!confirm('"' + name + '" protokolünü silmek istediğinize emin misiniz?')) return;
+    fetch('/api/raid-protocols/' + encodeURIComponent(id), { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadProtocols();
+        }).catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function storageConnect() {
+    var id = document.getElementById('storageServerSelect').value;
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    showToast('Bağlanılıyor...', 'info');
+    fetch('/api/servers/' + id + '/connect', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.success ? 'Bağlandı' : data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                var opt = document.querySelector('#storageServerSelect option[value="' + id + '"]');
+                if (opt) opt.dataset.connected = 'true';
+                document.getElementById('storageConnectBtn').style.display = 'none';
+            }
+        }).catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+var storageRefreshTimer = null;
+function storageLoadDisks(silent) {
+    var id = document.getElementById('storageServerSelect').value;
+    if (!id) { if (!silent) showToast('Sunucu seçin', 'warning'); return; }
+    if (!silent) document.getElementById('storageDisksHint').textContent = 'Yükleniyor...';
+    fetch('/api/servers/' + id + '/storage-status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('storageDisksBox').style.display = 'block';
+            if (!data.success) {
+                document.getElementById('storageDisksHint').textContent = data.message || 'Sunucu bağlı değil. Önce Bağlan deyin.';
+                document.getElementById('storageDisksBody').innerHTML = '<tr><td colspan="6" class="text-muted">—</td></tr>';
+                document.getElementById('storageDisksSummary').innerHTML = '';
+                document.getElementById('storageLastUpdate').textContent = '';
+                return;
+            }
+            document.getElementById('storageDisksHint').textContent = '';
+            var disks = data.disks || [];
+            var tbody = document.getElementById('storageDisksBody');
+            var now = new Date();
+            document.getElementById('storageLastUpdate').textContent = 'Son güncelleme: ' + now.toLocaleTimeString('tr-TR') + '. ';
+            if (!disks.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Disk bilgisi alınamadı veya boş.</td></tr>';
+                document.getElementById('storageDisksSummary').innerHTML = '';
+                return;
+            }
+            var totalBytes = 0, usedBytes = 0, warnCount = 0;
+            disks.forEach(function(d) {
+                totalBytes += d.total || 0;
+                usedBytes += d.used || 0;
+                var pct = d.usage_percent != null ? d.usage_percent : 0;
+                if (pct > 90 || (d.health && d.health === 'FAILED')) warnCount++;
+            });
+            var totalHr = formatBytes(totalBytes), usedHr = formatBytes(usedBytes);
+            document.getElementById('storageDisksSummary').innerHTML =
+                '<span class="storage-summary-item"><i class="fas fa-hdd"></i> ' + disks.length + ' birim</span> ' +
+                '<span class="storage-summary-item">Toplam: ' + esc(totalHr) + '</span> ' +
+                '<span class="storage-summary-item">Kullanılan: ' + esc(usedHr) + '</span>' +
+                (warnCount > 0 ? ' <span class="storage-summary-item badge warning"><i class="fas fa-exclamation-triangle"></i> ' + warnCount + ' uyarı</span>' : '');
+            tbody.innerHTML = '';
+            disks.forEach(function(d) {
+                var pct = d.usage_percent != null ? d.usage_percent : 0;
+                var pctClass = pct > 90 ? 'danger' : pct > 70 ? 'warning' : 'success';
+                var health = d.health || '—';
+                var healthBadge = health === 'PASSED' ? '<span class="badge success">PASSED</span>' :
+                    (health === 'FAILED' ? '<span class="badge danger">FAILED</span>' : '<span class="text-muted">' + esc(health) + '</span>');
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td class="mono">' + esc(d.mount || '-') + '</td><td class="mono">' + esc(d.device || '-') + '</td>' +
+                    '<td><div class="progress-bar" style="min-width:120px;"><div class="progress-fill ' + pctClass + '" style="width:' + pct + '%"></div></div> ' + pct + '%</td>' +
+                    '<td>' + esc(d.used_hr || '-') + ' / ' + esc(d.total_hr || '-') + '</td><td>' + esc(d.available_hr || '-') + '</td><td>' + healthBadge + '</td>';
+                tbody.appendChild(tr);
+            });
+            if (document.getElementById('storageAutoRefresh').checked) {
+                clearInterval(storageRefreshTimer);
+                storageRefreshTimer = setInterval(function() {
+                    if (document.getElementById('panel-disks').style.display !== 'none') storageLoadDisks(true);
+                }, 30000);
+            }
+        }).catch(function(err) {
+            document.getElementById('storageDisksHint').textContent = 'Hata: ' + err.message;
+            document.getElementById('storageDisksBox').style.display = 'none';
+        });
+}
+function formatBytes(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(1) + ' TB';
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+    return (n / 1e3).toFixed(0) + ' KB';
+}
+(function() {
+    document.getElementById('storageAutoRefresh').addEventListener('change', function() {
+        if (!this.checked) { clearInterval(storageRefreshTimer); storageRefreshTimer = null; }
+        else if (document.getElementById('storageServerSelect').value && document.getElementById('storageDisksBody').rows.length) {
+            storageRefreshTimer = setInterval(function() {
+                if (document.getElementById('panel-disks').style.display !== 'none') storageLoadDisks(true);
+            }, 30000);
+        }
+    });
+})();
+
+function raidConnect() {
+    var id = document.getElementById('raidServerSelect').value;
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    showToast('Bağlanılıyor...', 'info');
+    fetch('/api/servers/' + id + '/connect', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.success ? 'Bağlandı' : data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                var opt = document.querySelector('#raidServerSelect option[value="' + id + '"]');
+                if (opt) opt.dataset.connected = 'true';
+                document.getElementById('raidConnectBtn').style.display = 'none';
+            }
+        }).catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function raidLoadStatus() {
+    var id = document.getElementById('raidServerSelect').value;
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    fetch('/api/servers/' + id + '/storage-status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('raidStatusBox').style.display = 'block';
+            document.getElementById('raidRawOutput').textContent = (data.raid && data.raid.raw) ? data.raid.raw : '(Veri yok)';
+            var arrays = (data.raid && data.raid.arrays) ? data.raid.arrays : [];
+            var box = document.getElementById('raidArraysTable');
+            if (!arrays.length) {
+                box.innerHTML = '<p class="text-muted">Aktif yazılım RAID dizisi yok.</p>';
+                return;
+            }
+            box.innerHTML = '<table class="data-table"><thead><tr><th>Dizi</th><th>Seviye</th><th>Durum</th><th>Cihazlar</th></tr></thead><tbody id="raidArraysBody"></tbody></table>';
+            var tbody = document.getElementById('raidArraysBody');
+            arrays.forEach(function(a) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td class="mono">' + esc(a.name) + '</td><td>' + esc(a.level) + '</td><td><span class="badge success">' + esc(a.state) + '</span></td><td class="mono">' + esc((a.devices || []).join(', ')) + '</td>';
+                tbody.appendChild(tr);
+            });
+        }).catch(function(err) {
+            document.getElementById('raidStatusBox').style.display = 'block';
+            document.getElementById('raidRawOutput').textContent = 'Hata: ' + err.message;
+            document.getElementById('raidArraysTable').innerHTML = '';
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,828 @@
+{% extends "base.html" %}
+{% block title %}Sunucu Haritası - EmareCloud{% endblock %}
+{% block page_title %}Sunucu Mimarisi{% endblock %}
+
+{% block content %}
+<style>
+/* ── Server Map Styles ────────────────────────── */
+.smap-container {
+    padding: 0.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header card */
+.smap-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, #0a1628 0%, #141e33 100%);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+.smap-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+.smap-header-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.smap-header-info h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.smap-header-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.smap-header-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 1.5rem;
+}
+.smap-hstat {
+    text-align: center;
+}
+.smap-hstat-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #6366f1;
+}
+.smap-hstat-lbl {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── Architecture Diagram ──────────────────────── */
+.smap-diagram {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+}
+
+/* Layer row */
+.smap-layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+}
+.smap-layer-label {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Connector lines between layers */
+.smap-connector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    position: relative;
+    z-index: 1;
+}
+.smap-conn-line {
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(99,102,241,0.5), rgba(99,102,241,0.15));
+    position: relative;
+}
+.smap-conn-line::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid rgba(99,102,241,0.4);
+}
+
+/* Multi connector (fan-out) */
+.smap-fan {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    height: 50px;
+    position: relative;
+    width: 85%;
+    max-width: 900px;
+}
+.smap-fan-trunk {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 25px;
+    background: rgba(99,102,241,0.4);
+    transform: translateX(-50%);
+}
+.smap-fan-bar {
+    position: absolute;
+    top: 25px;
+    height: 2px;
+    background: rgba(99,102,241,0.3);
+}
+.smap-fan-branch {
+    position: absolute;
+    top: 25px;
+    width: 2px;
+    height: 25px;
+    background: rgba(99,102,241,0.4);
+}
+.smap-fan-branch::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid rgba(99,102,241,0.35);
+}
+
+/* ── Node Cards ────────────────────────────────── */
+.smap-node {
+    background: var(--bg-card, #141e33);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 1.2rem 1.5rem;
+    min-width: 180px;
+    max-width: 260px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: default;
+}
+.smap-node:hover {
+    border-color: rgba(99,102,241,0.4);
+    box-shadow: 0 0 20px rgba(99,102,241,0.1);
+    transform: translateY(-2px);
+}
+.smap-node-wide {
+    min-width: 320px;
+    max-width: 480px;
+}
+.smap-node-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 0.6rem;
+    color: #fff;
+}
+.smap-node-icon.blue   { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.smap-node-icon.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.smap-node-icon.green  { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.smap-node-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.smap-node-icon.red    { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.smap-node-icon.cyan   { background: linear-gradient(135deg, #9333ea, #7c3aed); }
+.smap-node-icon.pink   { background: linear-gradient(135deg, #ec4899, #db2777); }
+.smap-node-icon.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+.smap-node-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+}
+.smap-node-sub {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+.smap-node-port {
+    display: inline-block;
+    background: rgba(99,102,241,0.12);
+    color: #818cf8;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    margin: 0.15rem;
+}
+.smap-node-port.green {
+    background: rgba(34,197,94,0.12);
+    color: #22c55e;
+}
+
+/* Status badge */
+.smap-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #4b5563;
+}
+.smap-status.online {
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34,197,94,0.6);
+    animation: smap-pulse 2s infinite;
+}
+.smap-status.offline {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239,68,68,0.4);
+}
+@keyframes smap-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ── Layer Sections ────────────────────────────── */
+.smap-section {
+    width: 100%;
+    padding: 0.4rem 0;
+}
+.smap-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    margin-bottom: 0.75rem;
+    padding-left: 1rem;
+}
+.smap-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+}
+
+/* ── Service Detail Drawer ─────────────────────── */
+.smap-node-details {
+    margin-top: 0.6rem;
+    text-align: left;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.6rem;
+    display: none;
+}
+.smap-node.expanded .smap-node-details {
+    display: block;
+}
+.smap-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0;
+    font-size: 0.78rem;
+}
+.smap-detail-key {
+    color: var(--text-secondary);
+}
+.smap-detail-val {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+}
+
+/* ── External Links Row ────────────────────────── */
+.smap-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+.smap-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-card, #141e33);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    border-radius: 10px;
+    padding: 0.7rem 1.2rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+.smap-link:hover {
+    border-color: rgba(99,102,241,0.4);
+    background: rgba(99,102,241,0.06);
+    color: #818cf8;
+    transform: translateY(-1px);
+}
+.smap-link i {
+    font-size: 1rem;
+    color: #818cf8;
+}
+
+/* ── Data flow animation ───────────────────────── */
+.smap-flow-dot {
+    width: 4px;
+    height: 4px;
+    background: #6366f1;
+    border-radius: 50%;
+    position: absolute;
+    animation: smap-flow 2s infinite;
+    opacity: 0;
+}
+@keyframes smap-flow {
+    0%   { top: 0; opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 768px) {
+    .smap-layer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .smap-node { min-width: 90%; }
+    .smap-header { flex-direction: column; text-align: center; }
+    .smap-header-stats { margin-left: 0; }
+    .smap-fan { display: none; }
+}
+
+/* Loading skeleton */
+.smap-loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+.smap-loading i {
+    font-size: 2rem;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+    display: block;
+    color: #6366f1;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tooltip */
+.smap-node[data-tooltip]:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 0.4rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    z-index: 10;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Tech stack badges */
+.smap-tech-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.4rem;
+}
+.smap-tech {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+}
+</style>
+
+<div class="smap-container">
+    <!-- ── Header ────────────────────────────── -->
+    <div class="smap-header">
+        <div class="smap-header-icon">
+            <i class="fas fa-network-wired"></i>
+        </div>
+        <div class="smap-header-info">
+            <h2>185.189.54.104 — Sunucu Mimarisi</h2>
+            <p>AlmaLinux 9.6 &bull; Tüm servislerin canlı durumu ve mimari yapı</p>
+        </div>
+        <div class="smap-header-stats">
+            <div class="smap-hstat">
+                <div class="smap-hstat-val" id="smapTotalServices">—</div>
+                <div class="smap-hstat-lbl">Servis</div>
+            </div>
+            <div class="smap-hstat">
+                <div class="smap-hstat-val" id="smapOnlineCount" style="color:#22c55e">—</div>
+                <div class="smap-hstat-lbl">Aktif</div>
+            </div>
+            <div class="smap-hstat">
+                <div class="smap-hstat-val" id="smapPortCount">—</div>
+                <div class="smap-hstat-lbl">Port</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Architecture Diagram ──────────────── -->
+    <div class="smap-diagram" id="smapDiagram">
+
+        <!-- LAYER 0: Internet -->
+        <div class="smap-section">
+            <div class="smap-section-title">İnternet Katmanı</div>
+        </div>
+        <div class="smap-layer">
+            <div class="smap-node smap-node-wide" data-tooltip="Kullanıcılar tarayıcı üzerinden erişir">
+                <div class="smap-node-icon cyan"><i class="fas fa-globe"></i></div>
+                <div class="smap-node-title">İnternet / Kullanıcılar</div>
+                <div class="smap-node-sub">Tarayıcı &amp; API İstekleri</div>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">HTTP/HTTPS</span>
+                    <span class="smap-tech">WebSocket</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="smap-connector"><div class="smap-conn-line"><div class="smap-flow-dot" style="left:-1px;animation-delay:0s"></div></div></div>
+
+        <!-- LAYER 1: Firewall -->
+        <div class="smap-section">
+            <div class="smap-section-title">Güvenlik Katmanı</div>
+        </div>
+        <div class="smap-layer">
+            <div class="smap-node" id="node-firewall" onclick="toggleDetails(this)">
+                <span class="smap-status" id="status-firewall"></span>
+                <div class="smap-node-icon red"><i class="fas fa-shield-alt"></i></div>
+                <div class="smap-node-title">Firewalld</div>
+                <div class="smap-node-sub">Paket Filtreleme</div>
+                <span class="smap-node-port">:80</span>
+                <span class="smap-node-port">:3001</span>
+                <span class="smap-node-port">:3003</span>
+                <span class="smap-node-port">:22</span>
+                <div class="smap-node-details">
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Durum</span>
+                        <span class="smap-detail-val" id="det-firewall-status">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Açık Portlar</span>
+                        <span class="smap-detail-val" id="det-firewall-ports">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="smap-connector"><div class="smap-conn-line"><div class="smap-flow-dot" style="left:-1px;animation-delay:0.3s"></div></div></div>
+
+        <!-- LAYER 2: Nginx -->
+        <div class="smap-section">
+            <div class="smap-section-title">Reverse Proxy Katmanı</div>
+        </div>
+        <div class="smap-layer">
+            <div class="smap-node smap-node-wide" id="node-nginx" onclick="toggleDetails(this)">
+                <span class="smap-status" id="status-nginx"></span>
+                <div class="smap-node-icon green"><i class="fas fa-random"></i></div>
+                <div class="smap-node-title">Nginx</div>
+                <div class="smap-node-sub">Reverse Proxy &amp; Statik Dosya Sunucu</div>
+                <span class="smap-node-port">:80 → Gunicorn</span>
+                <span class="smap-node-port">:3001 → Statik</span>
+                <span class="smap-node-port">:3003 → Next.js</span>
+                <div class="smap-node-details">
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Versiyon</span>
+                        <span class="smap-detail-val" id="det-nginx-version">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Durum</span>
+                        <span class="smap-detail-val" id="det-nginx-status">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Config</span>
+                        <span class="smap-detail-val">/etc/nginx/</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fan-out: 3 branches -->
+        <div class="smap-fan" id="fanNginx">
+            <div class="smap-fan-trunk"></div>
+            <div class="smap-fan-bar" style="left:16.66%;right:16.66%;"></div>
+            <div class="smap-fan-branch" style="left:16.66%;"></div>
+            <div class="smap-fan-branch" style="left:50%;transform:translateX(-50%);"></div>
+            <div class="smap-fan-branch" style="right:16.66%;"></div>
+        </div>
+
+        <!-- LAYER 3: Application Services -->
+        <div class="smap-section">
+            <div class="smap-section-title">Uygulama Katmanı</div>
+        </div>
+        <div class="smap-layer">
+            <!-- EmareCloud Panel -->
+            <div class="smap-node" id="node-gunicorn" onclick="toggleDetails(this)">
+                <span class="smap-status" id="status-gunicorn"></span>
+                <div class="smap-node-icon purple"><i class="fas fa-server"></i></div>
+                <div class="smap-node-title">EmareCloud Panel</div>
+                <div class="smap-node-sub">Flask + Gunicorn</div>
+                <span class="smap-node-port green">:80</span>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">Python 3.11</span>
+                    <span class="smap-tech">gevent</span>
+                </div>
+                <div class="smap-node-details">
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Framework</span>
+                        <span class="smap-detail-val">Flask 3.0</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">WSGI</span>
+                        <span class="smap-detail-val">Gunicorn + gevent</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Durum</span>
+                        <span class="smap-detail-val" id="det-gunicorn-status">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Dizin</span>
+                        <span class="smap-detail-val">/opt/emarecloud/</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Website -->
+            <div class="smap-node" id="node-website" onclick="toggleDetails(this)">
+                <span class="smap-status" id="status-website"></span>
+                <div class="smap-node-icon orange"><i class="fas fa-palette"></i></div>
+                <div class="smap-node-title">Token Website</div>
+                <div class="smap-node-sub">Statik (Vite Build)</div>
+                <span class="smap-node-port green">:3001</span>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">React 18</span>
+                    <span class="smap-tech">Tailwind</span>
+                </div>
+                <div class="smap-node-details">
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Tür</span>
+                        <span class="smap-detail-val">Nginx Statik</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Dizin</span>
+                        <span class="smap-detail-val">/opt/emare-website/</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Durum</span>
+                        <span class="smap-detail-val" id="det-website-status">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token DApp -->
+            <div class="smap-node" id="node-dapp" onclick="toggleDetails(this)">
+                <span class="smap-status" id="status-dapp"></span>
+                <div class="smap-node-icon indigo"><i class="fas fa-wallet"></i></div>
+                <div class="smap-node-title">Token DApp</div>
+                <div class="smap-node-sub">Next.js + PM2</div>
+                <span class="smap-node-port green">:3003</span>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">Next.js 14</span>
+                    <span class="smap-tech">wagmi</span>
+                    <span class="smap-tech">RainbowKit</span>
+                </div>
+                <div class="smap-node-details">
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Runtime</span>
+                        <span class="smap-detail-val" id="det-node-version">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">PM2 PID</span>
+                        <span class="smap-detail-val" id="det-pm2-pid">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">PM2 Durum</span>
+                        <span class="smap-detail-val" id="det-pm2-status">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Bellek</span>
+                        <span class="smap-detail-val" id="det-pm2-mem">—</span>
+                    </div>
+                    <div class="smap-detail-row">
+                        <span class="smap-detail-key">Dizin</span>
+                        <span class="smap-detail-val">/opt/emare-dapp/</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector from EmareCloud to DB -->
+        <div class="smap-connector"><div class="smap-conn-line"><div class="smap-flow-dot" style="left:-1px;animation-delay:0.6s"></div></div></div>
+
+        <!-- LAYER 4: Data -->
+        <div class="smap-section">
+            <div class="smap-section-title">Veri Katmanı</div>
+        </div>
+        <div class="smap-layer">
+            <div class="smap-node" id="node-sqlite">
+                <div class="smap-node-icon blue"><i class="fas fa-database"></i></div>
+                <div class="smap-node-title">SQLite</div>
+                <div class="smap-node-sub">EmareCloud Veritabanı</div>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">instance/emarecloud.db</span>
+                </div>
+            </div>
+            <div class="smap-node" id="node-blockchain">
+                <div class="smap-node-icon pink"><i class="fab fa-ethereum"></i></div>
+                <div class="smap-node-title">BSC Blockchain</div>
+                <div class="smap-node-sub">Akıllı Kontratlar</div>
+                <div class="smap-tech-row">
+                    <span class="smap-tech">BNB Chain</span>
+                    <span class="smap-tech">Solidity</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYER 5: System Services -->
+        <div style="margin-top: 2rem;"></div>
+        <div class="smap-section">
+            <div class="smap-section-title">Sistem Servisleri</div>
+        </div>
+        <div class="smap-layer" style="flex-wrap:wrap;">
+            <div class="smap-node" style="min-width:140px;padding:0.8rem 1rem;" id="node-python">
+                <span class="smap-status" id="status-python"></span>
+                <div class="smap-node-icon green" style="width:36px;height:36px;font-size:1rem;"><i class="fab fa-python"></i></div>
+                <div class="smap-node-title" style="font-size:0.85rem;">Python</div>
+                <div class="smap-node-sub" id="det-python-ver">3.11</div>
+            </div>
+            <div class="smap-node" style="min-width:140px;padding:0.8rem 1rem;" id="node-nodejs">
+                <span class="smap-status" id="status-nodejs"></span>
+                <div class="smap-node-icon green" style="width:36px;height:36px;font-size:1rem;"><i class="fab fa-node-js"></i></div>
+                <div class="smap-node-title" style="font-size:0.85rem;">Node.js</div>
+                <div class="smap-node-sub" id="det-nodejs-ver">20.x</div>
+            </div>
+            <div class="smap-node" style="min-width:140px;padding:0.8rem 1rem;" id="node-pm2">
+                <span class="smap-status" id="status-pm2"></span>
+                <div class="smap-node-icon purple" style="width:36px;height:36px;font-size:1rem;"><i class="fas fa-cogs"></i></div>
+                <div class="smap-node-title" style="font-size:0.85rem;">PM2</div>
+                <div class="smap-node-sub" id="det-pm2-ver">Process Manager</div>
+            </div>
+            <div class="smap-node" style="min-width:140px;padding:0.8rem 1rem;" id="node-ssh">
+                <span class="smap-status" id="status-ssh"></span>
+                <div class="smap-node-icon cyan" style="width:36px;height:36px;font-size:1rem;"><i class="fas fa-terminal"></i></div>
+                <div class="smap-node-title" style="font-size:0.85rem;">SSH</div>
+                <div class="smap-node-sub">Port 22</div>
+            </div>
+            <div class="smap-node" style="min-width:140px;padding:0.8rem 1rem;" id="node-selinux">
+                <span class="smap-status" id="status-selinux"></span>
+                <div class="smap-node-icon red" style="width:36px;height:36px;font-size:1rem;"><i class="fas fa-lock"></i></div>
+                <div class="smap-node-title" style="font-size:0.85rem;">SELinux</div>
+                <div class="smap-node-sub" id="det-selinux-mode">Enforcing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Quick Links ───────────────────────── -->
+    <div class="smap-links">
+        <a href="http://185.189.54.104" target="_blank" class="smap-link">
+            <i class="fas fa-server"></i> EmareCloud Panel
+        </a>
+        <a href="http://185.189.54.104:3001" target="_blank" class="smap-link">
+            <i class="fas fa-palette"></i> Token Website
+        </a>
+        <a href="http://185.189.54.104:3003" target="_blank" class="smap-link">
+            <i class="fas fa-wallet"></i> Token DApp
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleDetails(el) {
+    el.classList.toggle('expanded');
+}
+
+async function loadServerMap() {
+    try {
+        const res = await fetch('/api/server-map');
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        renderMap(data);
+    } catch (e) {
+        console.warn('Server map API unavailable, using defaults', e);
+        // Show static defaults
+        document.getElementById('smapTotalServices').textContent = '7';
+        document.getElementById('smapPortCount').textContent = '4';
+    }
+}
+
+function renderMap(d) {
+    const svc = d.services || {};
+
+    // Header stats
+    const svcNames = Object.keys(svc);
+    const onlineCount = svcNames.filter(k => svc[k].active).length;
+    document.getElementById('smapTotalServices').textContent = svcNames.length;
+    document.getElementById('smapOnlineCount').textContent = onlineCount;
+    document.getElementById('smapPortCount').textContent = d.ports ? d.ports.split(' ').length : '—';
+
+    // Status dots
+    const setStatus = (id, active) => {
+        const el = document.getElementById(id);
+        if (el) el.className = 'smap-status ' + (active ? 'online' : 'offline');
+    };
+
+    setStatus('status-firewall', svc.firewalld?.active);
+    setStatus('status-nginx', svc.nginx?.active);
+    setStatus('status-gunicorn', svc.gunicorn?.active);
+    setStatus('status-ssh', svc.sshd?.active);
+    setStatus('status-python', !!d.python_version);
+    setStatus('status-nodejs', !!d.node_version);
+    setStatus('status-selinux', !!d.selinux);
+
+    // PM2 DApp
+    const pm2App = (d.pm2_processes || []).find(p => p.name === 'emare-dapp');
+    setStatus('status-dapp', pm2App && pm2App.status === 'online');
+    setStatus('status-pm2', (d.pm2_processes || []).length > 0);
+
+    // Website — if nginx is up and listening on 3001
+    setStatus('status-website', svc.nginx?.active);
+
+    // Detail values
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.textContent = val;
+    };
+
+    setText('det-firewall-status', svc.firewalld?.active ? '✅ Aktif' : '❌ Kapalı');
+    setText('det-firewall-ports', d.ports || '—');
+    setText('det-nginx-version', d.nginx_version || '—');
+    setText('det-nginx-status', svc.nginx?.active ? '✅ Aktif' : '❌ Kapalı');
+    setText('det-gunicorn-status', svc.gunicorn?.active ? '✅ Aktif' : '❌ Kapalı');
+    setText('det-python-ver', d.python_version || '3.11');
+    setText('det-nodejs-ver', d.node_version || '20.x');
+    setText('det-node-version', 'Node ' + (d.node_version || '—'));
+    setText('det-selinux-mode', d.selinux || 'Enforcing');
+
+    if (pm2App) {
+        setText('det-pm2-pid', String(pm2App.pid || '—'));
+        setText('det-pm2-status', pm2App.status === 'online' ? '✅ Online' : '❌ ' + pm2App.status);
+        setText('det-pm2-mem', pm2App.memory || '—');
+        setText('det-pm2-ver', 'PM2 — ' + (pm2App.status || ''));
+    }
+
+    // Website status
+    setText('det-website-status', svc.nginx?.active ? '✅ Nginx üzerinden' : '❌ Kapalı');
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadServerMap);
+
+// Auto refresh every 30s
+setInterval(loadServerMap, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Topluluk AI Şablonları - EmareCloud{% endblock %}
+{% block page_title %}Topluluk AI Şablon Paylaşımı{% endblock %}
+
+{% block head %}
+<style>
+.ct-container{max-width:1100px;margin:0 auto}
+.ct-hero{background:linear-gradient(135deg,rgba(236,72,153,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.ct-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#ec4899,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.ct-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.ct-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.ct-hero-actions{margin-left:auto;display:flex;gap:10px}
+.ct-btn{padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.ct-btn:hover{transform:translateY(-1px);opacity:.9}
+.ct-btn-primary{background:linear-gradient(135deg,#ec4899,#6366f1);color:#fff}
+.ct-btn-outline{border:2px solid #ec4899;color:#ec4899;background:transparent}
+.ct-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.ct-filter{padding:8px 16px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.ct-filter:hover,.ct-filter.active{background:linear-gradient(135deg,#ec4899,#6366f1);color:#fff;border-color:transparent}
+.ct-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.ct-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.ct-stat-val{font-size:28px;font-weight:800}
+.ct-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.ct-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px}
+.ct-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;overflow:hidden;transition:all .3s}
+.ct-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.08);border-color:#ec4899}
+.ct-card-preview{height:120px;position:relative;display:flex;align-items:center;justify-content:center;font-size:48px}
+.ct-card-badge{position:absolute;top:10px;right:10px;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;color:#fff}
+.ct-card-body{padding:16px}
+.ct-card-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.ct-card-desc{font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5}
+.ct-card-meta{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--border-color)}
+.ct-card-author{display:flex;align-items:center;gap:8px;font-size:12px}
+.ct-card-author img{width:24px;height:24px;border-radius:50%}
+.ct-card-stats{display:flex;gap:12px;font-size:12px;color:var(--text-secondary)}
+.ct-card-stats span{display:flex;align-items:center;gap:4px}
+.ct-card-action{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border-color)}
+.ct-card-action button{flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.ct-card-action .use-btn{background:linear-gradient(135deg,#ec4899,#6366f1);color:#fff}
+.ct-card-action .preview-btn{background:var(--bg-input);color:var(--text-primary)}
+.ct-upload{background:var(--bg-card);border:2px dashed var(--border-color);border-radius:16px;padding:40px;text-align:center;margin-bottom:24px;cursor:pointer;transition:all .3s}
+.ct-upload:hover{border-color:#ec4899;background:rgba(236,72,153,.04)}
+.ct-upload-icon{font-size:40px;margin-bottom:12px}
+.ct-upload h4{margin:0 0 6px;font-size:16px;font-weight:700}
+.ct-upload p{margin:0;font-size:13px;color:var(--text-secondary)}
+.ct-leaderboard{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px}
+.ct-leaderboard h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ct-lb-list{display:flex;flex-direction:column;gap:10px}
+.ct-lb-item{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.ct-lb-rank{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.ct-lb-info{flex:1}
+.ct-lb-name{font-size:14px;font-weight:700}
+.ct-lb-stat{font-size:12px;color:var(--text-secondary)}
+.ct-lb-score{font-weight:800;font-size:16px}
+@media(max-width:768px){.ct-hero-actions{margin-left:0;width:100%}.ct-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ct-container">
+    <div class="ct-hero">
+        <div class="ct-hero-icon"><i class="fas fa-share-nodes"></i></div>
+        <div>
+            <h2>Topluluk AI Şablon Paylaşımı</h2>
+            <p>Stack Builder sonuçlarınızı paylaşın, başkalarının şablonlarını kurun. Topluluk gücüyle büyüyün.</p>
+        </div>
+        <div class="ct-hero-actions">
+            <button class="ct-btn ct-btn-primary" onclick="showUploadModal()"><i class="fas fa-upload"></i> Şablon Paylaş</button>
+            <button class="ct-btn ct-btn-outline"><i class="fas fa-bookmark"></i> Favorilerim</button>
+        </div>
+    </div>
+
+    <div class="ct-stats">
+        <div class="ct-stat"><div class="ct-stat-val" style="color:#ec4899">847</div><div class="ct-stat-lbl">Toplam Şablon</div></div>
+        <div class="ct-stat"><div class="ct-stat-val" style="color:#6366f1">12.4K</div><div class="ct-stat-lbl">Toplam İndirme</div></div>
+        <div class="ct-stat"><div class="ct-stat-val" style="color:#22c55e">342</div><div class="ct-stat-lbl">Katkıda Bulunan</div></div>
+        <div class="ct-stat"><div class="ct-stat-val" style="color:#f59e0b">4.7</div><div class="ct-stat-lbl">Ort. Puan</div></div>
+    </div>
+
+    <div class="ct-filters">
+        <div class="ct-filter active" onclick="filterTemplates(this,'all')">🔥 Tümü</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'chatbot')">🤖 Chatbot</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'image')">🎨 Görsel AI</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'code')">💻 Kod AI</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'content')">✍️ İçerik</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'voice')">🎤 Ses & Video</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'data')">📊 Veri Analiz</div>
+        <div class="ct-filter" onclick="filterTemplates(this,'devops')">⚙️ DevOps</div>
+    </div>
+
+    <div class="ct-grid" id="ctGrid"></div>
+
+    <div class="ct-upload" onclick="showUploadModal()">
+        <div class="ct-upload-icon">📤</div>
+        <h4>Kendi Şablonunuzu Paylaşın</h4>
+        <p>Stack Builder ile oluşturduğunuz yapıyı topluluğa açın — EP ödülleri kazanın!</p>
+    </div>
+
+    <div class="ct-leaderboard">
+        <h3><i class="fas fa-trophy" style="color:#f59e0b"></i> En İyi Katkıcılar</h3>
+        <div class="ct-lb-list" id="ctLeaderboard"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templates=[
+    {title:'E-Ticaret AI Asistanı Stack',desc:'Llama 3 + Whisper + Redis. Tam e-ticaret chatbot altyapısı.',author:'Ali K.',emoji:'🛒',bg:'linear-gradient(135deg,#6366f1,#a855f7)',badge:'⭐ Editör',badgeBg:'#f59e0b',downloads:2340,stars:4.9,cat:'chatbot'},
+    {title:'Logo & Banner Generator',desc:'Stable Diffusion + ControlNet. Otomatik marka görseli üretimi.',author:'Zeynep M.',emoji:'🎨',bg:'linear-gradient(135deg,#ec4899,#f43f5e)',badge:'🔥 Trend',badgeBg:'#ef4444',downloads:1876,stars:4.8,cat:'image'},
+    {title:'DevOps CI/CD Pipeline',desc:'n8n + Ollama Code Review + Docker otomasyonu.',author:'Burak T.',emoji:'⚙️',bg:'linear-gradient(135deg,#22c55e,#10b981)',badge:'',badgeBg:'',downloads:1245,stars:4.7,cat:'devops'},
+    {title:'SEO İçerik Yazarı',desc:'Llama 3 + Serper API. Otomatik blog yazımı ve SEO optimizasyonu.',author:'Elif Y.',emoji:'✍️',bg:'linear-gradient(135deg,#f59e0b,#f97316)',badge:'🆕 Yeni',badgeBg:'#6366f1',downloads:987,stars:4.6,cat:'content'},
+    {title:'Ses Asistanı Stack',desc:'Whisper + TTS + Llama. Sesli komut ve yanıt sistemi.',author:'Murat D.',emoji:'🎤',bg:'linear-gradient(135deg,#3b82f6,#6366f1)',badge:'',badgeBg:'',downloads:856,stars:4.5,cat:'voice'},
+    {title:'Code Review Bot',desc:'CodeLlama + SonarQube entegrasyonu. Otomatik kod inceleme.',author:'Cansu K.',emoji:'💻',bg:'linear-gradient(135deg,#8b5cf6,#6366f1)',badge:'⭐ Editör',badgeBg:'#f59e0b',downloads:1567,stars:4.8,cat:'code'},
+    {title:'Veri Analiz Platformu',desc:'Pandas AI + Llama. Doğal dil ile veri sorgulama.',author:'Hakan S.',emoji:'📊',bg:'linear-gradient(135deg,#14b8a6,#22c55e)',badge:'',badgeBg:'',downloads:723,stars:4.4,cat:'data'},
+    {title:'Multi-Agent Chatbot',desc:'3 farklı Llama modeli + router. Uzmanlık bazlı yönlendirme.',author:'Deniz A.',emoji:'🤖',bg:'linear-gradient(135deg,#a855f7,#ec4899)',badge:'🔥 Trend',badgeBg:'#ef4444',downloads:2100,stars:4.9,cat:'chatbot'},
+    {title:'Kubernetes AI Monitor',desc:'Prometheus + Ollama anomali tespiti. K8s izleme.',author:'Serkan B.',emoji:'☸️',bg:'linear-gradient(135deg,#0ea5e9,#3b82f6)',badge:'',badgeBg:'',downloads:634,stars:4.3,cat:'devops'}
+];
+
+function renderTemplates(cat){
+    const filtered=cat==='all'?templates:templates.filter(t=>t.cat===cat);
+    const g=document.getElementById('ctGrid');
+    g.innerHTML=filtered.map(t=>'<div class="ct-card"><div class="ct-card-preview" style="background:'+t.bg+'">'+t.emoji+(t.badge?'<div class="ct-card-badge" style="background:'+t.badgeBg+'">'+t.badge+'</div>':'')+'</div><div class="ct-card-body"><div class="ct-card-title">'+t.title+'</div><div class="ct-card-desc">'+t.desc+'</div><div class="ct-card-meta"><div class="ct-card-author"><div style="width:24px;height:24px;border-radius:50%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-size:11px">👤</div>'+t.author+'</div><div class="ct-card-stats"><span>⬇️ '+t.downloads.toLocaleString()+'</span><span>⭐ '+t.stars+'</span></div></div></div><div class="ct-card-action"><button class="use-btn" onclick="installTemplate(\''+t.title+'\')">🚀 Kur</button><button class="preview-btn" onclick="showToast(\'Önizleme açılıyor…\',\'info\')">👁️ Önizle</button></div></div>').join('');
+}
+renderTemplates('all');
+
+function filterTemplates(el,cat){
+    document.querySelectorAll('.ct-filter').forEach(f=>f.classList.remove('active'));
+    el.classList.add('active');
+    renderTemplates(cat);
+}
+
+function installTemplate(name){showToast(name+' şablonu kuruldu! EP ödülü kazandınız.','success')}
+function showUploadModal(){showToast('Şablon yükleme sihirbazı başlatıldı!','success')}
+
+const leaders=[
+    {name:'Ali K.',stat:'12 şablon · 6,420 indirme',score:'⭐ 2,840 EP',bg:'#f59e0b',rank:'🥇'},
+    {name:'Zeynep M.',stat:'8 şablon · 4,210 indirme',score:'⭐ 1,950 EP',bg:'#94a3b8',rank:'🥈'},
+    {name:'Burak T.',stat:'6 şablon · 2,890 indirme',score:'⭐ 1,420 EP',bg:'#cd7c32',rank:'🥉'},
+    {name:'Cansu K.',stat:'5 şablon · 2,340 indirme',score:'⭐ 1,180 EP',bg:'#6366f1',rank:'4'},
+    {name:'Murat D.',stat:'4 şablon · 1,560 indirme',score:'⭐ 890 EP',bg:'#6366f1',rank:'5'}
+];
+const lb=document.getElementById('ctLeaderboard');
+lb.innerHTML=leaders.map(l=>'<div class="ct-lb-item"><div class="ct-lb-rank" style="background:'+l.bg+';color:#fff">'+l.rank+'</div><div class="ct-lb-info"><div class="ct-lb-name">'+l.name+'</div><div class="ct-lb-stat">'+l.stat+'</div></div><div class="ct-lb-score" style="color:#f59e0b">'+l.score+'</div></div>').join('');
+</script>
+{% endblock %}

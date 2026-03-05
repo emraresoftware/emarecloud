@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}AI Model Marketplace - EmareCloud{% endblock %}
+{% block page_title %}AI Model Marketplace{% endblock %}
+
+{% block head %}
+<style>
+.mkt-container{max-width:1100px;margin:0 auto}
+.mkt-hero{background:linear-gradient(135deg,rgba(147,51,234,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:32px;margin-bottom:28px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.mkt-hero-icon{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#9333ea,#ec4899);display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;flex-shrink:0}
+.mkt-hero-text h2{margin:0 0 4px;font-size:22px;font-weight:800}
+.mkt-hero-text p{margin:0;color:var(--text-secondary);font-size:14px}
+.mkt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+.mkt-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:20px;text-align:center}
+.mkt-stat .v{font-size:26px;font-weight:800}
+.mkt-stat .l{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.mkt-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+.mkt-fbtn{padding:8px 16px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.mkt-fbtn:hover{border-color:#9333ea;color:#9333ea}
+.mkt-fbtn.active{background:linear-gradient(135deg,#9333ea,#ec4899);color:#fff;border-color:transparent}
+.mkt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;margin-bottom:28px}
+.mkt-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;overflow:hidden;transition:all .3s}
+.mkt-card:hover{border-color:#9333ea;transform:translateY(-3px);box-shadow:0 8px 24px rgba(147,51,234,.1)}
+.mkt-card-top{padding:20px 20px 14px;display:flex;align-items:center;gap:14px}
+.mkt-card-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.mkt-card-info{flex:1}
+.mkt-card-name{font-size:16px;font-weight:700}
+.mkt-card-by{font-size:12px;color:var(--text-secondary)}
+.mkt-card-badge{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.mkt-card-badge.hot{background:rgba(239,68,68,.12);color:#ef4444}
+.mkt-card-badge.new{background:rgba(34,197,94,.12);color:#22c55e}
+.mkt-card-badge.top{background:rgba(245,158,11,.12);color:#f59e0b}
+.mkt-card-desc{padding:0 20px 14px;font-size:13px;color:var(--text-secondary);line-height:1.5}
+.mkt-card-tags{padding:0 20px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.mkt-card-tag{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:var(--bg-input);color:var(--text-secondary)}
+.mkt-card-bottom{padding:14px 20px;border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between}
+.mkt-card-price{font-size:18px;font-weight:800;color:#22c55e}
+.mkt-card-price small{font-size:12px;font-weight:400;color:var(--text-secondary)}
+.mkt-card-meta{display:flex;gap:14px;font-size:12px;color:var(--text-secondary)}
+.mkt-card-meta i{margin-right:3px}
+.mkt-card-buy{display:block;margin:0 20px 16px;text-align:center;padding:10px;border-radius:12px;border:2px solid #9333ea;color:#9333ea;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;background:transparent}
+.mkt-card-buy:hover{background:#9333ea;color:#fff}
+.mkt-publish{background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(34,197,94,.12));border:2px solid rgba(34,197,94,.2);border-radius:16px;padding:28px;text-align:center;margin-bottom:24px}
+.mkt-publish h3{margin:0 0 8px;font-size:18px;font-weight:800}
+.mkt-publish p{margin:0 0 16px;color:var(--text-secondary);font-size:14px}
+.mkt-publish-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:12px 28px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer}
+.mkt-publish-btn:hover{opacity:.9}
+@media(max-width:768px){.mkt-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mkt-container">
+    <div class="mkt-hero">
+        <div class="mkt-hero-icon"><i class="fas fa-store"></i></div>
+        <div class="mkt-hero-text">
+            <h2>AI Model Marketplace</h2>
+            <p>AI modellerinizi satışa sunun veya topluluk modellerini tek tıkla satın alıp kurun. %80 gelir sizin.</p>
+        </div>
+    </div>
+
+    <div class="mkt-stats">
+        <div class="mkt-stat"><div class="v" style="color:#9333ea">156</div><div class="l">Yayınlanan Model</div></div>
+        <div class="mkt-stat"><div class="v" style="color:#22c55e">$24.8K</div><div class="l">Toplam Satış</div></div>
+        <div class="mkt-stat"><div class="v" style="color:#6366f1">89</div><div class="l">Aktif Satıcı</div></div>
+        <div class="mkt-stat"><div class="v" style="color:#f59e0b">4.7⭐</div><div class="l">Ort. Puan</div></div>
+        <div class="mkt-stat"><div class="v" style="color:#ec4899">3,240</div><div class="l">Toplam Kurulum</div></div>
+    </div>
+
+    <div class="mkt-filters">
+        <button class="mkt-fbtn active" onclick="filterMkt('all',this)">🏆 Tümü</button>
+        <button class="mkt-fbtn" onclick="filterMkt('chatbot',this)">💬 Chatbot</button>
+        <button class="mkt-fbtn" onclick="filterMkt('image',this)">🎨 Görsel</button>
+        <button class="mkt-fbtn" onclick="filterMkt('code',this)">💻 Kod</button>
+        <button class="mkt-fbtn" onclick="filterMkt('content',this)">✍️ İçerik</button>
+        <button class="mkt-fbtn" onclick="filterMkt('voice',this)">🎙️ Ses</button>
+        <button class="mkt-fbtn" onclick="filterMkt('analytics',this)">📊 Analitik</button>
+    </div>
+
+    <div class="mkt-grid" id="mktGrid"></div>
+
+    <div class="mkt-publish">
+        <h3>🚀 Kendi AI Modelinizi Satışa Sunun</h3>
+        <p>Fine-tune ettiğiniz modeli yükleyin, fiyat belirleyin, hemen satışa başlayın. Platform %20 komisyon alır.</p>
+        <button class="mkt-publish-btn" onclick="showToast('Model yükleme sihirbazı açılıyor...','success')"><i class="fas fa-upload"></i> Model Yükle & Yayınla</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const models=[
+    {name:'E-Ticaret Asistanı Pro',by:'@ahmet_ai',cat:'chatbot',icon:'🛒',bg:'rgba(99,102,241,.12)',desc:'Müşteri sorularını yanıtlayan, sipariş takibi yapan özelleştirilmiş chatbot. Türkçe fine-tune.',price:29,unit:'/ay',installs:342,rating:4.9,badge:'hot',tags:['Ollama','Türkçe','E-Ticaret','Fine-tune']},
+    {name:'Logo & Brand Generator',by:'@design_lab',cat:'image',icon:'🎨',bg:'rgba(147,51,234,.12)',desc:'Marka adı verin, profesyonel logo ve brand kit üretsin. 50+ stil şablonu.',price:19,unit:'/ay',installs:278,rating:4.8,badge:'top',tags:['SDXL','ControlNet','Logo','Branding']},
+    {name:'Türkçe SEO Yazarı',by:'@content_master',cat:'content',icon:'✍️',bg:'rgba(245,158,11,.12)',desc:'Google sıralama odaklı Türkçe SEO içerik üretici. Anahtar kelime analizi dahil.',price:15,unit:'/ay',installs:456,rating:4.7,badge:'hot',tags:['LLM','SEO','Türkçe','İçerik']},
+    {name:'Python Code Review Bot',by:'@dev_tools',cat:'code',icon:'🐍',bg:'rgba(34,197,94,.12)',desc:'Python kodunuzu analiz eder, bug bulur, refactor önerir. CI/CD entegrasyonu.',price:25,unit:'/ay',installs:189,rating:4.8,badge:'new',tags:['CodeLlama','Python','CI/CD','Review']},
+    {name:'Ses Klonlama Studio',by:'@voice_ai',cat:'voice',icon:'🎙️',bg:'rgba(236,72,153,.12)',desc:'3 dakikalık ses kaydından profesyonel TTS klonu. 12 dil desteği.',price:39,unit:'/ay',installs:134,rating:4.6,badge:'new',tags:['XTTS','Bark','Ses Klonu','TTS']},
+    {name:'Finansal Tahmin Modeli',by:'@fintech_ai',cat:'analytics',icon:'📈',bg:'rgba(59,130,246,.12)',desc:'Hisse senedi ve kripto fiyat tahmini. LSTM + Transformer hibrit model.',price:49,unit:'/ay',installs:98,rating:4.5,badge:'top',tags:['PyTorch','LSTM','Finans','Tahmin']},
+    {name:'Müşteri Duygu Analizi',by:'@nlp_turk',cat:'analytics',icon:'😊',bg:'rgba(245,158,11,.12)',desc:'Türkçe müşteri yorumlarını analiz eder. Pozitif/negatif/nötr sınıflandırma.',price:12,unit:'/ay',installs:267,rating:4.7,badge:'hot',tags:['NLP','Türkçe','Sentiment','BERT']},
+    {name:'Ürün Fotoğraf Stüdyosu',by:'@photo_ai',cat:'image',icon:'📸',bg:'rgba(147,51,234,.12)',desc:'E-ticaret ürün fotoğraflarını profesyonel stüdyo kalitesine dönüştürür.',price:22,unit:'/ay',installs:312,rating:4.8,badge:'top',tags:['SDXL','Inpainting','E-Ticaret','Fotoğraf']},
+    {name:'Hukuk Danışman AI',by:'@legal_tech',cat:'chatbot',icon:'⚖️',bg:'rgba(99,102,241,.12)',desc:'Türk hukuku üzerine eğitilmiş danışman. Sözleşme analizi ve hukuki soru-cevap.',price:59,unit:'/ay',installs:87,rating:4.9,badge:'new',tags:['Ollama','Hukuk','Türkçe','RAG']},
+    {name:'React Component Gen',by:'@frontend_ai',cat:'code',icon:'⚛️',bg:'rgba(34,197,94,.12)',desc:'Açıklama verin, production-ready React component üretsin. TypeScript + Tailwind.',price:18,unit:'/ay',installs:203,rating:4.6,badge:'hot',tags:['CodeLlama','React','TypeScript','UI']},
+    {name:'Podcast Transkript Pro',by:'@media_tools',cat:'voice',icon:'🎧',bg:'rgba(236,72,153,.12)',desc:'Podcast ve video içeriklerini otomatik transkript + özet + blog yazısına dönüştürür.',price:14,unit:'/ay',installs:178,rating:4.7,badge:'',tags:['Whisper','Özet','Podcast','Transkript']},
+    {name:'Rapor Oluşturucu AI',by:'@biz_tools',cat:'content',icon:'📊',bg:'rgba(59,130,246,.12)',desc:'Veri dosyasını yükle, profesyonel rapor ve sunum otomatik oluşsun.',price:24,unit:'/ay',installs:145,rating:4.5,badge:'',tags:['LLM','Rapor','Excel','Sunum']}
+];
+
+function renderMkt(filter){
+    const list=filter==='all'?models:models.filter(m=>m.cat===filter);
+    const g=document.getElementById('mktGrid');
+    let h='';
+    list.forEach(m=>{
+        h+='<div class="mkt-card" data-cat="'+m.cat+'">';
+        h+='<div class="mkt-card-top"><div class="mkt-card-icon" style="background:'+m.bg+'">'+m.icon+'</div>';
+        h+='<div class="mkt-card-info"><div class="mkt-card-name">'+m.name+'</div><div class="mkt-card-by">'+m.by+'</div></div>';
+        if(m.badge)h+='<div class="mkt-card-badge '+m.badge+'">'+(m.badge==='hot'?'🔥 Popüler':m.badge==='new'?'✨ Yeni':'⭐ Top')+'</div>';
+        h+='</div>';
+        h+='<div class="mkt-card-desc">'+m.desc+'</div>';
+        h+='<div class="mkt-card-tags">';m.tags.forEach(t=>{h+='<span class="mkt-card-tag">'+t+'</span>';});h+='</div>';
+        h+='<div class="mkt-card-bottom"><div class="mkt-card-price">$'+m.price+'<small>'+m.unit+'</small></div>';
+        h+='<div class="mkt-card-meta"><span><i class="fas fa-download"></i>'+m.installs+'</span><span><i class="fas fa-star"></i>'+m.rating+'</span></div></div>';
+        h+='<div class="mkt-card-buy" onclick="showToast(\''+m.name+' satın alınıyor...\',\'success\')"><i class="fas fa-cart-plus"></i> Satın Al & Kur</div>';
+        h+='</div>';
+    });
+    g.innerHTML=h;
+}
+
+function filterMkt(cat,btn){
+    document.querySelectorAll('.mkt-fbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderMkt(cat);
+}
+
+renderMkt('all');
+</script>
+{% endblock %}

@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% block title %}AI Sunucu Öneri Motoru - EmareCloud{% endblock %}
+{% block page_title %}AI Sunucu Öneri Motoru{% endblock %}
+
+{% block head %}
+<style>
+.srvr-container { max-width: 1100px; margin: 0 auto; }
+
+/* Hero */
+.srvr-hero {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(147,51,234,0.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.srvr-hero-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff; flex-shrink: 0;
+}
+.srvr-hero-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.srvr-hero-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Input form */
+.srvr-form {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 28px; margin-bottom: 28px;
+}
+.srvr-form h3 { margin: 0 0 20px; font-size: 18px; font-weight: 700; }
+.srvr-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.srvr-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.srvr-field select, .srvr-field input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border-color); background: var(--bg-input);
+    color: var(--text-primary); font-size: 14px; font-weight: 500;
+}
+.srvr-field select:focus, .srvr-field input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+.srvr-submit {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    color: #fff; border: none; padding: 12px 28px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s ease;
+}
+.srvr-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* Result container */
+#srvrResult { display: none; }
+.srvr-result-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.srvr-result-badge {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff; padding: 6px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
+}
+
+/* Recommendation cards */
+.srvr-rec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 20px; margin-bottom: 24px; }
+.srvr-rec-card {
+    background: var(--bg-card); border: 2px solid var(--border-color);
+    border-radius: 16px; padding: 24px; position: relative; overflow: hidden;
+    transition: all 0.3s ease;
+}
+.srvr-rec-card:hover { border-color: #6366f1; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.12); }
+.srvr-rec-card.recommended { border-color: #22c55e; }
+.srvr-rec-card.recommended::after {
+    content: '⭐ ÖNERİLEN'; position: absolute; top: 12px; right: 12px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
+}
+.srvr-rec-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.srvr-rec-type { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+.srvr-rec-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.srvr-rec-spec { display: flex; flex-direction: column; padding: 10px; background: var(--bg-input); border-radius: 10px; }
+.srvr-rec-spec-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.srvr-rec-spec-value { font-size: 16px; font-weight: 700; }
+.srvr-rec-price {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 14px; border-radius: 12px; margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.12));
+}
+.srvr-rec-price-val { font-size: 28px; font-weight: 800; color: #22c55e; }
+.srvr-rec-price-unit { font-size: 14px; color: var(--text-secondary); }
+.srvr-rec-price-save { margin-left: auto; font-size: 12px; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.12); padding: 3px 10px; border-radius: 6px; }
+
+/* Software stack */
+.srvr-stack { margin-top: 12px; }
+.srvr-stack-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+.srvr-stack-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.srvr-stack-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    background: var(--bg-input); color: var(--text-primary);
+}
+.srvr-stack-tag i { color: #6366f1; }
+.srvr-rec-btn {
+    display: block; width: 100%; text-align: center;
+    padding: 12px; border-radius: 12px; border: 2px solid #6366f1;
+    color: #6366f1; font-weight: 700; font-size: 14px;
+    background: transparent; cursor: pointer;
+    transition: all 0.2s ease; margin-top: 16px;
+}
+.srvr-rec-btn:hover { background: #6366f1; color: #fff; }
+
+/* Comparison table */
+.srvr-compare {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+}
+.srvr-compare h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.srvr-compare-table { width: 100%; border-collapse: collapse; }
+.srvr-compare-table th { padding: 10px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); text-align: left; border-bottom: 1px solid var(--border-color); }
+.srvr-compare-table td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+.srvr-compare-table tr:last-child td { border-bottom: none; }
+.srvr-check { color: #22c55e; }
+.srvr-cross { color: #f87171; }
+
+@media (max-width: 768px) { .srvr-rec-grid { grid-template-columns: 1fr; } .srvr-form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="srvr-container">
+    <div class="srvr-hero">
+        <div class="srvr-hero-icon"><i class="fas fa-server"></i></div>
+        <div class="srvr-hero-text">
+            <h2>AI Sunucu Öneri Motoru</h2>
+            <p>Bütçenizi ve kullanım amacınızı söyleyin, size en uygun sunucu + yazılım paketini önerelim.</p>
+        </div>
+    </div>
+
+    <!-- Input Form -->
+    <div class="srvr-form">
+        <h3>🎯 Projenizi Tanımlayın</h3>
+        <div class="srvr-form-grid">
+            <div class="srvr-field">
+                <label>AI Kullanım Amacı</label>
+                <select id="srvrGoal">
+                    <option value="chatbot">💬 AI Chatbot / Asistan</option>
+                    <option value="content">✍️ İçerik Üretimi</option>
+                    <option value="image">🎨 Görsel Üretimi</option>
+                    <option value="code">💻 Kod Asistanı</option>
+                    <option value="analytics">📊 Veri Analizi / ML</option>
+                    <option value="voice">🎙️ Ses İşleme / TTS</option>
+                </select>
+            </div>
+            <div class="srvr-field">
+                <label>Aylık Bütçe ($)</label>
+                <input type="number" id="srvrBudget" placeholder="49" min="5" max="5000" value="49">
+            </div>
+            <div class="srvr-field">
+                <label>Beklenen Kullanıcı Sayısı</label>
+                <select id="srvrUsers">
+                    <option value="small">👤 1-50 kullanıcı</option>
+                    <option value="medium">👥 50-500 kullanıcı</option>
+                    <option value="large">🏢 500-5000 kullanıcı</option>
+                    <option value="enterprise">🌍 5000+ kullanıcı</option>
+                </select>
+            </div>
+            <div class="srvr-field">
+                <label>Öncelik</label>
+                <select id="srvrPriority">
+                    <option value="cost">💰 Maliyet Tasarrufu</option>
+                    <option value="performance">⚡ Performans</option>
+                    <option value="balance">⚖️ Dengeli</option>
+                </select>
+            </div>
+        </div>
+        <button class="srvr-submit" onclick="generateRecommendation()">
+            <i class="fas fa-wand-magic-sparkles"></i> Sunucu Öner
+        </button>
+    </div>
+
+    <!-- Results -->
+    <div id="srvrResult">
+        <div class="srvr-result-header">
+            <div class="srvr-result-badge"><i class="fas fa-check-circle"></i> AI Analizi Tamamlandı</div>
+            <span style="color:var(--text-secondary);font-size:13px" id="srvrResultInfo"></span>
+        </div>
+
+        <div class="srvr-rec-grid" id="srvrCards"></div>
+
+        <div class="srvr-compare">
+            <h3><i class="fas fa-table" style="color:#6366f1"></i> Detaylı Karşılaştırma</h3>
+            <div style="overflow-x:auto">
+                <table class="srvr-compare-table" id="srvrCompareTable"></table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const serverDatabase = {
+    chatbot: {
+        small:  [
+            { name: 'Starter AI VPS',  type: 'Paylaşımlı VPS',  cpu: '2 vCPU', ram: '4 GB', disk: '40 GB SSD', gpu: 'Yok', price: 19, stack: ['Ollama','Llama 3.1 8B','Nginx','Docker'], recommended: false },
+            { name: 'Smart AI VPS',    type: 'Adanmış VPS',     cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 39, stack: ['Ollama','Llama 3.1 8B','Open WebUI','Nginx','Docker'], recommended: true },
+            { name: 'Pro AI Server',   type: 'Dedicated',       cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'T4 16GB', price: 89, stack: ['Ollama','Llama 3.1 70B','Open WebUI','Nginx','Docker','Redis'], recommended: false }
+        ],
+        medium: [
+            { name: 'Smart AI VPS',    type: 'Adanmış VPS',     cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 39, stack: ['Ollama','Llama 3.1 8B','Open WebUI','Nginx','Docker','Redis'], recommended: false },
+            { name: 'Pro AI Server',   type: 'Dedicated',       cpu: '8 vCPU', ram: '32 GB', disk: '320 GB NVMe', gpu: 'T4 16GB', price: 129, stack: ['Ollama','Llama 3.1 70B','Open WebUI','Nginx','Docker','Redis','PostgreSQL'], recommended: true },
+            { name: 'GPU Power',       type: 'GPU Server',      cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 299, stack: ['vLLM','Llama 3.1 70B','Open WebUI','Nginx','Docker','Redis','PostgreSQL','Prometheus'], recommended: false }
+        ],
+        large: [
+            { name: 'Pro AI Server',   type: 'Dedicated', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 299, stack: ['vLLM','Llama 3.1 70B','HAProxy','Docker Swarm','Redis Cluster','PostgreSQL'], recommended: false },
+            { name: 'Enterprise AI',   type: 'Bare Metal', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100 80GB', price: 599, stack: ['vLLM','Llama 3.1 70B','Kubernetes','Istio','Redis Cluster','PostgreSQL HA','Prometheus','Grafana'], recommended: true },
+            { name: 'AI Cluster',      type: 'Multi-Node', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100 80GB', price: 1199, stack: ['vLLM','Ray Serve','Kubernetes','Istio','Redis Cluster','CockroachDB','Full Monitoring'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Enterprise AI',   type: 'Bare Metal', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100 80GB', price: 599, stack: ['vLLM','Llama 3.1 70B','K8s','Istio','Redis Cluster','PostgreSQL HA','Prometheus'], recommended: false },
+            { name: 'AI Cluster',      type: 'Multi-Node', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100 80GB', price: 1199, stack: ['vLLM','Ray Serve','K8s','Istio','Redis Cluster','CockroachDB','Full Monitoring Stack'], recommended: true },
+            { name: 'AI Mega Cluster', type: 'Multi-Region', cpu: '128 vCPU', ram: '512 GB', disk: '4 TB NVMe', gpu: '8x H100 80GB', price: 2499, stack: ['TGI','Ray','K8s','Multi-Region','Global LB','CockroachDB','Full Stack'], recommended: false }
+        ]
+    },
+    content: {
+        small: [
+            { name: 'Content Starter', type: 'VPS', cpu: '2 vCPU', ram: '4 GB', disk: '40 GB SSD', gpu: 'Yok', price: 15, stack: ['Ollama','Llama 3.1 8B','Nginx'], recommended: false },
+            { name: 'Content Plus',    type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 35, stack: ['Ollama','Llama 3.1 8B','n8n','Nginx','Docker'], recommended: true },
+            { name: 'Content Pro',     type: 'Dedicated', cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'T4 16GB', price: 79, stack: ['Ollama','Llama 3.1 70B','n8n','WordPress','Docker'], recommended: false }
+        ],
+        medium: [
+            { name: 'Content Plus', type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 35, stack: ['Ollama','Llama 3.1 8B','n8n','Nginx','Docker'], recommended: false },
+            { name: 'Content Pro',  type: 'Dedicated', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['Ollama','Llama 3.1 70B','n8n','WordPress','Redis','Docker'], recommended: true },
+            { name: 'Content Max',  type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['vLLM','Llama 3.1 70B','n8n','CMS','Redis','Docker','S3'], recommended: false }
+        ],
+        large: [
+            { name: 'Content Pro',  type: 'Dedicated', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['Ollama','n8n','WordPress','Redis'], recommended: false },
+            { name: 'Content Max',  type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['vLLM','n8n','CMS','Redis','S3'], recommended: true },
+            { name: 'Content Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['vLLM','n8n','K8s','CMS HA','Redis Cluster','S3'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Content Max',        type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['vLLM','n8n','CMS','Redis'], recommended: false },
+            { name: 'Content Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['vLLM','n8n','K8s','CMS HA','Redis Cluster','S3'], recommended: true },
+            { name: 'Content Ultra',      type: 'Multi', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 1099, stack: ['vLLM','Ray','K8s','Multi-CMS','Global CDN'], recommended: false }
+        ]
+    },
+    image: {
+        small: [
+            { name: 'Image Starter',  type: 'GPU VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'T4 16GB', price: 49, stack: ['Stable Diffusion WebUI','ComfyUI','Nginx'], recommended: false },
+            { name: 'Image Plus',     type: 'GPU VPS', cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'A10 24GB', price: 89, stack: ['Stable Diffusion WebUI','ComfyUI','ControlNet','Nginx','Docker'], recommended: true },
+            { name: 'Image Pro',      type: 'GPU Dedicated', cpu: '16 vCPU', ram: '32 GB', disk: '320 GB NVMe', gpu: 'A100 40GB', price: 199, stack: ['SD XL','ComfyUI','ControlNet','Docker','S3'], recommended: false }
+        ],
+        medium: [
+            { name: 'Image Plus', type: 'GPU VPS', cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'A10 24GB', price: 89, stack: ['SD WebUI','ComfyUI','ControlNet','Docker'], recommended: false },
+            { name: 'Image Pro', type: 'GPU Dedicated', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 249, stack: ['SD XL','ComfyUI','ControlNet','Queue','Docker','S3'], recommended: true },
+            { name: 'Image Max', type: 'GPU', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 499, stack: ['SD XL','Flux','ComfyUI','K8s','S3','CDN'], recommended: false }
+        ],
+        large: [
+            { name: 'Image Pro', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 249, stack: ['SD XL','ComfyUI','Queue','S3'], recommended: false },
+            { name: 'Image Max', type: 'GPU', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 499, stack: ['SD XL','Flux','ComfyUI','K8s','S3','CDN'], recommended: true },
+            { name: 'Image Ultra', type: 'Multi-GPU', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 999, stack: ['SD XL','Flux','Ray','K8s','S3','Global CDN'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Image Max', type: 'GPU', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 499, stack: ['SD XL','Flux','ComfyUI','K8s','S3'], recommended: false },
+            { name: 'Image Ultra', type: 'Multi-GPU', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 999, stack: ['SD XL','Flux','Ray','K8s','S3','Global CDN'], recommended: true },
+            { name: 'Image Mega', type: 'Cluster', cpu: '128 vCPU', ram: '512 GB', disk: '4 TB NVMe', gpu: '8x H100', price: 2199, stack: ['Flux','Ray','K8s','Multi-Region','Global CDN','Full Monitoring'], recommended: false }
+        ]
+    },
+    code: {
+        small: [
+            { name: 'Code Starter', type: 'VPS', cpu: '2 vCPU', ram: '4 GB', disk: '40 GB SSD', gpu: 'Yok', price: 15, stack: ['Tabby','VS Code Server','Nginx'], recommended: false },
+            { name: 'Code Plus', type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 35, stack: ['Tabby','Ollama','VS Code Server','Gitea','Docker'], recommended: true },
+            { name: 'Code Pro', type: 'Dedicated', cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'T4 16GB', price: 79, stack: ['Tabby','Ollama','CodeLlama 34B','VS Code Server','Gitea','Docker','CI/CD'], recommended: false }
+        ],
+        medium: [
+            { name: 'Code Plus', type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 35, stack: ['Tabby','Ollama','VS Code','Gitea','Docker'], recommended: false },
+            { name: 'Code Pro', type: 'Dedicated', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 99, stack: ['Tabby','CodeLlama 34B','VS Code','Gitea','Docker','CI/CD','SonarQube'], recommended: true },
+            { name: 'Code Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 249, stack: ['Tabby','CodeLlama 70B','VS Code','GitLab','K8s','Monitoring'], recommended: false }
+        ],
+        large: [
+            { name: 'Code Pro', type: 'Dedicated', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 99, stack: ['Tabby','CodeLlama','Gitea','Docker','CI/CD'], recommended: false },
+            { name: 'Code Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 249, stack: ['Tabby','CodeLlama 70B','GitLab','K8s','Monitoring'], recommended: true },
+            { name: 'Code Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['Tabby','vLLM','GitLab HA','K8s','SonarQube','Full CI/CD'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Code Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 249, stack: ['Tabby','CodeLlama','GitLab','K8s'], recommended: false },
+            { name: 'Code Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['Tabby','vLLM','GitLab HA','K8s','SonarQube','Full CI/CD','Vault'], recommended: true },
+            { name: 'Code Mega', type: 'Multi', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 1099, stack: ['vLLM','Ray','GitLab','K8s','Multi-Env','Full Stack'], recommended: false }
+        ]
+    },
+    analytics: {
+        small: [
+            { name: 'Analytics Starter', type: 'VPS', cpu: '2 vCPU', ram: '8 GB', disk: '60 GB NVMe', gpu: 'Yok', price: 25, stack: ['JupyterHub','Python','Pandas','Docker'], recommended: false },
+            { name: 'Analytics Plus', type: 'VPS', cpu: '4 vCPU', ram: '16 GB', disk: '120 GB NVMe', gpu: 'Yok', price: 49, stack: ['JupyterHub','Python','Pandas','Scikit-learn','PostgreSQL','Docker'], recommended: true },
+            { name: 'Analytics Pro', type: 'GPU', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['JupyterHub','PyTorch','TensorFlow','PostgreSQL','Airflow','Docker'], recommended: false }
+        ],
+        medium: [
+            { name: 'Analytics Plus', type: 'VPS', cpu: '4 vCPU', ram: '16 GB', disk: '120 GB NVMe', gpu: 'Yok', price: 49, stack: ['JupyterHub','Scikit-learn','PostgreSQL','Docker'], recommended: false },
+            { name: 'Analytics Pro', type: 'GPU', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['JupyterHub','PyTorch','TensorFlow','PostgreSQL','Airflow','Docker','Superset'], recommended: true },
+            { name: 'Analytics Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['JupyterHub','PyTorch','Spark','PostgreSQL','Airflow','Superset','K8s'], recommended: false }
+        ],
+        large: [
+            { name: 'Analytics Pro', type: 'GPU', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['JupyterHub','PyTorch','Airflow','Superset'], recommended: false },
+            { name: 'Analytics Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['JupyterHub','PyTorch','Spark','Airflow','Superset','K8s'], recommended: true },
+            { name: 'Analytics Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 599, stack: ['JupyterHub','PyTorch','Spark','K8s','Airflow','DataLake'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Analytics Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['JupyterHub','PyTorch','Spark','Airflow'], recommended: false },
+            { name: 'Analytics Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 599, stack: ['JupyterHub','PyTorch','Spark','K8s','Airflow','DataLake','Full Monitoring'], recommended: true },
+            { name: 'Analytics Ultra', type: 'Multi', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 1199, stack: ['MLOps Full','Spark','K8s','Multi-Region','DataLake','Global BI'], recommended: false }
+        ]
+    },
+    voice: {
+        small: [
+            { name: 'Voice Starter', type: 'VPS', cpu: '2 vCPU', ram: '4 GB', disk: '40 GB SSD', gpu: 'Yok', price: 19, stack: ['Whisper.cpp','Piper TTS','Nginx'], recommended: false },
+            { name: 'Voice Plus', type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 39, stack: ['Whisper.cpp','Piper TTS','Nginx','Docker','Redis'], recommended: true },
+            { name: 'Voice Pro', type: 'GPU', cpu: '8 vCPU', ram: '16 GB', disk: '160 GB NVMe', gpu: 'T4 16GB', price: 89, stack: ['Whisper','Bark','Piper TTS','Docker','Redis','Queue'], recommended: false }
+        ],
+        medium: [
+            { name: 'Voice Plus', type: 'VPS', cpu: '4 vCPU', ram: '8 GB', disk: '80 GB NVMe', gpu: 'Yok', price: 39, stack: ['Whisper.cpp','Piper TTS','Redis','Docker'], recommended: false },
+            { name: 'Voice Pro', type: 'GPU', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['Whisper','Bark','Piper','Docker','Redis','Queue','PostgreSQL'], recommended: true },
+            { name: 'Voice Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['Whisper Large','Bark','XTTS','Docker','K8s','Redis','S3'], recommended: false }
+        ],
+        large: [
+            { name: 'Voice Pro', type: 'GPU', cpu: '8 vCPU', ram: '32 GB', disk: '240 GB NVMe', gpu: 'T4 16GB', price: 109, stack: ['Whisper','Bark','Docker','Redis'], recommended: false },
+            { name: 'Voice Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['Whisper Large','Bark','XTTS','K8s','Redis','S3'], recommended: true },
+            { name: 'Voice Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['Whisper','XTTS','K8s','Redis Cluster','S3','CDN'], recommended: false }
+        ],
+        enterprise: [
+            { name: 'Voice Max', type: 'GPU', cpu: '16 vCPU', ram: '64 GB', disk: '500 GB NVMe', gpu: 'A100 40GB', price: 279, stack: ['Whisper','XTTS','K8s','Redis'], recommended: false },
+            { name: 'Voice Enterprise', type: 'Cluster', cpu: '32 vCPU', ram: '128 GB', disk: '1 TB NVMe', gpu: '2x A100', price: 549, stack: ['Whisper','XTTS','K8s','Redis Cluster','S3','CDN','Monitoring'], recommended: true },
+            { name: 'Voice Ultra', type: 'Multi', cpu: '64 vCPU', ram: '256 GB', disk: '2 TB NVMe', gpu: '4x A100', price: 1099, stack: ['Whisper','XTTS','Ray','K8s','Multi-Region','CDN','Full Stack'], recommended: false }
+        ]
+    }
+};
+
+function generateRecommendation() {
+    const goal = document.getElementById('srvrGoal').value;
+    const budget = parseInt(document.getElementById('srvrBudget').value) || 49;
+    const users = document.getElementById('srvrUsers').value;
+    const priority = document.getElementById('srvrPriority').value;
+
+    const options = serverDatabase[goal]?.[users] || serverDatabase.chatbot.small;
+
+    // Sort by budget fit
+    let sorted = [...options].sort((a, b) => {
+        const aFit = Math.abs(a.price - budget);
+        const bFit = Math.abs(b.price - budget);
+        if (priority === 'cost') return a.price - b.price;
+        if (priority === 'performance') return b.price - a.price;
+        return aFit - bFit;
+    });
+
+    const goalNames = { chatbot:'AI Chatbot', content:'İçerik Üretimi', image:'Görsel Üretimi', code:'Kod Asistanı', analytics:'Veri Analizi', voice:'Ses İşleme' };
+    document.getElementById('srvrResultInfo').textContent = goalNames[goal] + ' · $' + budget + '/ay bütçe · ' + sorted.length + ' öneri bulundu';
+
+    // Cards
+    let cardsHtml = '';
+    sorted.forEach(s => {
+        const saving = s.price <= budget ? Math.round((1 - s.price/budget)*100) : 0;
+        cardsHtml += '<div class="srvr-rec-card '+(s.recommended?'recommended':'')+'">';
+        cardsHtml += '<div class="srvr-rec-name">' + s.name + '</div>';
+        cardsHtml += '<div class="srvr-rec-type">' + s.type + '</div>';
+        cardsHtml += '<div class="srvr-rec-specs">';
+        cardsHtml += '<div class="srvr-rec-spec"><div class="srvr-rec-spec-label">CPU</div><div class="srvr-rec-spec-value">' + s.cpu + '</div></div>';
+        cardsHtml += '<div class="srvr-rec-spec"><div class="srvr-rec-spec-label">RAM</div><div class="srvr-rec-spec-value">' + s.ram + '</div></div>';
+        cardsHtml += '<div class="srvr-rec-spec"><div class="srvr-rec-spec-label">Disk</div><div class="srvr-rec-spec-value">' + s.disk + '</div></div>';
+        cardsHtml += '<div class="srvr-rec-spec"><div class="srvr-rec-spec-label">GPU</div><div class="srvr-rec-spec-value">' + s.gpu + '</div></div>';
+        cardsHtml += '</div>';
+        cardsHtml += '<div class="srvr-rec-price"><div class="srvr-rec-price-val">$' + s.price + '</div><div class="srvr-rec-price-unit">/ay</div>';
+        if (saving > 0) cardsHtml += '<div class="srvr-rec-price-save">%' + saving + ' tasarruf</div>';
+        cardsHtml += '</div>';
+        cardsHtml += '<div class="srvr-stack"><div class="srvr-stack-title">Yazılım Paketi</div><div class="srvr-stack-tags">';
+        s.stack.forEach(t => { cardsHtml += '<div class="srvr-stack-tag"><i class="fas fa-cube"></i> ' + t + '</div>'; });
+        cardsHtml += '</div></div>';
+        cardsHtml += '<button class="srvr-rec-btn" onclick="showToast(\'Sunucu kurulumu başlatılıyor: '+s.name+'\',\'success\')"><i class="fas fa-rocket"></i> Bu Paketi Kur</button>';
+        cardsHtml += '</div>';
+    });
+    document.getElementById('srvrCards').innerHTML = cardsHtml;
+
+    // Compare table
+    let tHtml = '<thead><tr><th>Özellik</th>';
+    sorted.forEach(s => { tHtml += '<th>' + s.name + (s.recommended?' ⭐':'') + '</th>'; });
+    tHtml += '</tr></thead><tbody>';
+    const features = [
+        { label: 'CPU', key: 'cpu' },
+        { label: 'RAM', key: 'ram' },
+        { label: 'Disk', key: 'disk' },
+        { label: 'GPU', key: 'gpu' },
+        { label: 'Fiyat', fn: s => '$'+s.price+'/ay' },
+        { label: 'Yazılım', fn: s => s.stack.length+' araç' },
+        { label: 'Docker', fn: s => s.stack.includes('Docker') || s.stack.includes('K8s') || s.stack.includes('Kubernetes') ? '<span class="srvr-check"><i class="fas fa-check"></i></span>' : '<span class="srvr-cross"><i class="fas fa-times"></i></span>' },
+        { label: 'Kubernetes', fn: s => s.stack.some(x => x.includes('K8s') || x.includes('Kubernetes')) ? '<span class="srvr-check"><i class="fas fa-check"></i></span>' : '<span class="srvr-cross"><i class="fas fa-times"></i></span>' },
+        { label: 'Monitoring', fn: s => s.stack.some(x => x.includes('Monitoring') || x.includes('Prometheus') || x.includes('Grafana')) ? '<span class="srvr-check"><i class="fas fa-check"></i></span>' : '<span class="srvr-cross"><i class="fas fa-times"></i></span>' }
+    ];
+    features.forEach(f => {
+        tHtml += '<tr><td><strong>' + f.label + '</strong></td>';
+        sorted.forEach(s => { tHtml += '<td>' + (f.fn ? f.fn(s) : s[f.key]) + '</td>'; });
+        tHtml += '</tr>';
+    });
+    tHtml += '</tbody>';
+    document.getElementById('srvrCompareTable').innerHTML = tHtml;
+
+    document.getElementById('srvrResult').style.display = 'block';
+    document.getElementById('srvrResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}

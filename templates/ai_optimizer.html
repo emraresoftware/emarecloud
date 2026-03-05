@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Auto AI Resource Optimizer - EmareCloud{% endblock %}
+{% block page_title %}AI Resource Optimizer{% endblock %}
+
+{% block head %}
+<style>
+.opt-container{max-width:1100px;margin:0 auto}
+.opt-hero{background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(59,130,246,.08));border:1px solid var(--border-color);border-radius:20px;padding:32px;margin-bottom:28px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.opt-hero-icon{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#22c55e,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;flex-shrink:0}
+.opt-hero-text h2{margin:0 0 4px;font-size:22px;font-weight:800}
+.opt-hero-text p{margin:0;color:var(--text-secondary);font-size:14px}
+.opt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+.opt-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:22px;position:relative;overflow:hidden}
+.opt-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.opt-stat.g::before{background:linear-gradient(90deg,#22c55e,#16a34a)}
+.opt-stat.b::before{background:linear-gradient(90deg,#3b82f6,#2563eb)}
+.opt-stat.p::before{background:linear-gradient(90deg,#9333ea,#7c3aed)}
+.opt-stat.o::before{background:linear-gradient(90deg,#f59e0b,#d97706)}
+.opt-stat-icon{font-size:28px;margin-bottom:10px}
+.opt-stat-val{font-size:28px;font-weight:800}
+.opt-stat-label{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.opt-stat-trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;margin-top:8px;padding:3px 10px;border-radius:6px}
+.opt-stat-trend.up{background:rgba(34,197,94,.12);color:#22c55e}
+.opt-stat-trend.down{background:rgba(248,113,113,.12);color:#f87171}
+.opt-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:24px}
+.opt-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.opt-gauge-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:24px}
+.opt-gauge{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;text-align:center}
+.opt-gauge-ring{width:120px;height:120px;margin:0 auto 12px;position:relative}
+.opt-gauge-ring svg{width:120px;height:120px;transform:rotate(-90deg)}
+.opt-gauge-ring circle{fill:none;stroke-width:10}
+.opt-gauge-ring .bg{stroke:var(--border-color)}
+.opt-gauge-ring .fg{stroke-linecap:round;transition:stroke-dashoffset 1.5s ease}
+.opt-gauge-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.opt-gauge-val{font-size:28px;font-weight:800}
+.opt-gauge-label{font-size:11px;color:var(--text-secondary)}
+.opt-gauge-title{font-size:14px;font-weight:700;margin-bottom:2px}
+.opt-gauge-sub{font-size:12px;color:var(--text-secondary)}
+.opt-timeline{position:relative;padding-left:28px}
+.opt-timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--border-color)}
+.opt-tl-item{position:relative;padding:12px 0 20px 20px}
+.opt-tl-dot{position:absolute;left:-22px;top:14px;width:12px;height:12px;border-radius:50%}
+.opt-tl-dot.auto{background:#22c55e}
+.opt-tl-dot.warn{background:#f59e0b}
+.opt-tl-dot.scale{background:#3b82f6}
+.opt-tl-dot.save{background:#9333ea}
+.opt-tl-time{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+.opt-tl-text{font-size:14px;font-weight:600}
+.opt-tl-desc{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.opt-svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.opt-svc{display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg-input);transition:all .2s}
+.opt-svc:hover{transform:translateX(4px)}
+.opt-svc-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.opt-svc-info{flex:1}
+.opt-svc-name{font-size:14px;font-weight:700}
+.opt-svc-detail{font-size:12px;color:var(--text-secondary)}
+.opt-svc-status{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.opt-svc-status.ok{background:rgba(34,197,94,.12);color:#22c55e}
+.opt-svc-status.opt{background:rgba(99,102,241,.12);color:#6366f1}
+.opt-svc-status.warn{background:rgba(245,158,11,.12);color:#f59e0b}
+.opt-two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.opt-savings{background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(34,197,94,.12));border:2px solid rgba(34,197,94,.2);border-radius:16px;padding:24px}
+.opt-savings h3{margin:0 0 12px;font-size:16px;font-weight:700;color:#22c55e}
+.opt-save-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(34,197,94,.1);font-size:14px}
+.opt-save-row:last-child{border-bottom:none}
+.opt-save-total{font-size:24px;font-weight:800;color:#22c55e;margin-top:12px;text-align:right}
+.opt-actions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.opt-action-btn{display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-card);cursor:pointer;transition:all .2s;font-size:13px;font-weight:600}
+.opt-action-btn:hover{border-color:#6366f1;transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,.1)}
+.opt-action-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+@media(max-width:768px){.opt-two{grid-template-columns:1fr}.opt-gauge-row{grid-template-columns:1fr 1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="opt-container">
+    <div class="opt-hero">
+        <div class="opt-hero-icon"><i class="fas fa-bolt"></i></div>
+        <div class="opt-hero-text">
+            <h2>Auto AI Resource Optimizer</h2>
+            <p>GPU, RAM ve CPU kaynaklarını AI ile otomatik optimize edin. Maliyeti düşürün, performansı artırın.</p>
+        </div>
+    </div>
+
+    <div class="opt-stats">
+        <div class="opt-stat g"><div class="opt-stat-icon">💰</div><div class="opt-stat-val" id="optSaved">$127.40</div><div class="opt-stat-label">Bu Ay Tasarruf</div><div class="opt-stat-trend up"><i class="fas fa-arrow-up"></i> +34%</div></div>
+        <div class="opt-stat b"><div class="opt-stat-icon">⚡</div><div class="opt-stat-val">42</div><div class="opt-stat-label">Otomatik Optimizasyon</div><div class="opt-stat-trend up"><i class="fas fa-arrow-up"></i> +12 bu hafta</div></div>
+        <div class="opt-stat p"><div class="opt-stat-icon">🎯</div><div class="opt-stat-val">94.2%</div><div class="opt-stat-label">Kaynak Verimliliği</div><div class="opt-stat-trend up"><i class="fas fa-arrow-up"></i> +8%</div></div>
+        <div class="opt-stat o"><div class="opt-stat-icon">🔥</div><div class="opt-stat-val">0</div><div class="opt-stat-label">Spike / Patlama</div><div class="opt-stat-trend up"><i class="fas fa-arrow-down"></i> Otomatik</div></div>
+    </div>
+
+    <div class="opt-gauge-row" id="optGauges"></div>
+
+    <div class="opt-two">
+        <div class="opt-card">
+            <h3><i class="fas fa-clock-rotate-left" style="color:#6366f1"></i> Son Optimizasyon İşlemleri</h3>
+            <div class="opt-timeline" id="optTimeline"></div>
+        </div>
+        <div>
+            <div class="opt-savings">
+                <h3>💰 Aylık Tasarruf Özeti</h3>
+                <div class="opt-save-row"><span>GPU idle azaltma</span><strong>$48.20</strong></div>
+                <div class="opt-save-row"><span>RAM swap optimizasyonu</span><strong>$22.60</strong></div>
+                <div class="opt-save-row"><span>Container right-sizing</span><strong>$31.40</strong></div>
+                <div class="opt-save-row"><span>Disk I/O caching</span><strong>$15.80</strong></div>
+                <div class="opt-save-row"><span>Network batching</span><strong>$9.40</strong></div>
+                <div class="opt-save-total">Toplam: $127.40/ay</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="opt-card" style="margin-top:24px">
+        <h3><i class="fas fa-microchip" style="color:#9333ea"></i> Servis Kaynak Durumu</h3>
+        <div class="opt-svc-grid" id="optServices"></div>
+    </div>
+
+    <div class="opt-card">
+        <h3><i class="fas fa-wand-magic-sparkles" style="color:#22c55e"></i> Hızlı Optimizasyon Aksiyonları</h3>
+        <div class="opt-actions-grid">
+            <div class="opt-action-btn" onclick="showToast('GPU idle timeout azaltıldı!','success')"><div class="opt-action-icon" style="background:rgba(34,197,94,.12);color:#22c55e"><i class="fas fa-gpu-card"></i></div><div>GPU Idle Timeout Azalt<br><small style="color:var(--text-secondary);font-weight:400">3dk → 30sn</small></div></div>
+            <div class="opt-action-btn" onclick="showToast('RAM limitleri optimize edildi!','success')"><div class="opt-action-icon" style="background:rgba(99,102,241,.12);color:#6366f1"><i class="fas fa-memory"></i></div><div>RAM Limit Optimize<br><small style="color:var(--text-secondary);font-weight:400">OOM koruması + swap</small></div></div>
+            <div class="opt-action-btn" onclick="showToast('Container resize yapıldı!','success')"><div class="opt-action-icon" style="background:rgba(147,51,234,.12);color:#9333ea"><i class="fas fa-compress"></i></div><div>Container Right-Size<br><small style="color:var(--text-secondary);font-weight:400">Fazla kaynak geri al</small></div></div>
+            <div class="opt-action-btn" onclick="showToast('Cache stratejisi güncellendi!','success')"><div class="opt-action-icon" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-database"></i></div><div>Disk Cache Optimize<br><small style="color:var(--text-secondary);font-weight:400">SSD cache artır</small></div></div>
+            <div class="opt-action-btn" onclick="showToast('Tüm optimizasyonlar uygulandı!','success')"><div class="opt-action-icon" style="background:rgba(236,72,153,.12);color:#ec4899"><i class="fas fa-rocket"></i></div><div>Tümünü Optimize Et<br><small style="color:var(--text-secondary);font-weight:400">AI tam optimizasyon</small></div></div>
+            <div class="opt-action-btn" onclick="showToast('Rapor oluşturuluyor...','success')"><div class="opt-action-icon" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-file-pdf"></i></div><div>Rapor İndir<br><small style="color:var(--text-secondary);font-weight:400">PDF detaylı rapor</small></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    // Gauges
+    const gauges = [
+        {label:'CPU Kullanımı',val:67,color:'#3b82f6',sub:'8 vCPU · 5.4 aktif',detail:'Ort. %67'},
+        {label:'RAM Kullanımı',val:74,color:'#9333ea',sub:'16 GB · 11.8 GB kullanılıyor',detail:'Ort. %74'},
+        {label:'GPU Kullanımı',val:42,color:'#22c55e',sub:'T4 16GB · 6.7 GB VRAM',detail:'Ort. %42'},
+        {label:'Disk I/O',val:38,color:'#f59e0b',sub:'NVMe · 380 MB/s ort.',detail:'Ort. %38'}
+    ];
+    const gc = document.getElementById('optGauges');
+    let gh='';
+    gauges.forEach(g=>{
+        const circ=2*Math.PI*48;
+        const off=circ-(g.val/100)*circ;
+        gh+='<div class="opt-gauge"><div class="opt-gauge-ring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="48"/><circle class="fg" cx="60" cy="60" r="48" stroke="'+g.color+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+off+'"/></svg><div class="opt-gauge-text"><div class="opt-gauge-val" style="color:'+g.color+'">'+g.val+'%</div><div class="opt-gauge-label">'+g.detail+'</div></div></div><div class="opt-gauge-title">'+g.label+'</div><div class="opt-gauge-sub">'+g.sub+'</div></div>';
+    });
+    gc.innerHTML=gh;
+
+    // Timeline
+    const events=[
+        {type:'auto',time:'14:32',text:'GPU idle timeout azaltıldı',desc:'Ollama modeli 3dk idle sonrası unload → $2.40/gün tasarruf'},
+        {type:'scale',time:'12:15',text:'Container RAM limiti düşürüldü',desc:'Whisper container: 8GB → 4GB (ortalama kullanım 2.1GB)'},
+        {type:'warn',time:'10:48',text:'RAM spike tespit edildi',desc:'Stable Diffusion batch işleminde 14.2GB spike — otomatik swap aktif'},
+        {type:'auto',time:'09:20',text:'Disk cache stratejisi güncellendi',desc:'Sık erişilen model dosyaları NVMe cache\'e alındı — %40 hız artışı'},
+        {type:'save',time:'08:00',text:'Gece optimizasyonu tamamlandı',desc:'Gece 02:00-06:00 arası GPU kapatıldı — $1.60 tasarruf'},
+        {type:'scale',time:'Dün 22:10',text:'Otomatik CPU scaling',desc:'n8n workflow spike: 2 vCPU → 4 vCPU (3dk) → geri 2 vCPU'}
+    ];
+    const tc=document.getElementById('optTimeline');
+    let th='';
+    events.forEach(e=>{th+='<div class="opt-tl-item"><div class="opt-tl-dot '+e.type+'"></div><div class="opt-tl-time">'+e.time+'</div><div class="opt-tl-text">'+e.text+'</div><div class="opt-tl-desc">'+e.desc+'</div></div>';});
+    tc.innerHTML=th;
+
+    // Services
+    const svcs=[
+        {name:'Ollama LLM',detail:'GPU: 42% · RAM: 3.2GB · Latency: 1.1s',icon:'🦙',bg:'rgba(99,102,241,.12)',status:'ok',statusText:'Optimal'},
+        {name:'Stable Diffusion',detail:'GPU: 78% · RAM: 6.4GB · Queue: 3',icon:'🎨',bg:'rgba(147,51,234,.12)',status:'opt',statusText:'Optimize Edildi'},
+        {name:'Whisper STT',detail:'CPU: 35% · RAM: 2.1GB · Latency: 0.8s',icon:'🎙️',bg:'rgba(245,158,11,.12)',status:'ok',statusText:'Optimal'},
+        {name:'Open WebUI',detail:'CPU: 12% · RAM: 512MB · Users: 4',icon:'💬',bg:'rgba(34,197,94,.12)',status:'ok',statusText:'Optimal'},
+        {name:'n8n Workflows',detail:'CPU: 28% · RAM: 1.8GB · Active: 12',icon:'⚡',bg:'rgba(59,130,246,.12)',status:'ok',statusText:'Optimal'},
+        {name:'PostgreSQL',detail:'CPU: 8% · RAM: 1.2GB · Conn: 24/100',icon:'🗄️',bg:'rgba(236,72,153,.12)',status:'warn',statusText:'İzleniyor'}
+    ];
+    const sc=document.getElementById('optServices');
+    let sh='';
+    svcs.forEach(s=>{sh+='<div class="opt-svc"><div class="opt-svc-icon" style="background:'+s.bg+'">'+s.icon+'</div><div class="opt-svc-info"><div class="opt-svc-name">'+s.name+'</div><div class="opt-svc-detail">'+s.detail+'</div></div><div class="opt-svc-status '+s.status+'">'+s.statusText+'</div></div>';});
+    sc.innerHTML=sh;
+})();
+</script>
+{% endblock %}

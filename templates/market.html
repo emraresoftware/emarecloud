@@ -1,0 +1,966 @@
+{% extends "base.html" %}
+{% block title %}Uygulama Pazarı - Sunucu Yönetimi{% endblock %}
+{% block page_title %}Uygulama Pazarı{% endblock %}
+
+{% block content %}
+<!-- Market Hero -->
+<div class="mkt-hero">
+    <div class="mkt-hero-content">
+        <h2><i class="fas fa-store"></i> Açık Kaynak Uygulama Pazarı</h2>
+        <p>{{ apps|length }}+ hazır uygulama ve GitHub'daki milyonlarca açık kaynak projeye erişin.</p>
+    </div>
+</div>
+
+<!-- Sekme Navigasyonu -->
+<div class="mkt-tabs">
+    <button class="mkt-tab active" onclick="switchTab('catalog')" id="tabCatalog">
+        <i class="fas fa-th-large"></i> Katalog <span class="mkt-tab-badge">{{ apps|length }}</span>
+    </button>
+    <button class="mkt-tab" onclick="switchTab('stacks')" id="tabStacks">
+        <i class="fas fa-layer-group"></i> Stack Builder <span class="mkt-tab-badge">{{ stacks|length }}</span>
+    </button>
+    <button class="mkt-tab" onclick="switchTab('github')" id="tabGithub">
+        <i class="fab fa-github"></i> GitHub Keşfet
+    </button>
+    <button class="mkt-tab" onclick="switchTab('trending')" id="tabTrending">
+        <i class="fas fa-fire"></i> Trend
+    </button>
+    <a href="/app-builder" class="mkt-tab" style="text-decoration:none;margin-left:auto;">
+        <i class="fas fa-wand-magic-sparkles"></i> App Builder <span class="mkt-tab-badge" style="background:rgba(139,92,246,0.2);color:#9333ea;">NEW</span>
+    </a>
+</div>
+
+<!-- ==================== KATALOG SEKMESİ ==================== -->
+<div class="mkt-panel" id="panelCatalog">
+    <!-- Arama & Filtre -->
+    <div class="mkt-toolbar">
+        <div class="mkt-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="catalogSearch" placeholder="Uygulama ara... (MySQL, Docker, Grafana...)" oninput="filterCatalog()">
+        </div>
+        <div class="mkt-filter-pills" id="categoryPills">
+            <button class="mkt-pill active" onclick="filterCategory('')">
+                <i class="fas fa-th-large"></i> Tümü <span class="mkt-pill-count">{{ apps|length }}</span>
+            </button>
+            {% for cat in apps_by_category %}
+            <button class="mkt-pill" onclick="filterCategory('{{ cat.name }}')" data-cat="{{ cat.name }}">
+                <i class="fas {{ cat.icon }}"></i> {{ cat.name }} <span class="mkt-pill-count">{{ cat.count }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Kategorilere Göre Gruplandırılmış Uygulamalar -->
+    <div id="catalogSections">
+        {% for cat in apps_by_category %}
+        <div class="mkt-category-section" data-section-cat="{{ cat.name }}">
+            <div class="mkt-category-header" onclick="toggleCategorySection(this)">
+                <div class="mkt-category-header-left">
+                    <span class="mkt-category-icon" style="background: {{ cat.color }}20; color: {{ cat.color }};">
+                        <i class="fas {{ cat.icon }}"></i>
+                    </span>
+                    <h3 class="mkt-category-title">{{ cat.name }}</h3>
+                    <span class="mkt-category-count">{{ cat.count }} uygulama</span>
+                </div>
+                <button class="mkt-category-toggle" aria-label="Kategoriyi aç/kapa">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="mkt-category-body open">
+                <div class="mkt-grid">
+                    {% for app in cat.apps %}
+                    <div class="mkt-card" data-app-id="{{ app.id }}" data-category="{{ app.category }}" data-name="{{ app.name|lower }}">
+                        <div class="mkt-card-header">
+                            <div class="mkt-card-icon">
+                                <i class="{{ app.icon if 'fab ' in app.icon or 'fas ' in app.icon else 'fas ' + app.icon }}"></i>
+                            </div>
+                            <div class="mkt-card-badges">
+                                {% if app.stars is defined and app.stars %}
+                                <span class="mkt-badge stars"><i class="fas fa-star"></i> {{ app.stars }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <h3 class="mkt-card-title">{{ app.name }}</h3>
+                        <span class="mkt-card-cat">{{ app.category }}</span>
+                        {% if app.github is defined and app.github %}
+                        <a href="https://github.com/{{ app.github }}" target="_blank" class="mkt-card-repo">
+                            <i class="fab fa-github"></i> {{ app.github }}
+                        </a>
+                        {% endif %}
+                        <p class="mkt-card-desc">{{ app.description }}</p>
+                        <div class="mkt-card-footer">
+                            <button class="btn btn-primary btn-sm" onclick="openInstallWizard('{{ app.id }}')">
+                                <i class="fas fa-download"></i> Kur
+                            </button>
+                            {% if app.github is defined and app.github %}
+                            <a href="https://github.com/{{ app.github }}" target="_blank" class="btn btn-secondary btn-sm">
+                                <i class="fab fa-github"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mkt-empty" id="catalogEmpty" style="display:none;">
+        <i class="fas fa-search"></i>
+        <p>Aramanızla eşleşen uygulama bulunamadı.</p>
+    </div>
+</div>
+
+<!-- ==================== STACK BUILDER SEKMESİ ==================== -->
+<div class="mkt-panel" id="panelStacks" style="display:none;">
+    <!-- Stack Builder Hero -->
+    <div class="stack-hero">
+        <div class="stack-hero-icon"><i class="fas fa-magic"></i></div>
+        <h3>Sunucunuzu Ne İçin Kullanacaksınız?</h3>
+        <p>Amacınızı yazın — size tam bir yazılım yığını önerelim, tek tıkla kurun.</p>
+        <div class="stack-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="stackSearchInput" placeholder="Örn: AI chatbot, e-ticaret, blog, monitoring..." oninput="filterStacks()">
+        </div>
+        <div class="stack-quick-tags">
+            <button onclick="stackQuickSearch('ai')" class="mkt-quick-tag"><i class="fas fa-brain"></i> AI</button>
+            <button onclick="stackQuickSearch('web sitesi')" class="mkt-quick-tag"><i class="fas fa-globe"></i> Web Sitesi</button>
+            <button onclick="stackQuickSearch('e-ticaret')" class="mkt-quick-tag"><i class="fas fa-shopping-cart"></i> E-Ticaret</button>
+            <button onclick="stackQuickSearch('devops')" class="mkt-quick-tag"><i class="fas fa-infinity"></i> DevOps</button>
+            <button onclick="stackQuickSearch('güvenlik')" class="mkt-quick-tag"><i class="fas fa-shield-alt"></i> Güvenlik</button>
+            <button onclick="stackQuickSearch('monitoring')" class="mkt-quick-tag"><i class="fas fa-chart-area"></i> İzleme</button>
+            <button onclick="stackQuickSearch('medya')" class="mkt-quick-tag"><i class="fas fa-film"></i> Medya</button>
+        </div>
+    </div>
+
+    <!-- Stack Kartları -->
+    <div class="stack-grid" id="stackGrid">
+        {% for stack in stacks %}
+        <div class="stack-card" data-stack-id="{{ stack.id }}" onclick="openStackDetail('{{ stack.id }}')">
+            <div class="stack-card-glow" style="background: {{ stack.color }}22;"></div>
+            <div class="stack-card-header">
+                <div class="stack-card-icon" style="background: {{ stack.color }}20; color: {{ stack.color }};">
+                    <i class="{{ stack.icon }}"></i>
+                </div>
+                <div class="stack-card-meta">
+                    <span class="stack-meta-item"><i class="fas fa-clock"></i> {{ stack.estimated_time }}</span>
+                    <span class="stack-meta-item"><i class="fas fa-memory"></i> {{ stack.min_ram }}</span>
+                </div>
+            </div>
+            <div class="stack-card-emoji">{{ stack.emoji }}</div>
+            <h3 class="stack-card-title">{{ stack.name }}</h3>
+            <p class="stack-card-desc">{{ stack.description }}</p>
+            <div class="stack-card-apps">
+                {% for app in stack.apps[:5] %}
+                <span class="stack-app-chip {{ 'required' if app.required else 'optional' }}" title="{{ app.role }}">
+                    {{ app.id }}
+                </span>
+                {% endfor %}
+                {% if stack.apps|length > 5 %}
+                <span class="stack-app-chip more">+{{ stack.apps|length - 5 }}</span>
+                {% endif %}
+            </div>
+            <div class="stack-card-tags">
+                {% for tag in stack.tags %}
+                <span class="mkt-tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            <div class="stack-card-footer">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openStackDetail('{{ stack.id }}')">
+                    <i class="fas fa-layer-group"></i> Paketi İncele
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mkt-empty" id="stackEmpty" style="display:none;">
+        <i class="fas fa-layer-group"></i>
+        <p>Aramanızla eşleşen paket bulunamadı.</p>
+    </div>
+</div>
+
+<!-- ==================== STACK DETAY & KURULUM MODAL ==================== -->
+<div class="modal-overlay" id="stackDetailModal">
+    <div class="modal modal-xl">
+        <div class="modal-header">
+            <h3><i class="fas fa-layer-group"></i> <span id="stackModalTitle">-</span></h3>
+            <button type="button" class="modal-close" onclick="closeModal('stackDetailModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="stack-detail-hero" id="stackDetailHero"></div>
+
+            <!-- Sunucu Seçimi -->
+            <div class="wizard-step" style="margin-bottom:1rem;">
+                <label class="form-group"><i class="fas fa-server"></i> Sunucu Seçin</label>
+                <select id="stackServerId" class="form-group" style="width:100%;padding:0.6rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                    <option value="">— Sunucu seçin —</option>
+                    {% for s in servers %}
+                    <option value="{{ s.id }}" {{ 'disabled' if not s.reachable and not s.connected }}>{{ s.name }} ({{ s.host }}) {{ '✅' if s.reachable else '❌' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Uygulama Ağacı -->
+            <div class="stack-tree" id="stackTree"></div>
+
+            <!-- Uygulama Seçenekleri -->
+            <div id="stackAppOptions"></div>
+
+            <!-- Kurulum Butonları -->
+            <div class="stack-install-actions">
+                <button class="btn btn-primary" id="stackInstallBtn" onclick="runStackInstall()">
+                    <i class="fas fa-rocket"></i> Tümünü Kur
+                </button>
+                <button class="btn btn-secondary" onclick="runStackInstall(true)">
+                    <i class="fas fa-check-circle"></i> Sadece Zorunlu
+                </button>
+            </div>
+
+            <!-- Kurulum İlerleme -->
+            <div class="stack-install-progress" id="stackInstallProgress" style="display:none;">
+                <h4><i class="fas fa-tasks"></i> Kurulum İlerlemesi</h4>
+                <div class="stack-progress-list" id="stackProgressList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== GITHUB ARAMA SEKMESİ ==================== -->
+<div class="mkt-panel" id="panelGithub" style="display:none;">
+    <div class="mkt-toolbar">
+        <div class="mkt-search-box mkt-search-github">
+            <i class="fab fa-github"></i>
+            <input type="text" id="githubSearchInput" placeholder="GitHub'da proje ara... (ör: 'nextcloud', 'monitoring tool', 'chat server')" onkeydown="if(event.key==='Enter') searchGithub()">
+            <button class="btn btn-primary btn-sm" onclick="searchGithub()" id="githubSearchBtn">
+                <i class="fas fa-search"></i> Ara
+            </button>
+        </div>
+        <div class="mkt-github-filters">
+            <select id="githubLang" class="mkt-select">
+                <option value="">Tüm Diller</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="java">Java</option>
+                <option value="c">C</option>
+                <option value="cpp">C++</option>
+                <option value="csharp">C#</option>
+                <option value="ruby">Ruby</option>
+                <option value="php">PHP</option>
+                <option value="shell">Shell</option>
+                <option value="swift">Swift</option>
+                <option value="kotlin">Kotlin</option>
+                <option value="lua">Lua</option>
+            </select>
+            <select id="githubSort" class="mkt-select">
+                <option value="stars">⭐ Yıldız</option>
+                <option value="updated">🕐 Güncel</option>
+                <option value="forks">🍴 Fork</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Popüler Aramalar -->
+    <div class="mkt-popular-searches" id="popularSearches">
+        <span class="mkt-popular-label">Popüler:</span>
+        <button onclick="quickSearch('self-hosted')" class="mkt-quick-tag">self-hosted</button>
+        <button onclick="quickSearch('monitoring')" class="mkt-quick-tag">monitoring</button>
+        <button onclick="quickSearch('dashboard')" class="mkt-quick-tag">dashboard</button>
+        <button onclick="quickSearch('api server')" class="mkt-quick-tag">api server</button>
+        <button onclick="quickSearch('chat')" class="mkt-quick-tag">chat</button>
+        <button onclick="quickSearch('automation')" class="mkt-quick-tag">automation</button>
+        <button onclick="quickSearch('database')" class="mkt-quick-tag">database</button>
+        <button onclick="quickSearch('cms')" class="mkt-quick-tag">cms</button>
+        <button onclick="quickSearch('proxy')" class="mkt-quick-tag">proxy</button>
+        <button onclick="quickSearch('vpn')" class="mkt-quick-tag">vpn</button>
+        <button onclick="quickSearch('file manager')" class="mkt-quick-tag">file manager</button>
+        <button onclick="quickSearch('backup')" class="mkt-quick-tag">backup</button>
+        <button onclick="quickSearch('machine learning')" class="mkt-quick-tag">machine learning</button>
+        <button onclick="quickSearch('game server')" class="mkt-quick-tag">game server</button>
+        <button onclick="quickSearch('music server')" class="mkt-quick-tag">music server</button>
+        <button onclick="quickSearch('password manager')" class="mkt-quick-tag">password manager</button>
+        <button onclick="quickSearch('docker')" class="mkt-quick-tag">docker</button>
+        <button onclick="quickSearch('kubernetes')" class="mkt-quick-tag">kubernetes</button>
+    </div>
+
+    <div id="githubResults" class="mkt-grid"></div>
+    <div class="mkt-empty" id="githubEmpty" style="display:none;">
+        <i class="fab fa-github"></i>
+        <p>GitHub'da aramak için yukarıdaki arama kutusunu kullanın.</p>
+    </div>
+    <div class="mkt-loading" id="githubLoading" style="display:none;">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>GitHub'da aranıyor...</p>
+    </div>
+    <div class="mkt-pagination" id="githubPagination" style="display:none;">
+        <button class="btn btn-secondary btn-sm" onclick="searchGithub(currentGithubPage - 1)" id="githubPrev" disabled>
+            <i class="fas fa-chevron-left"></i> Önceki
+        </button>
+        <span class="mkt-page-info" id="githubPageInfo">Sayfa 1</span>
+        <button class="btn btn-secondary btn-sm" onclick="searchGithub(currentGithubPage + 1)" id="githubNext">
+            Sonraki <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+<!-- ==================== TREND SEKMESİ ==================== -->
+<div class="mkt-panel" id="panelTrending" style="display:none;">
+    <div class="mkt-toolbar">
+        <div class="mkt-github-filters">
+            <select id="trendLang" class="mkt-select" onchange="loadTrending()">
+                <option value="">Tüm Diller</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="shell">Shell</option>
+            </select>
+            <select id="trendSince" class="mkt-select" onchange="loadTrending()">
+                <option value="weekly">Bu Hafta</option>
+                <option value="daily">Bugün</option>
+                <option value="monthly">Bu Ay</option>
+            </select>
+        </div>
+    </div>
+    <div id="trendResults" class="mkt-grid"></div>
+    <div class="mkt-loading" id="trendLoading" style="display:none;">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Trend projeler yükleniyor...</p>
+    </div>
+</div>
+
+<!-- ==================== KURULUM SIHIRBAZI MODAL ==================== -->
+<div class="modal-overlay" id="installWizardModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3><i class="fas fa-magic"></i> Kurulum: <span id="wizardAppName">-</span></h3>
+            <button type="button" class="modal-close" onclick="closeInstallWizard()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="wizardAppId" value="">
+            <input type="hidden" id="wizardGithubRepo" value="">
+            <input type="hidden" id="wizardBranch" value="main">
+            <div class="wizard-step">
+                <label class="form-group"><i class="fas fa-server"></i> Sunucu seçin</label>
+                <select id="wizardServerId" class="form-group" style="width:100%;padding:0.6rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                    <option value="">— Sunucu seçin —</option>
+                    {% for s in servers %}
+                    <option value="{{ s.id }}" {{ 'disabled' if not s.reachable and not s.connected }}>{{ s.name }} ({{ s.host }}) {{ '✅' if s.reachable else '❌' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="wizard-step" id="wizardOptionsContainer"></div>
+            <div class="wizard-actions">
+                <button type="button" class="btn btn-primary" id="wizardInstallBtn" onclick="runInstall()">
+                    <i class="fas fa-play"></i> Kurulumu Başlat
+                </button>
+            </div>
+            <div class="install-progress" id="installProgress" style="display:none;">
+                <div class="install-progress-inner">
+                    <div class="install-progress-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
+                    <p class="install-progress-text">Kurulum devam ediyor<span class="install-progress-dots">...</span></p>
+                    <div class="install-progress-bar"><div class="install-progress-bar-fill"></div></div>
+                </div>
+            </div>
+            <div class="install-output" id="installOutput" style="display:none;">
+                <h4><i class="fas fa-terminal"></i> Çıktı</h4>
+                <pre id="installOutputPre"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GitHub Detay Modal -->
+<div class="modal-overlay" id="githubDetailModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3><i class="fab fa-github"></i> <span id="detailRepoName">-</span></h3>
+            <button type="button" class="modal-close" onclick="closeModal('githubDetailModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="mkt-detail-meta" id="detailMeta"></div>
+            <div class="mkt-detail-readme" id="detailReadme">
+                <i class="fas fa-circle-notch fa-spin"></i> README yükleniyor...
+            </div>
+            <div class="wizard-actions" style="margin-top:1rem;">
+                <button type="button" class="btn btn-primary" id="detailInstallBtn" onclick="">
+                    <i class="fas fa-download"></i> Bu Projeyi Kur
+                </button>
+                <a href="#" target="_blank" class="btn btn-secondary" id="detailGithubLink">
+                    <i class="fab fa-github"></i> GitHub'da Aç
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const marketApps = {{ apps | tojson }};
+let currentGithubPage = 1;
+let lastGithubQuery = '';
+
+// ==================== SEKME GEÇİŞİ ====================
+function switchTab(tab) {
+    document.querySelectorAll('.mkt-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mkt-panel').forEach(p => p.style.display = 'none');
+
+    if (tab === 'catalog') {
+        document.getElementById('tabCatalog').classList.add('active');
+        document.getElementById('panelCatalog').style.display = 'block';
+    } else if (tab === 'stacks') {
+        document.getElementById('tabStacks').classList.add('active');
+        document.getElementById('panelStacks').style.display = 'block';
+    } else if (tab === 'github') {
+        document.getElementById('tabGithub').classList.add('active');
+        document.getElementById('panelGithub').style.display = 'block';
+        document.getElementById('githubSearchInput').focus();
+    } else if (tab === 'trending') {
+        document.getElementById('tabTrending').classList.add('active');
+        document.getElementById('panelTrending').style.display = 'block';
+        loadTrending();
+    }
+}
+
+// ==================== KATALOG FİLTRE ====================
+function filterCatalog() {
+    const query = document.getElementById('catalogSearch').value.toLowerCase();
+    const sections = document.querySelectorAll('.mkt-category-section');
+    let totalVisible = 0;
+
+    sections.forEach(section => {
+        const cards = section.querySelectorAll('.mkt-card');
+        let sectionVisible = 0;
+        cards.forEach(card => {
+            const name = card.dataset.name || '';
+            const cat = (card.dataset.category || '').toLowerCase();
+            const desc = (card.querySelector('.mkt-card-desc')?.textContent || '').toLowerCase();
+            const match = name.includes(query) || cat.includes(query) || desc.includes(query);
+            card.style.display = match ? '' : 'none';
+            if (match) sectionVisible++;
+        });
+        // Arama varsa kategori bölümünü gizle/göster
+        section.style.display = sectionVisible === 0 ? 'none' : '';
+        // Arama yapılıyorsa tüm bölümleri aç
+        if (query && sectionVisible > 0) {
+            section.querySelector('.mkt-category-body').classList.add('open');
+            section.querySelector('.mkt-category-toggle i').style.transform = 'rotate(0deg)';
+        }
+        totalVisible += sectionVisible;
+    });
+
+    document.getElementById('catalogEmpty').style.display = totalVisible === 0 ? 'flex' : 'none';
+}
+
+let activeCategory = '';
+function filterCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.mkt-pill').forEach(p => p.classList.remove('active'));
+    event.target.closest('.mkt-pill').classList.add('active');
+
+    // Arama kutusunu temizle
+    document.getElementById('catalogSearch').value = '';
+
+    const sections = document.querySelectorAll('.mkt-category-section');
+    let totalVisible = 0;
+
+    sections.forEach(section => {
+        const sectionCat = section.dataset.sectionCat;
+        if (!cat) {
+            // "Tümü" seçiliyse hepsini göster
+            section.style.display = '';
+            section.querySelectorAll('.mkt-card').forEach(c => c.style.display = '');
+            totalVisible++;
+        } else if (sectionCat === cat) {
+            // Seçilen kategoriyi göster ve aç
+            section.style.display = '';
+            section.querySelector('.mkt-category-body').classList.add('open');
+            section.querySelector('.mkt-category-toggle i').style.transform = 'rotate(0deg)';
+            section.querySelectorAll('.mkt-card').forEach(c => c.style.display = '');
+            totalVisible++;
+            // Yumuşak kaydırma
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            section.style.display = 'none';
+        }
+    });
+
+    document.getElementById('catalogEmpty').style.display = totalVisible === 0 ? 'flex' : 'none';
+}
+
+// ==================== KATEGORİ AÇ/KAPA ====================
+function toggleCategorySection(header) {
+    const body = header.nextElementSibling;
+    const icon = header.querySelector('.mkt-category-toggle i');
+    body.classList.toggle('open');
+    icon.style.transform = body.classList.contains('open') ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
+
+// ==================== GITHUB ARAMA ====================
+function quickSearch(q) {
+    document.getElementById('githubSearchInput').value = q;
+    searchGithub(1);
+}
+
+async function searchGithub(page) {
+    page = page || 1;
+    const q = document.getElementById('githubSearchInput').value.trim();
+    if (!q) { showToast('Bir arama terimi girin', 'warning'); return; }
+    lastGithubQuery = q;
+    currentGithubPage = page;
+
+    const lang = document.getElementById('githubLang').value;
+    const sort = document.getElementById('githubSort').value;
+
+    document.getElementById('githubLoading').style.display = 'flex';
+    document.getElementById('githubResults').innerHTML = '';
+    document.getElementById('githubEmpty').style.display = 'none';
+    document.getElementById('githubPagination').style.display = 'none';
+
+    const btn = document.getElementById('githubSearchBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const res = await fetch(`/api/market/github/search?q=${encodeURIComponent(q)}&lang=${lang}&sort=${sort}&page=${page}&per_page=24`);
+        const data = await res.json();
+        document.getElementById('githubLoading').style.display = 'none';
+
+        if (!data.success || !data.items?.length) {
+            document.getElementById('githubEmpty').style.display = 'flex';
+            document.getElementById('githubEmpty').querySelector('p').textContent =
+                data.message || `"${q}" için sonuç bulunamadı.`;
+            return;
+        }
+
+        renderGithubCards(data.items);
+
+        // Pagination
+        const totalPages = Math.ceil(Math.min(data.total_count, 1000) / 24);
+        if (totalPages > 1) {
+            document.getElementById('githubPagination').style.display = 'flex';
+            document.getElementById('githubPageInfo').textContent = `Sayfa ${page} / ${totalPages} (${data.total_count.toLocaleString()} sonuç)`;
+            document.getElementById('githubPrev').disabled = page <= 1;
+            document.getElementById('githubNext').disabled = page >= totalPages;
+        }
+    } catch (err) {
+        document.getElementById('githubLoading').style.display = 'none';
+        showToast('GitHub arama hatası: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-search"></i> Ara';
+    }
+}
+
+function renderGithubCards(items, targetId) {
+    const grid = document.getElementById(targetId || 'githubResults');
+    grid.innerHTML = items.map(repo => `
+        <div class="mkt-card mkt-card-github" data-repo="${repo.full_name}">
+            <div class="mkt-card-header">
+                <div class="mkt-card-icon mkt-github-icon">
+                    <img src="${repo.avatar}" alt="${repo.owner}" width="40" height="40" loading="lazy" style="border-radius:8px;">
+                </div>
+                <div class="mkt-card-badges">
+                    <span class="mkt-badge stars"><i class="fas fa-star"></i> ${formatNum(repo.stars)}</span>
+                    ${repo.language !== '—' ? `<span class="mkt-badge lang">${repo.language}</span>` : ''}
+                </div>
+            </div>
+            <h3 class="mkt-card-title">${escHtml(repo.name)}</h3>
+            <span class="mkt-card-cat">${escHtml(repo.owner)}</span>
+            <p class="mkt-card-desc">${escHtml(repo.description || 'Açıklama yok')}</p>
+            <div class="mkt-card-tags">
+                ${repo.topics?.map(t => `<span class="mkt-tag">${t}</span>`).join('') || ''}
+            </div>
+            <div class="mkt-card-meta-row">
+                <span><i class="fas fa-code-branch"></i> ${formatNum(repo.forks)}</span>
+                <span><i class="fas fa-exclamation-circle"></i> ${repo.open_issues}</span>
+                ${repo.license ? `<span><i class="fas fa-balance-scale"></i> ${repo.license}</span>` : ''}
+                <span><i class="fas fa-clock"></i> ${repo.updated_at}</span>
+            </div>
+            <div class="mkt-card-footer">
+                <button class="btn btn-primary btn-sm" onclick="openGithubInstall('${repo.full_name}', '${repo.default_branch}', '${escHtml(repo.name)}')">
+                    <i class="fas fa-download"></i> Kur
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="showRepoDetail('${repo.full_name}', '${escAttr(repo.name)}', ${repo.stars}, '${repo.language}', '${escAttr(repo.description || '')}', '${repo.url}')">
+                    <i class="fas fa-info-circle"></i> Detay
+                </button>
+                <a href="${repo.url}" target="_blank" class="btn btn-secondary btn-sm">
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ==================== TRENDING ====================
+async function loadTrending() {
+    const lang = document.getElementById('trendLang').value;
+    const since = document.getElementById('trendSince').value;
+
+    document.getElementById('trendLoading').style.display = 'flex';
+    document.getElementById('trendResults').innerHTML = '';
+
+    try {
+        const res = await fetch(`/api/market/github/trending?lang=${lang}&since=${since}`);
+        const data = await res.json();
+        document.getElementById('trendLoading').style.display = 'none';
+
+        if (data.items?.length) {
+            renderGithubCards(data.items, 'trendResults');
+        }
+    } catch (err) {
+        document.getElementById('trendLoading').style.display = 'none';
+        showToast('Trend yükleme hatası: ' + err.message, 'error');
+    }
+}
+
+// ==================== GITHUB DETAY ====================
+async function showRepoDetail(fullName, name, stars, lang, desc, url) {
+    document.getElementById('detailRepoName').textContent = fullName;
+    document.getElementById('detailMeta').innerHTML = `
+        <div class="mkt-detail-stats">
+            <span><i class="fas fa-star"></i> ${formatNum(stars)} yıldız</span>
+            <span><i class="fas fa-code"></i> ${lang}</span>
+        </div>
+        <p style="color:var(--text-secondary);margin-top:0.5rem;">${desc}</p>
+    `;
+    document.getElementById('detailReadme').innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> README yükleniyor...';
+    document.getElementById('detailGithubLink').href = url;
+    document.getElementById('detailInstallBtn').onclick = function() {
+        closeModal('githubDetailModal');
+        openGithubInstall(fullName, 'main', name);
+    };
+    document.getElementById('githubDetailModal').classList.add('show');
+
+    try {
+        const res = await fetch(`/api/market/github/readme?repo=${encodeURIComponent(fullName)}`);
+        const data = await res.json();
+        if (data.readme) {
+            // Basit markdown→html (sadece başlıklar, bold, linkler, code blokları)
+            let html = escHtml(data.readme)
+                .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+            document.getElementById('detailReadme').innerHTML = html;
+        } else {
+            document.getElementById('detailReadme').innerHTML = '<p style="color:var(--text-muted)">README bulunamadı.</p>';
+        }
+    } catch (e) {
+        document.getElementById('detailReadme').innerHTML = '<p style="color:var(--text-muted)">README yüklenemedi.</p>';
+    }
+}
+
+// ==================== KURULUM ====================
+function openInstallWizard(appId) {
+    const app = marketApps.find(a => a.id === appId);
+    if (!app) return;
+    document.getElementById('wizardAppId').value = appId;
+    document.getElementById('wizardGithubRepo').value = '';
+    document.getElementById('wizardAppName').textContent = app.name;
+    document.getElementById('installOutput').style.display = 'none';
+    document.getElementById('installProgress').style.display = 'none';
+    document.getElementById('wizardInstallBtn').disabled = false;
+    document.getElementById('wizardInstallBtn').innerHTML = '<i class="fas fa-play"></i> Kurulumu Başlat';
+
+    let optsHtml = '';
+    (app.options || []).forEach(opt => {
+        const req = opt.required ? ' required' : '';
+        const def = opt.default !== undefined ? opt.default : '';
+        const ph = opt.placeholder || '';
+        if (opt.type === 'password')
+            optsHtml += `<div class="form-group"><label>${opt.label || opt.key}</label><input type="password" class="wizard-opt" data-key="${opt.key}" value="${def}" placeholder="${ph}"${req}></div>`;
+        else if (opt.type === 'number')
+            optsHtml += `<div class="form-group"><label>${opt.label || opt.key}</label><input type="number" class="wizard-opt" data-key="${opt.key}" value="${def}"${req}></div>`;
+        else
+            optsHtml += `<div class="form-group"><label>${opt.label || opt.key}</label><input type="text" class="wizard-opt" data-key="${opt.key}" value="${def}" placeholder="${ph}"${req}></div>`;
+    });
+    document.getElementById('wizardOptionsContainer').innerHTML = optsHtml ? '<label class="form-group"><i class="fas fa-sliders-h"></i> Seçenekler</label>' + optsHtml : '';
+    document.getElementById('installWizardModal').classList.add('show');
+}
+
+function openGithubInstall(fullName, branch, name) {
+    document.getElementById('wizardAppId').value = '';
+    document.getElementById('wizardGithubRepo').value = fullName;
+    document.getElementById('wizardBranch').value = branch || 'main';
+    document.getElementById('wizardAppName').textContent = name || fullName;
+    document.getElementById('installOutput').style.display = 'none';
+    document.getElementById('installProgress').style.display = 'none';
+    document.getElementById('wizardInstallBtn').disabled = false;
+    document.getElementById('wizardInstallBtn').innerHTML = '<i class="fas fa-play"></i> Kurulumu Başlat';
+    document.getElementById('wizardOptionsContainer').innerHTML = `
+        <div class="mkt-github-install-info">
+            <i class="fab fa-github"></i>
+            <div>
+                <strong>${fullName}</strong>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin:0.25rem 0 0;">
+                    Proje otomatik olarak klonlanacak. Docker Compose, Dockerfile, Makefile, Python, Node.js, Go, Rust projeleri otomatik algılanır ve kurulur.
+                </p>
+            </div>
+        </div>
+    `;
+    document.getElementById('installWizardModal').classList.add('show');
+}
+
+function closeInstallWizard() {
+    document.getElementById('installWizardModal').classList.remove('show');
+}
+
+async function runInstall() {
+    const serverId = document.getElementById('wizardServerId').value;
+    if (!serverId) { showToast('Lütfen bir sunucu seçin', 'warning'); return; }
+
+    const appId = document.getElementById('wizardAppId').value;
+    const githubRepo = document.getElementById('wizardGithubRepo').value;
+    const branch = document.getElementById('wizardBranch').value || 'main';
+
+    const btn = document.getElementById('wizardInstallBtn');
+    const progressDiv = document.getElementById('installProgress');
+    const outPre = document.getElementById('installOutputPre');
+    const outDiv = document.getElementById('installOutput');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kuruluyor...';
+    progressDiv.style.display = 'block';
+    outDiv.style.display = 'block';
+    outPre.textContent = 'Kurulum başlatılıyor...\n';
+
+    let fetchUrl, fetchBody;
+    if (githubRepo) {
+        // GitHub proje kurulumu
+        fetchUrl = '/api/market/github/install';
+        fetchBody = JSON.stringify({ repo: githubRepo, server_id: serverId, branch: branch });
+    } else {
+        // Katalog uygulama kurulumu
+        const options = {};
+        document.querySelectorAll('.wizard-opt').forEach(inp => { options[inp.dataset.key] = inp.value; });
+        fetchUrl = '/api/market/install';
+        fetchBody = JSON.stringify({ app_id: appId, server_id: serverId, options: options });
+    }
+
+    try {
+        const r = await fetch(fetchUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: fetchBody });
+        const data = await r.json();
+        progressDiv.style.display = 'none';
+        let text = '';
+        if (data.stdout) text += data.stdout;
+        if (data.stderr) text += (text ? '\n' : '') + data.stderr;
+        if (!text.trim()) text = data.message || (data.success ? 'Tamamlandı.' : 'Hata.');
+        outPre.textContent = text;
+        showToast(data.success ? 'Kurulum tamamlandı! 🎉' : data.message || 'Kurulum başarısız', data.success ? 'success' : 'error');
+    } catch (err) {
+        progressDiv.style.display = 'none';
+        outPre.textContent += '\nHata: ' + err.message;
+        showToast('İstek hatası: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play"></i> Kurulumu Başlat';
+    }
+}
+
+// ==================== STACK BUILDER ====================
+let currentStackId = null;
+let currentStackData = null;
+
+function stackQuickSearch(q) {
+    document.getElementById('stackSearchInput').value = q;
+    filterStacks();
+}
+
+function filterStacks() {
+    const q = document.getElementById('stackSearchInput').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.stack-card');
+    let visible = 0;
+    cards.forEach(card => {
+        const title = (card.querySelector('.stack-card-title')?.textContent || '').toLowerCase();
+        const desc = (card.querySelector('.stack-card-desc')?.textContent || '').toLowerCase();
+        const tags = (card.querySelector('.stack-card-tags')?.textContent || '').toLowerCase();
+        const chips = (card.querySelector('.stack-card-apps')?.textContent || '').toLowerCase();
+        const match = !q || title.includes(q) || desc.includes(q) || tags.includes(q) || chips.includes(q);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('stackEmpty').style.display = visible === 0 ? 'flex' : 'none';
+}
+
+async function openStackDetail(stackId) {
+    currentStackId = stackId;
+    document.getElementById('stackInstallProgress').style.display = 'none';
+    document.getElementById('stackInstallBtn').disabled = false;
+    document.getElementById('stackInstallBtn').innerHTML = '<i class="fas fa-rocket"></i> Tümünü Kur';
+
+    try {
+        const res = await fetch(`/api/market/stacks/${stackId}`);
+        const data = await res.json();
+        if (!data.success) { showToast(data.message || 'Stack yüklenemedi', 'error'); return; }
+        currentStackData = data;
+
+        const stack = data.stack;
+        document.getElementById('stackModalTitle').textContent = stack.name;
+        document.getElementById('stackDetailHero').innerHTML = `
+            <div class="stack-detail-icon" style="background:${stack.color}20;color:${stack.color};">
+                <i class="${stack.icon}"></i>
+            </div>
+            <div class="stack-detail-info">
+                <p>${escHtml(stack.description)}</p>
+                <div class="stack-detail-specs">
+                    <span><i class="fas fa-clock"></i> ${stack.estimated_time}</span>
+                    <span><i class="fas fa-memory"></i> Min ${stack.min_ram}</span>
+                    <span><i class="fas fa-cube"></i> ${data.apps.length} uygulama</span>
+                </div>
+            </div>
+        `;
+
+        // Uygulama ağacı oluştur
+        let treeHtml = '<div class="stack-tree-container">';
+        data.apps.forEach((app, i) => {
+            const reqClass = app.required ? 'required' : 'optional';
+            const checked = app.required ? 'checked disabled' : 'checked';
+            const connector = i < data.apps.length - 1 ? '<div class="stack-tree-connector"></div>' : '';
+            treeHtml += `
+                <div class="stack-tree-node ${reqClass}">
+                    <div class="stack-tree-checkbox">
+                        <input type="checkbox" id="stackApp_${app.id}" value="${app.id}" ${checked} data-stack-app>
+                    </div>
+                    <div class="stack-tree-icon"><i class="${app.icon.startsWith('fa') ? (app.icon.includes('fab') ? app.icon : 'fas ' + app.icon) : 'fas ' + app.icon}"></i></div>
+                    <div class="stack-tree-info">
+                        <strong>${escHtml(app.name)}</strong>
+                        <span class="stack-tree-role">${escHtml(app.role)}</span>
+                        <span class="stack-tree-badge ${reqClass}">${app.required ? 'Zorunlu' : 'Opsiyonel'}</span>
+                    </div>
+                </div>
+                ${connector}
+            `;
+        });
+        treeHtml += '</div>';
+        document.getElementById('stackTree').innerHTML = treeHtml;
+
+        // Seçenek formları (şifre vb.)
+        let optsHtml = '';
+        data.apps.forEach(app => {
+            if (app.options && app.options.length > 0) {
+                optsHtml += `<div class="stack-app-opts" data-for="${app.id}"><h5><i class="${app.icon.startsWith('fa') ? (app.icon.includes('fab') ? app.icon : 'fas ' + app.icon) : 'fas ' + app.icon}"></i> ${app.name} Seçenekleri</h5>`;
+                app.options.forEach(opt => {
+                    const def = opt.default !== undefined ? opt.default : '';
+                    const ph = opt.placeholder || '';
+                    const type = opt.type === 'password' ? 'password' : opt.type === 'number' ? 'number' : 'text';
+                    optsHtml += `<div class="form-group"><label>${opt.label || opt.key}</label><input type="${type}" class="stack-opt" data-app="${app.id}" data-key="${opt.key}" value="${def}" placeholder="${ph}"></div>`;
+                });
+                optsHtml += '</div>';
+            }
+        });
+        document.getElementById('stackAppOptions').innerHTML = optsHtml;
+
+        document.getElementById('stackDetailModal').classList.add('show');
+    } catch (err) {
+        showToast('Stack yükleme hatası: ' + err.message, 'error');
+    }
+}
+
+async function runStackInstall(requiredOnly) {
+    const serverId = document.getElementById('stackServerId').value;
+    if (!serverId) { showToast('Lütfen bir sunucu seçin', 'warning'); return; }
+    if (!currentStackId || !currentStackData) return;
+
+    const btn = document.getElementById('stackInstallBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kuruluyor...';
+
+    // Seçili uygulamaları topla
+    const selectedApps = [];
+    const allOptions = {};
+
+    if (requiredOnly) {
+        currentStackData.apps.filter(a => a.required).forEach(a => selectedApps.push(a.id));
+    } else {
+        document.querySelectorAll('[data-stack-app]:checked').forEach(cb => {
+            selectedApps.push(cb.value);
+        });
+    }
+
+    // Seçenekleri topla
+    document.querySelectorAll('.stack-opt').forEach(inp => {
+        const appId = inp.dataset.app;
+        const key = inp.dataset.key;
+        if (!allOptions[appId]) allOptions[appId] = {};
+        allOptions[appId][key] = inp.value;
+    });
+
+    // İlerleme paneli göster
+    const progressDiv = document.getElementById('stackInstallProgress');
+    const progressList = document.getElementById('stackProgressList');
+    progressDiv.style.display = 'block';
+    progressList.innerHTML = selectedApps.map(id => {
+        const app = currentStackData.apps.find(a => a.id === id);
+        return `<div class="stack-progress-item" id="stackProg_${id}">
+            <div class="stack-progress-icon pending"><i class="fas fa-clock"></i></div>
+            <span class="stack-progress-name">${app ? app.name : id}</span>
+            <span class="stack-progress-status">Bekliyor...</span>
+        </div>`;
+    }).join('');
+
+    try {
+        const res = await fetch('/api/market/stack/install', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                stack_id: currentStackId,
+                server_id: serverId,
+                apps: selectedApps,
+                all_options: allOptions,
+            }),
+        });
+        const data = await res.json();
+
+        // Sonuçları göster
+        (data.results || []).forEach(r => {
+            const el = document.getElementById('stackProg_' + r.app);
+            if (!el) return;
+            const icon = el.querySelector('.stack-progress-icon');
+            const status = el.querySelector('.stack-progress-status');
+            if (r.success) {
+                icon.className = 'stack-progress-icon success';
+                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                status.textContent = 'Başarılı ✓';
+                status.style.color = 'var(--accent-green)';
+            } else {
+                icon.className = 'stack-progress-icon error';
+                icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+                status.textContent = 'Hata ✗';
+                status.style.color = 'var(--accent-red)';
+            }
+        });
+
+        showToast(data.message || 'Stack kurulumu tamamlandı', data.success ? 'success' : 'warning');
+    } catch (err) {
+        showToast('Stack kurulum hatası: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket"></i> Tümünü Kur';
+    }
+}
+
+// ==================== YARDIMCI ====================
+function formatNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return String(n);
+}
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(s || ''));
+    return d.innerHTML;
+}
+function escAttr(s) {
+    return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+</script>
+{% endblock %}

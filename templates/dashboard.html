@@ -1,0 +1,611 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Sunucu Yönetimi{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block head %}
+<meta name="refresh-interval" content="{{ settings.get('refresh_interval', 30) }}">
+{% endblock %}
+
+{% block content %}
+{% if error_message is defined and error_message %}
+<div class="dash-alert dash-alert-error">
+    <i class="fas fa-exclamation-triangle"></i>
+    <div>
+        <strong>Yükleme hatası:</strong> {{ error_message }}
+        <br><small>Sayfayı yenileyin veya config.json dosyasını kontrol edin.</small>
+    </div>
+</div>
+{% endif %}
+
+<!-- Hoş Geldiniz Hero -->
+<div class="dash-hero">
+    <div class="dash-hero-content">
+        <div class="dash-hero-text">
+            <h2 class="dash-hero-title">
+                <span class="dash-greeting" id="dashGreeting">Merhaba</span> 👋
+            </h2>
+            <p class="dash-hero-subtitle">Sunucu altyapınızın genel durumu aşağıda. <span class="dash-hero-date" id="dashDate"></span></p>
+        </div>
+        <div class="dash-hero-actions">
+            <button class="btn btn-primary" onclick="openAddServerModal()">
+                <i class="fas fa-plus"></i> Sunucu Ekle
+            </button>
+            <button class="btn btn-secondary" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i> Yenile
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Özet Kartları -->
+<div class="dash-stats-grid">
+    <div class="dash-stat-card dash-stat-total">
+        <div class="dash-stat-bg-icon"><i class="fas fa-server"></i></div>
+        <div class="dash-stat-top">
+            <div class="dash-stat-icon-wrap blue">
+                <i class="fas fa-server"></i>
+            </div>
+            <div class="dash-stat-trend up" title="Toplam kayıtlı sunucu">
+                <i class="fas fa-layer-group"></i>
+            </div>
+        </div>
+        <div class="dash-stat-value" data-count="{{ total }}">{{ total }}</div>
+        <div class="dash-stat-label">Toplam Sunucu</div>
+        <div class="dash-stat-bar">
+            <div class="dash-stat-bar-fill blue" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <div class="dash-stat-card dash-stat-online">
+        <div class="dash-stat-bg-icon"><i class="fas fa-signal"></i></div>
+        <div class="dash-stat-top">
+            <div class="dash-stat-icon-wrap green">
+                <i class="fas fa-signal"></i>
+            </div>
+            {% if total > 0 %}
+            <div class="dash-stat-trend up">
+                <i class="fas fa-arrow-up"></i>
+                <span>%{{ ((online / total) * 100) | round | int }}</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="dash-stat-value" data-count="{{ online }}">{{ online }}</div>
+        <div class="dash-stat-label">Çevrimiçi</div>
+        <div class="dash-stat-bar">
+            <div class="dash-stat-bar-fill green" style="width: {{ ((online / total) * 100) if total > 0 else 0 }}%"></div>
+        </div>
+    </div>
+
+    <div class="dash-stat-card dash-stat-offline">
+        <div class="dash-stat-bg-icon"><i class="fas fa-wifi"></i></div>
+        <div class="dash-stat-top">
+            <div class="dash-stat-icon-wrap red">
+                <i class="fas fa-wifi"></i>
+            </div>
+            {% if total - online > 0 %}
+            <div class="dash-stat-trend down">
+                <i class="fas fa-exclamation"></i>
+                <span>Dikkat</span>
+            </div>
+            {% else %}
+            <div class="dash-stat-trend up">
+                <i class="fas fa-check"></i>
+                <span>Temiz</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="dash-stat-value" data-count="{{ total - online }}">{{ total - online }}</div>
+        <div class="dash-stat-label">Çevrimdışı</div>
+        <div class="dash-stat-bar">
+            <div class="dash-stat-bar-fill red" style="width: {{ (((total - online) / total) * 100) if total > 0 else 0 }}%"></div>
+        </div>
+    </div>
+
+    <div class="dash-stat-card dash-stat-connected">
+        <div class="dash-stat-bg-icon"><i class="fas fa-plug"></i></div>
+        <div class="dash-stat-top">
+            <div class="dash-stat-icon-wrap purple">
+                <i class="fas fa-plug"></i>
+            </div>
+            {% if total > 0 %}
+            <div class="dash-stat-trend neutral">
+                <i class="fas fa-link"></i>
+                <span>SSH</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="dash-stat-value" data-count="{{ connected }}">{{ connected }}</div>
+        <div class="dash-stat-label">SSH Bağlı</div>
+        <div class="dash-stat-bar">
+            <div class="dash-stat-bar-fill purple" style="width: {{ ((connected / total) * 100) if total > 0 else 0 }}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Hızlı Erişim Paneli -->
+<div class="dash-quick-access">
+    <a href="/market" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(99, 102, 241, 0.12); color: var(--accent-blue);">
+            <i class="fas fa-cube"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">Uygulama Pazarı</span>
+            <span class="dash-quick-desc">MySQL, Docker, Nginx kurulumu</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+    <a href="/virtualization" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(147, 51, 234, 0.12); color: var(--accent-purple);">
+            <i class="fas fa-cubes"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">Sanallaştırma</span>
+            <span class="dash-quick-desc">LXD container yönetimi</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+    <a href="/storage" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--accent-yellow);">
+            <i class="fas fa-database"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">Depolama</span>
+            <span class="dash-quick-desc">RAID protokolleri</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+    {% if servers|length > 0 %}
+    <a href="/terminal/{{ servers[0].id }}" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(34, 197, 94, 0.12); color: var(--accent-green);">
+            <i class="fas fa-terminal"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">Terminal</span>
+            <span class="dash-quick-desc">Hızlı komut çalıştır</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+    {% endif %}
+    <a href="/app-builder" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(147, 51, 234, 0.12); color: #9333ea;">
+            <i class="fas fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">AI App Builder</span>
+            <span class="dash-quick-desc">Kodsuz uygulama oluştur</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+    <a href="/ai-wizard" class="dash-quick-card">
+        <div class="dash-quick-icon" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;">
+            <i class="fas fa-hat-wizard"></i>
+        </div>
+        <div class="dash-quick-info">
+            <span class="dash-quick-title">AI Wizard</span>
+            <span class="dash-quick-desc">3 soruda AI çözümü bul</span>
+        </div>
+        <i class="fas fa-chevron-right dash-quick-arrow"></i>
+    </a>
+</div>
+
+<!-- İki Kolon: Sunucular + Durum Paneli -->
+<div class="dash-main-grid">
+    <!-- Sunucu Listesi -->
+    <div class="dash-servers-panel">
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-server"></i> Sunucular</h2>
+                <div class="dash-section-actions">
+                    <div class="dash-view-toggle">
+                        <button class="dash-view-btn active" onclick="setView('grid')" title="Kart Görünümü">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button class="dash-view-btn" onclick="setView('list')" title="Liste Görünümü">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddServerModal()">
+                        <i class="fas fa-plus"></i> Ekle
+                    </button>
+                </div>
+            </div>
+
+            {% if servers|length == 0 %}
+            <div class="dash-empty-state">
+                <div class="dash-empty-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <h3>Henüz sunucu eklenmemiş</h3>
+                <p>İlk sunucunuzu ekleyerek paneli kullanmaya başlayın.</p>
+                <button class="btn btn-primary" onclick="openAddServerModal()">
+                    <i class="fas fa-plus"></i> İlk Sunucuyu Ekle
+                </button>
+            </div>
+            {% else %}
+            <!-- Kart Görünümü -->
+            <div class="server-grid" id="serverGridView">
+                {% for server in servers %}
+                <div class="dash-server-card {{ 'online' if server.reachable else 'offline' }}" data-id="{{ server.id }}">
+                    <div class="dash-server-card-glow {{ 'green' if server.reachable else 'red' }}"></div>
+                    <div class="dash-server-card-header">
+                        <div class="dash-server-status-indicator {{ 'online' if server.reachable else 'offline' }}">
+                            <span class="dash-server-status-dot"></span>
+                            <span>{{ 'Aktif' if server.reachable else 'Kapalı' }}</span>
+                        </div>
+                        <div class="server-actions-dropdown">
+                            <button class="btn-icon" onclick="toggleDropdown(this)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a href="/server/{{ server.id }}"><i class="fas fa-chart-bar"></i> Detaylar</a>
+                                <a href="/terminal/{{ server.id }}"><i class="fas fa-terminal"></i> Terminal</a>
+                                <a href="#" onclick="deleteServer('{{ server.id }}', '{{ server.name }}')">
+                                    <i class="fas fa-trash text-danger"></i> Sil
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dash-server-card-body" onclick="window.location='/server/{{ server.id }}'">
+                        <div class="dash-server-avatar {{ 'online' if server.reachable else 'offline' }}">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <h3 class="dash-server-name">{{ server.name }}</h3>
+                        <div class="dash-server-host">{{ server.host }}:{{ server.port | default(22) }}</div>
+
+                        <div class="dash-server-meta">
+                            <div class="dash-server-meta-item">
+                                <i class="fas fa-user"></i>
+                                <span>{{ server.username }}</span>
+                            </div>
+                            <div class="dash-server-meta-item">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span>{{ server.latency }} ms</span>
+                            </div>
+                            {% if server.group %}
+                            <div class="dash-server-meta-item">
+                                <i class="fas fa-tag"></i>
+                                <span>{{ server.group }}</span>
+                            </div>
+                            {% endif %}
+                            {% if server.connected %}
+                            <div class="dash-server-meta-item connected">
+                                <i class="fas fa-link"></i>
+                                <span>SSH Bağlı</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="dash-server-card-footer">
+                        {% if server.connected %}
+                        <button class="btn btn-sm dash-btn-connected" disabled>
+                            <i class="fas fa-check-circle"></i> Bağlı
+                        </button>
+                        <button class="btn btn-sm dash-btn-disconnect" onclick="disconnectServer('{{ server.id }}')">
+                            <i class="fas fa-unlink"></i> Kes
+                        </button>
+                        <a href="/terminal/{{ server.id }}" class="btn btn-sm dash-btn-terminal">
+                            <i class="fas fa-terminal"></i>
+                        </a>
+                        {% else %}
+                        <button class="btn btn-primary btn-sm" onclick="connectServer('{{ server.id }}')"
+                                {{ 'disabled' if not server.reachable }} style="flex: 1;">
+                            <i class="fas fa-plug"></i> Bağlan
+                        </button>
+                        <a href="/server/{{ server.id }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Liste Görünümü -->
+            <div class="dash-server-list" id="serverListView" style="display: none;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Durum</th>
+                            <th>Sunucu</th>
+                            <th>Host</th>
+                            <th>Gecikme</th>
+                            <th>Grup</th>
+                            <th>Bağlantı</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for server in servers %}
+                        <tr class="dash-server-row" onclick="window.location='/server/{{ server.id }}'">
+                            <td>
+                                <span class="dash-table-status {{ 'online' if server.reachable else 'offline' }}">
+                                    <span class="dash-table-status-dot"></span>
+                                    {{ 'Aktif' if server.reachable else 'Kapalı' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="dash-table-server-name">
+                                    <strong>{{ server.name }}</strong>
+                                </div>
+                            </td>
+                            <td class="mono">{{ server.host }}:{{ server.port | default(22) }}</td>
+                            <td>
+                                <span class="dash-latency-badge {{ 'good' if server.latency < 50 else 'warn' if server.latency < 200 else 'bad' }}">
+                                    {{ server.latency }} ms
+                                </span>
+                            </td>
+                            <td><span class="dash-group-tag">{{ server.group | default('—') }}</span></td>
+                            <td>
+                                {% if server.connected %}
+                                <span class="badge success"><i class="fas fa-link"></i> SSH</span>
+                                {% else %}
+                                <span class="badge warning">—</span>
+                                {% endif %}
+                            </td>
+                            <td onclick="event.stopPropagation()">
+                                {% if server.connected %}
+                                <button class="btn btn-sm dash-btn-disconnect" onclick="disconnectServer('{{ server.id }}')">
+                                    <i class="fas fa-unlink"></i>
+                                </button>
+                                {% else %}
+                                <button class="btn btn-primary btn-sm" onclick="connectServer('{{ server.id }}')" {{ 'disabled' if not server.reachable }}>
+                                    <i class="fas fa-plug"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sağ Durum Paneli -->
+    <div class="dash-side-panel">
+        <!-- Sağlık Özeti -->
+        <div class="dash-health-card">
+            <div class="dash-health-header">
+                <h3><i class="fas fa-heartbeat"></i> Sistem Sağlığı</h3>
+            </div>
+            <div class="dash-health-ring-wrap">
+                <div class="dash-health-ring">
+                    <svg viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border-color)" stroke-width="10"/>
+                        <circle cx="60" cy="60" r="52" fill="none"
+                                stroke="{{ 'var(--accent-green)' if total > 0 and online == total else 'var(--accent-yellow)' if online > 0 else 'var(--accent-red)' }}"
+                                stroke-width="10"
+                                stroke-dasharray="{{ ((online / total) * 327) if total > 0 else 0 }} 327"
+                                stroke-linecap="round"
+                                transform="rotate(-90 60 60)"
+                                class="dash-health-circle"/>
+                    </svg>
+                    <div class="dash-health-ring-text">
+                        <span class="dash-health-percent">{{ ((online / total) * 100) | round | int if total > 0 else 0 }}%</span>
+                        <span class="dash-health-label">Uptime</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dash-health-legend">
+                <div class="dash-health-legend-item">
+                    <span class="dash-legend-dot green"></span>
+                    <span>Çevrimiçi</span>
+                    <strong>{{ online }}</strong>
+                </div>
+                <div class="dash-health-legend-item">
+                    <span class="dash-legend-dot red"></span>
+                    <span>Çevrimdışı</span>
+                    <strong>{{ total - online }}</strong>
+                </div>
+                <div class="dash-health-legend-item">
+                    <span class="dash-legend-dot purple"></span>
+                    <span>SSH Bağlı</span>
+                    <strong>{{ connected }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hızlı İşlemler -->
+        <div class="dash-shortcuts-card">
+            <h3><i class="fas fa-bolt"></i> Hızlı İşlemler</h3>
+            <div class="dash-shortcut-list">
+                <button class="dash-shortcut-item" onclick="openAddServerModal()">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Yeni sunucu ekle</span>
+                </button>
+                <a href="/market" class="dash-shortcut-item">
+                    <i class="fas fa-download"></i>
+                    <span>Uygulama kur</span>
+                </a>
+                {% for server in servers[:3] %}
+                {% if server.reachable and not server.connected %}
+                <button class="dash-shortcut-item" onclick="connectServer('{{ server.id }}')">
+                    <i class="fas fa-plug"></i>
+                    <span>{{ server.name }} bağlan</span>
+                </button>
+                {% endif %}
+                {% endfor %}
+                {% for server in servers[:2] %}
+                {% if server.connected %}
+                <a href="/terminal/{{ server.id }}" class="dash-shortcut-item">
+                    <i class="fas fa-terminal"></i>
+                    <span>{{ server.name }} terminal</span>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- AI Önerileri — Kişiselleştirilmiş -->
+        <div class="dash-ai-card">
+            <h3><i class="fas fa-brain"></i> AI Önerilerim</h3>
+            <div class="dash-ai-rec-list">
+                {% if servers|length == 0 %}
+                <!-- Sunucu yok — başlangıç önerileri -->
+                <div class="dash-ai-insight">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>İlk sunucunuzu ekleyin, ardından AI uygulamalarını tek tıkla kurun!</span>
+                </div>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;">
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                {% elif online == 0 %}
+                <!-- Sunucular çevrimdışı -->
+                <div class="dash-ai-insight warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>{{ total }} sunucunuz çevrimdışı. SSH bağlantılarını kontrol edin.</span>
+                </div>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="dash-ai-rec-info">
+                        <strong>Güvenlik Sertleştirme</strong>
+                        <span>Firewall + Fail2ban + VPN kurulumu</span>
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                {% else %}
+                <!-- Aktif sunucular var — AI önerileri -->
+                <div class="dash-ai-insight success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{ online }}/{{ total }} sunucu aktif. AI uygulamalarını kurmaya hazırsınız!</span>
+                </div>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;">
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="dash-ai-rec-info">
+                        <strong>AI Geliştirme Platformu</strong>
+                        <span>LLM + API + VS Code — tam AI iş istasyonu</span>
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <div class="dash-ai-rec-info">
+                        <strong>AI Kod Asistanı</strong>
+                        <span>Tabby + VS Code — kendi Copilot'unuz</span>
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                <a href="/market" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)" class="dash-ai-rec" style="text-decoration:none;">
+                    <div class="dash-ai-rec-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <div class="dash-ai-rec-info">
+                        <strong>AI Görsel Üretici</strong>
+                        <span>Stable Diffusion ile metin→görsel</span>
+                    </div>
+                    <i class="fas fa-chevron-right dash-ai-rec-arrow"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="dash-ai-ep-teaser">
+                <i class="fas fa-coins"></i>
+                <span>AI uygulaması kur → <strong>+30 EP</strong> | Stack Builder kullan → <strong>+50 EP</strong></span>
+            </div>
+            <div class="dash-ai-footer">
+                <a href="/market"><i class="fas fa-layer-group"></i> Tüm Stack Paketleri →</a>
+            </div>
+        </div>
+
+        <!-- Panel Bilgisi -->
+        <div class="dash-info-card">
+            <h3><i class="fas fa-info-circle"></i> Panel Bilgisi</h3>
+            <div class="dash-info-list">
+                <div class="dash-info-row">
+                    <span>Panel sürümü</span>
+                    <strong>1.0.0</strong>
+                </div>
+                <div class="dash-info-row">
+                    <span>SSH motoru</span>
+                    <strong>Paramiko</strong>
+                </div>
+                <div class="dash-info-row">
+                    <span>Yenileme aralığı</span>
+                    <strong>{{ settings.get('refresh_interval', 30) }}s</strong>
+                </div>
+                <div class="dash-info-row">
+                    <span>Son güncelleme</span>
+                    <strong id="dashLastUpdate">—</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Selamlama
+(function() {
+    var h = new Date().getHours();
+    var el = document.getElementById('dashGreeting');
+    if (el) {
+        if (h < 6) el.textContent = 'İyi geceler';
+        else if (h < 12) el.textContent = 'Günaydın';
+        else if (h < 18) el.textContent = 'İyi günler';
+        else el.textContent = 'İyi akşamlar';
+    }
+    var dateEl = document.getElementById('dashDate');
+    if (dateEl) {
+        dateEl.textContent = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    var upd = document.getElementById('dashLastUpdate');
+    if (upd) {
+        upd.textContent = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    }
+})();
+
+// Görünüm geçişi
+function setView(mode) {
+    var grid = document.getElementById('serverGridView');
+    var list = document.getElementById('serverListView');
+    var btns = document.querySelectorAll('.dash-view-btn');
+    if (!grid || !list) return;
+    if (mode === 'list') {
+        grid.style.display = 'none';
+        list.style.display = 'block';
+        btns[0].classList.remove('active');
+        btns[1].classList.add('active');
+    } else {
+        grid.style.display = 'grid';
+        list.style.display = 'none';
+        btns[0].classList.add('active');
+        btns[1].classList.remove('active');
+    }
+    localStorage.setItem('dash_view', mode);
+}
+(function() {
+    var saved = localStorage.getItem('dash_view');
+    if (saved === 'list') setView('list');
+})();
+
+// Sayaç animasyonu
+(function() {
+    document.querySelectorAll('.dash-stat-value[data-count]').forEach(function(el) {
+        var target = parseInt(el.dataset.count, 10);
+        if (isNaN(target) || target <= 0) return;
+        var current = 0;
+        var step = Math.max(1, Math.floor(target / 20));
+        var interval = setInterval(function() {
+            current += step;
+            if (current >= target) { current = target; clearInterval(interval); }
+            el.textContent = current;
+        }, 40);
+    });
+})();
+</script>
+{% endblock %}

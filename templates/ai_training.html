@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}AI Model Eğitim Lab - EmareCloud{% endblock %}
+{% block page_title %}AI Model Eğitim Laboratuvarı{% endblock %}
+
+{% block head %}
+<style>
+.tl-container{max-width:1100px;margin:0 auto}
+.tl-hero{background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.tl-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#22c55e,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.tl-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.tl-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.tl-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.tl-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.tl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.tl-grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.tl-model{padding:18px;border-radius:14px;background:var(--bg-input);cursor:pointer;transition:all .25s;border:2px solid transparent}
+.tl-model:hover{border-color:#22c55e;transform:translateY(-2px)}
+.tl-model.selected{border-color:#22c55e;background:rgba(34,197,94,.06)}
+.tl-model-icon{font-size:28px;margin-bottom:8px}
+.tl-model-name{font-size:14px;font-weight:700}
+.tl-model-desc{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.tl-model-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-top:6px}
+.tl-field{margin-bottom:14px}
+.tl-field label{display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.tl-field input,.tl-field select,.tl-field textarea{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:14px;font-family:inherit}
+.tl-field textarea{resize:vertical;min-height:80px}
+.tl-upload-zone{border:2px dashed var(--border-color);border-radius:14px;padding:30px;text-align:center;cursor:pointer;transition:all .3s}
+.tl-upload-zone:hover{border-color:#22c55e;background:rgba(34,197,94,.04)}
+.tl-upload-zone .icon{font-size:32px;margin-bottom:8px}
+.tl-btn{padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.tl-btn:hover{transform:translateY(-1px);opacity:.9}
+.tl-btn-primary{background:linear-gradient(135deg,#22c55e,#6366f1);color:#fff}
+.tl-btn-outline{border:2px solid #22c55e;color:#22c55e;background:transparent}
+.tl-progress{margin-top:20px;display:none}
+.tl-progress.active{display:block}
+.tl-progress-bar{height:8px;border-radius:4px;background:var(--bg-input);overflow:hidden;margin-bottom:8px}
+.tl-progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#22c55e,#6366f1);width:0;transition:width .5s}
+.tl-epoch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:16px}
+.tl-epoch{padding:12px;border-radius:10px;background:var(--bg-input);text-align:center}
+.tl-epoch-num{font-size:11px;color:var(--text-secondary);font-weight:600}
+.tl-epoch-val{font-size:18px;font-weight:800;margin-top:2px}
+.tl-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.tl-metric{background:var(--bg-input);border-radius:14px;padding:16px;text-align:center}
+.tl-metric-val{font-size:26px;font-weight:800}
+.tl-metric-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.tl-chart{height:160px;display:flex;align-items:flex-end;gap:4px;padding:10px 0}
+.tl-chart-bar{flex:1;border-radius:4px 4px 0 0;transition:height .3s;min-width:8px}
+.tl-history{display:flex;flex-direction:column;gap:10px}
+.tl-history-item{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.tl-history-status{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tl-history-info{flex:1}
+.tl-history-name{font-size:14px;font-weight:700}
+.tl-history-meta{font-size:12px;color:var(--text-secondary)}
+.tl-history-score{font-weight:700;font-size:14px}
+@media(max-width:768px){.tl-grid2{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tl-container">
+    <div class="tl-hero">
+        <div class="tl-hero-icon"><i class="fas fa-flask"></i></div>
+        <div>
+            <h2>AI Model Eğitim Laboratuvarı</h2>
+            <p>Ollama fine-tune, LoRA eğitimi, veri seti yükleme — kendi AI modelinizi sunucunuzda eğitin.</p>
+        </div>
+    </div>
+
+    <div class="tl-metrics">
+        <div class="tl-metric"><div class="tl-metric-val" style="color:#22c55e">3</div><div class="tl-metric-lbl">Eğitilmiş Model</div></div>
+        <div class="tl-metric"><div class="tl-metric-val" style="color:#6366f1">1</div><div class="tl-metric-lbl">Aktif Eğitim</div></div>
+        <div class="tl-metric"><div class="tl-metric-val" style="color:#f59e0b">47.2h</div><div class="tl-metric-lbl">Toplam GPU Saat</div></div>
+        <div class="tl-metric"><div class="tl-metric-val" style="color:#ec4899">92.4%</div><div class="tl-metric-lbl">En İyi Doğruluk</div></div>
+    </div>
+
+    <div class="tl-card">
+        <h3><i class="fas fa-rocket" style="color:#22c55e"></i> Yeni Eğitim Başlat</h3>
+        <div class="tl-grid2">
+            <div>
+                <div class="tl-field"><label>1. Temel Model Seçin</label></div>
+                <div class="tl-grid3" id="tlModels"></div>
+            </div>
+            <div>
+                <div class="tl-field"><label>Model Adı</label><input type="text" id="tlModelName" placeholder="my-ecommerce-bot"></div>
+                <div class="tl-field"><label>Eğitim Yöntemi</label>
+                    <select id="tlMethod">
+                        <option>LoRA Fine-Tune</option>
+                        <option>Full Fine-Tune</option>
+                        <option>QLoRA (4-bit)</option>
+                        <option>RLHF</option>
+                    </select>
+                </div>
+                <div class="tl-field"><label>Epoch Sayısı</label><input type="number" value="3" min="1" max="100"></div>
+                <div class="tl-field"><label>Learning Rate</label><input type="text" value="2e-5"></div>
+                <div class="tl-field"><label>Batch Size</label>
+                    <select><option>4</option><option>8</option><option selected>16</option><option>32</option></select>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:16px">
+            <div class="tl-upload-zone" id="tlUpload">
+                <div class="icon">📁</div>
+                <div style="font-weight:700;font-size:14px">Veri Seti Yükle</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">JSON, JSONL, CSV veya TXT — Sürükle & Bırak</div>
+            </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px">
+            <button class="tl-btn tl-btn-primary" onclick="startTraining()"><i class="fas fa-play"></i> Eğitimi Başlat</button>
+            <button class="tl-btn tl-btn-outline" onclick="showToast('Hiperparametre taraması başlatıldı!','info')"><i class="fas fa-search"></i> Auto Hyperparameter</button>
+        </div>
+        <div class="tl-progress" id="tlProgress">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-weight:700;font-size:14px" id="tlProgressLabel">Eğitim hazırlanıyor...</span>
+                <span style="font-weight:700;font-size:14px;color:#22c55e" id="tlProgressPct">0%</span>
+            </div>
+            <div class="tl-progress-bar"><div class="tl-progress-fill" id="tlProgressFill"></div></div>
+            <div class="tl-epoch-grid" id="tlEpochs"></div>
+        </div>
+    </div>
+
+    <div class="tl-card">
+        <h3><i class="fas fa-chart-line" style="color:#6366f1"></i> Eğitim Metrikleri</h3>
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Loss Değişimi (Son Eğitim)</div>
+        <div class="tl-chart" id="tlChart"></div>
+    </div>
+
+    <div class="tl-card">
+        <h3><i class="fas fa-history" style="color:#f59e0b"></i> Eğitim Geçmişi</h3>
+        <div class="tl-history" id="tlHistory"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const models=[
+    {name:'Llama 3 8B',desc:'Genel amaçlı, hızlı eğitim',icon:'🦙',tag:'Önerilen',tagBg:'#22c55e'},
+    {name:'Mistral 7B',desc:'Yüksek performans, düşük RAM',icon:'🌀',tag:'Popüler',tagBg:'#6366f1'},
+    {name:'CodeLlama 7B',desc:'Kod üretimi & analizi',icon:'💻',tag:'Kod',tagBg:'#f59e0b'},
+    {name:'Phi-3 Mini',desc:'Küçük & hızlı, edge-uyumlu',icon:'⚡',tag:'Hafif',tagBg:'#ec4899'},
+    {name:'Gemma 2B',desc:'Google, küçük veri için ideal',icon:'💎',tag:'Yeni',tagBg:'#3b82f6'},
+    {name:'Qwen 7B',desc:'Çoklu dil, yüksek doğruluk',icon:'🐉',tag:'Çok Dilli',tagBg:'#a855f7'}
+];
+const mc=document.getElementById('tlModels');
+mc.innerHTML=models.map((m,i)=>'<div class="tl-model'+(i===0?' selected':'')+'" onclick="selectModel(this)"><div class="tl-model-icon">'+m.icon+'</div><div class="tl-model-name">'+m.name+'</div><div class="tl-model-desc">'+m.desc+'</div><div class="tl-model-tag" style="background:'+m.tagBg+'22;color:'+m.tagBg+'">'+m.tag+'</div></div>').join('');
+
+function selectModel(el){document.querySelectorAll('.tl-model').forEach(m=>m.classList.remove('selected'));el.classList.add('selected')}
+
+function startTraining(){
+    const p=document.getElementById('tlProgress');p.classList.add('active');
+    const fill=document.getElementById('tlProgressFill');
+    const lbl=document.getElementById('tlProgressLabel');
+    const pct=document.getElementById('tlProgressPct');
+    const ep=document.getElementById('tlEpochs');
+    const steps=[
+        {p:5,l:'Veri seti yükleniyor...'},
+        {p:15,l:'Tokenizer hazırlanıyor...'},
+        {p:25,l:'Model ağırlıkları yükleniyor...'},
+        {p:35,l:'Epoch 1/3 — Loss: 2.41'},
+        {p:55,l:'Epoch 2/3 — Loss: 1.18'},
+        {p:75,l:'Epoch 3/3 — Loss: 0.67'},
+        {p:85,l:'Değerlendirme çalışıyor...'},
+        {p:95,l:'Model kaydediliyor...'},
+        {p:100,l:'✅ Eğitim tamamlandı! Doğruluk: 92.4%'}
+    ];
+    let i=0;
+    const iv=setInterval(()=>{
+        if(i>=steps.length){clearInterval(iv);ep.innerHTML='<div class="tl-epoch"><div class="tl-epoch-num">Epoch 1</div><div class="tl-epoch-val" style="color:#f59e0b">2.41</div></div><div class="tl-epoch"><div class="tl-epoch-num">Epoch 2</div><div class="tl-epoch-val" style="color:#f59e0b">1.18</div></div><div class="tl-epoch"><div class="tl-epoch-num">Epoch 3</div><div class="tl-epoch-val" style="color:#22c55e">0.67</div></div><div class="tl-epoch"><div class="tl-epoch-num">Doğruluk</div><div class="tl-epoch-val" style="color:#22c55e">92.4%</div></div><div class="tl-epoch"><div class="tl-epoch-num">F1 Score</div><div class="tl-epoch-val" style="color:#6366f1">0.91</div></div><div class="tl-epoch"><div class="tl-epoch-num">GPU Saat</div><div class="tl-epoch-val" style="color:#ec4899">4.2h</div></div>';showToast('Eğitim başarıyla tamamlandı!','success');return;}
+        const s=steps[i];fill.style.width=s.p+'%';lbl.textContent=s.l;pct.textContent=s.p+'%';i++;
+    },800);
+}
+
+// Loss chart
+const lossData=[2.8,2.5,2.3,2.1,1.9,1.7,1.5,1.3,1.1,0.95,0.82,0.74,0.69,0.67,0.65,0.64,0.63,0.62,0.61,0.60];
+const ch=document.getElementById('tlChart');
+const maxL=Math.max(...lossData);
+ch.innerHTML=lossData.map((v,i)=>{const h=(v/maxL)*140;const c=v>1.5?'#f59e0b':v>0.8?'#6366f1':'#22c55e';return '<div class="tl-chart-bar" style="height:'+h+'px;background:'+c+'" title="Step '+(i+1)+': '+v+'"></div>'}).join('');
+
+// History
+const history=[
+    {name:'ecommerce-bot-v3',model:'Llama 3 8B',method:'LoRA',time:'4.2h',status:'completed',score:'92.4%',color:'#22c55e'},
+    {name:'code-reviewer-v2',model:'CodeLlama 7B',method:'QLoRA',time:'6.1h',status:'completed',score:'89.7%',color:'#22c55e'},
+    {name:'content-writer-v1',model:'Mistral 7B',method:'LoRA',time:'3.8h',status:'completed',score:'87.2%',color:'#22c55e'},
+    {name:'customer-support-v1',model:'Llama 3 8B',method:'Full FT',time:'2.1h',status:'training',score:'—',color:'#f59e0b'},
+];
+const hc=document.getElementById('tlHistory');
+hc.innerHTML=history.map(h=>'<div class="tl-history-item"><div class="tl-history-status" style="background:'+h.color+'"></div><div class="tl-history-info"><div class="tl-history-name">'+h.name+'</div><div class="tl-history-meta">'+h.model+' · '+h.method+' · '+h.time+'</div></div><div class="tl-history-score" style="color:'+h.color+'">'+h.score+'</div></div>').join('');
+</script>
+{% endblock %}

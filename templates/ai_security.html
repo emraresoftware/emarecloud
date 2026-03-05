@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% block title %}AI Güvenlik & Uyumluluk Denetçisi - EmareCloud{% endblock %}
+{% block page_title %}AI Güvenlik Denetçisi{% endblock %}
+
+{% block head %}
+<style>
+.sec-container { max-width: 1100px; margin: 0 auto; }
+
+.sec-hero {
+    background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(147,51,234,0.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 32px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.sec-hero-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #ef4444, #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: #fff; flex-shrink: 0;
+}
+.sec-hero-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.sec-hero-text p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Scan panel */
+.sec-scan-panel {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 28px; margin-bottom: 28px;
+}
+.sec-scan-panel h3 { margin: 0 0 16px; font-size: 18px; font-weight: 700; }
+.sec-scan-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.sec-scan-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.sec-scan-field select {
+    padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-color);
+    background: var(--bg-input); color: var(--text-primary); font-size: 14px; min-width: 200px;
+}
+.sec-scan-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #ef4444, #9333ea);
+    color: #fff; border: none; padding: 12px 24px; border-radius: 12px;
+    font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.sec-scan-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.sec-scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Progress */
+.sec-progress { display: none; margin-top: 20px; }
+.sec-progress-bar { height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.sec-progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ef4444, #9333ea); transition: width 0.3s ease; width: 0%; }
+.sec-progress-text { font-size: 13px; color: var(--text-secondary); }
+
+/* Results */
+#secResults { display: none; }
+
+/* Score overview */
+.sec-score-overview {
+    display: grid; grid-template-columns: 200px 1fr; gap: 24px;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 28px; margin-bottom: 24px;
+}
+.sec-score-ring-wrap { display: flex; flex-direction: column; align-items: center; }
+.sec-score-ring { width: 140px; height: 140px; position: relative; }
+.sec-score-ring svg { width: 140px; height: 140px; transform: rotate(-90deg); }
+.sec-score-ring circle { fill: none; stroke-width: 12; }
+.sec-score-ring .bg { stroke: var(--border-color); }
+.sec-score-ring .fg { stroke-linecap: round; transition: stroke-dashoffset 1.5s ease; }
+.sec-score-ring .score-text {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+}
+.sec-score-ring .score-num { font-size: 36px; font-weight: 800; }
+.sec-score-ring .score-label { font-size: 12px; color: var(--text-secondary); }
+.sec-score-grade { margin-top: 10px; padding: 6px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+.sec-score-grade.pass { background: rgba(34,197,94,.12); color: #22c55e; }
+.sec-score-grade.warn { background: rgba(245,158,11,.12); color: #f59e0b; }
+.sec-score-grade.fail { background: rgba(239,68,68,.12); color: #ef4444; }
+
+/* Category scores */
+.sec-cats { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.sec-cat { display: flex; align-items: center; gap: 14px; }
+.sec-cat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.sec-cat-info { flex: 1; }
+.sec-cat-label { font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 4px; }
+.sec-cat-bar { height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+.sec-cat-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+/* Checklist */
+.sec-checklist {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; margin-bottom: 24px; overflow: hidden;
+}
+.sec-checklist-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
+.sec-checklist-header h3 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.sec-checklist-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.sec-check-section { padding: 20px 24px; border-right: 1px solid var(--border-color); }
+.sec-check-section:last-child { border-right: none; }
+.sec-check-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+.sec-check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; }
+.sec-check-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+.sec-check-icon.pass { background: rgba(34,197,94,.12); color: #22c55e; }
+.sec-check-icon.fail { background: rgba(239,68,68,.12); color: #ef4444; }
+.sec-check-icon.warn { background: rgba(245,158,11,.12); color: #f59e0b; }
+.sec-check-text strong { display: block; margin-bottom: 2px; }
+.sec-check-text small { color: var(--text-secondary); }
+
+/* Recommendations */
+.sec-recs {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+}
+.sec-recs h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.sec-rec-item {
+    display: flex; gap: 14px; padding: 14px; border-radius: 12px;
+    background: var(--bg-input); margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+.sec-rec-item:hover { transform: translateX(4px); }
+.sec-rec-sev { width: 6px; border-radius: 3px; flex-shrink: 0; }
+.sec-rec-sev.critical { background: #ef4444; }
+.sec-rec-sev.high { background: #f59e0b; }
+.sec-rec-sev.medium { background: #6366f1; }
+.sec-rec-sev.low { background: #22c55e; }
+.sec-rec-content { flex: 1; }
+.sec-rec-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.sec-rec-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.sec-rec-action {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 8px; border: 1px solid var(--border-color);
+    font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bg-card);
+    transition: all 0.2s;
+}
+.sec-rec-action:hover { border-color: #6366f1; color: #6366f1; }
+
+@media (max-width: 768px) {
+    .sec-score-overview { grid-template-columns: 1fr; }
+    .sec-checklist-grid { grid-template-columns: 1fr; }
+    .sec-check-section { border-right: none; border-bottom: 1px solid var(--border-color); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sec-container">
+    <div class="sec-hero">
+        <div class="sec-hero-icon"><i class="fas fa-shield-halved"></i></div>
+        <div class="sec-hero-text">
+            <h2>AI Güvenlik & Uyumluluk Denetçisi</h2>
+            <p>Kurulan AI uygulamalarını otomatik güvenlik, GDPR, KVKK ve en iyi pratik taramasından geçirin.</p>
+        </div>
+    </div>
+
+    <!-- Scan panel -->
+    <div class="sec-scan-panel">
+        <h3>🔍 Güvenlik Taraması Başlat</h3>
+        <div class="sec-scan-row">
+            <div class="sec-scan-field">
+                <label>AI Uygulaması</label>
+                <select id="secApp">
+                    <option value="ollama">Ollama + Llama 3.1</option>
+                    <option value="sdxl">Stable Diffusion XL</option>
+                    <option value="tabby">Tabby Code Assist</option>
+                    <option value="whisper">Whisper STT</option>
+                    <option value="n8n">n8n AI Workflow</option>
+                    <option value="jupyter">JupyterHub + ML</option>
+                    <option value="comfyui">ComfyUI Pipeline</option>
+                    <option value="webui">Open WebUI</option>
+                </select>
+            </div>
+            <div class="sec-scan-field">
+                <label>Tarama Türü</label>
+                <select id="secType">
+                    <option value="full">🛡️ Tam Denetim</option>
+                    <option value="quick">⚡ Hızlı Tarama</option>
+                    <option value="gdpr">🇪🇺 GDPR/KVKK</option>
+                    <option value="network">🌐 Ağ Güvenliği</option>
+                </select>
+            </div>
+            <button class="sec-scan-btn" id="secScanBtn" onclick="startScan()">
+                <i class="fas fa-search-plus"></i> Taramayı Başlat
+            </button>
+        </div>
+        <div class="sec-progress" id="secProgress">
+            <div class="sec-progress-bar"><div class="sec-progress-fill" id="secProgressFill"></div></div>
+            <div class="sec-progress-text" id="secProgressText">Başlatılıyor...</div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="secResults">
+        <!-- Score Overview -->
+        <div class="sec-score-overview">
+            <div class="sec-score-ring-wrap">
+                <div class="sec-score-ring">
+                    <svg viewBox="0 0 140 140">
+                        <circle class="bg" cx="70" cy="70" r="56"/>
+                        <circle class="fg" id="secScoreCircle" cx="70" cy="70" r="56"/>
+                    </svg>
+                    <div class="score-text">
+                        <div class="score-num" id="secScoreNum">0</div>
+                        <div class="score-label">/ 100</div>
+                    </div>
+                </div>
+                <div class="sec-score-grade" id="secGrade">Taranıyor...</div>
+            </div>
+            <div class="sec-cats" id="secCats"></div>
+        </div>
+
+        <!-- GDPR Checklist -->
+        <div class="sec-checklist">
+            <div class="sec-checklist-header">
+                <h3><i class="fas fa-clipboard-check" style="color:#6366f1"></i> Güvenlik & Uyumluluk Kontrol Listesi</h3>
+            </div>
+            <div class="sec-checklist-grid" id="secChecklist"></div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="sec-recs">
+            <h3><i class="fas fa-lightbulb" style="color:#f59e0b"></i> AI Güvenlik Önerileri</h3>
+            <div id="secRecs"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const scanData = {
+    ollama: {
+        score: 87, grade: 'GÜVENLİ', gradeClass: 'pass',
+        cats: [
+            { label: 'Ağ Güvenliği', icon: '🌐', bg: 'rgba(99,102,241,.12)', score: 92 },
+            { label: 'Veri Gizliliği', icon: '🔒', bg: 'rgba(34,197,94,.12)', score: 88 },
+            { label: 'GDPR / KVKK', icon: '🇪🇺', bg: 'rgba(147,51,234,.12)', score: 82 },
+            { label: 'Container Güvenliği', icon: '🐳', bg: 'rgba(59,130,246,.12)', score: 90 },
+            { label: 'Model Güvenliği', icon: '🤖', bg: 'rgba(245,158,11,.12)', score: 85 },
+            { label: 'Erişim Kontrolü', icon: '🔑', bg: 'rgba(236,72,153,.12)', score: 84 }
+        ],
+        checks: {
+            security: [
+                { status: 'pass', title: 'TLS/SSL Şifreleme', desc: 'HTTPS aktif, TLS 1.3' },
+                { status: 'pass', title: 'Firewall Kuralları', desc: 'Sadece 443, 80 portları açık' },
+                { status: 'pass', title: 'Container İzolasyonu', desc: 'Docker rootless mod' },
+                { status: 'warn', title: 'Rate Limiting', desc: 'API rate limit yapılandırılmalı' },
+                { status: 'pass', title: 'Authentication', desc: 'JWT token doğrulaması aktif' },
+                { status: 'fail', title: 'Brute-Force Koruması', desc: 'Fail2ban yapılandırılmamış' }
+            ],
+            compliance: [
+                { status: 'pass', title: 'Veri Yerelliği', desc: 'Veriler AB/TR sunucularında' },
+                { status: 'pass', title: 'Veri Şifreleme', desc: 'AES-256 ile şifreli' },
+                { status: 'warn', title: 'Veri Saklama Süresi', desc: 'Otomatik silme politikası eksik' },
+                { status: 'pass', title: 'Kullanıcı Onayı', desc: 'KVKK onay formu mevcut' },
+                { status: 'pass', title: 'DPA Anlaşması', desc: 'Veri işleme sözleşmesi aktif' },
+                { status: 'warn', title: 'Audit Log', desc: 'Detaylı log seviyesi artırılmalı' }
+            ]
+        },
+        recs: [
+            { severity: 'critical', title: 'Fail2ban Yapılandırması Gerekli', desc: 'Brute-force saldırılarına karşı Fail2ban kurup yapılandırın.', action: 'Otomatik Kur' },
+            { severity: 'high', title: 'API Rate Limiting Ekleyin', desc: 'DDoS koruması için API endpoint\'lerine rate limit ekleyin.', action: 'Yapılandır' },
+            { severity: 'medium', title: 'Veri Saklama Politikası', desc: 'GDPR uyumu için otomatik veri silme politikası tanımlayın.', action: 'Politika Oluştur' },
+            { severity: 'medium', title: 'Audit Log Seviyesi', desc: 'Detaylı güvenlik olayı loglama seviyesini artırın.', action: 'Log Ayarları' },
+            { severity: 'low', title: 'Penetrasyon Testi', desc: 'Düzenli penetrasyon testi planlayin.', action: 'Planla' }
+        ]
+    },
+    sdxl: {
+        score: 79, grade: 'ORTA', gradeClass: 'warn',
+        cats: [
+            { label: 'Ağ Güvenliği', icon: '🌐', bg: 'rgba(99,102,241,.12)', score: 85 },
+            { label: 'Veri Gizliliği', icon: '🔒', bg: 'rgba(34,197,94,.12)', score: 75 },
+            { label: 'GDPR / KVKK', icon: '🇪🇺', bg: 'rgba(147,51,234,.12)', score: 72 },
+            { label: 'Container Güvenliği', icon: '🐳', bg: 'rgba(59,130,246,.12)', score: 82 },
+            { label: 'Model Güvenliği', icon: '🤖', bg: 'rgba(245,158,11,.12)', score: 78 },
+            { label: 'Erişim Kontrolü', icon: '🔑', bg: 'rgba(236,72,153,.12)', score: 80 }
+        ],
+        checks: {
+            security: [
+                { status: 'pass', title: 'TLS/SSL Şifreleme', desc: 'HTTPS aktif' },
+                { status: 'warn', title: 'Firewall Kuralları', desc: 'GPU portları kontrol edilmeli' },
+                { status: 'pass', title: 'Container İzolasyonu', desc: 'Docker izolasyonu aktif' },
+                { status: 'fail', title: 'Input Sanitization', desc: 'Prompt injection koruması yok' },
+                { status: 'pass', title: 'Authentication', desc: 'API key doğrulaması aktif' },
+                { status: 'fail', title: 'NSFW Filtresi', desc: 'İçerik filtreleme yapılandırılmamış' }
+            ],
+            compliance: [
+                { status: 'pass', title: 'Veri Yerelliği', desc: 'Veriler yerel sunucuda' },
+                { status: 'warn', title: 'Görsel Metadata', desc: 'EXIF veri temizleme eksik' },
+                { status: 'fail', title: 'Telif Hakkı Kontrolü', desc: 'AI görsel telif taraması yok' },
+                { status: 'pass', title: 'Kullanıcı Onayı', desc: 'Kullanım koşulları onaylanıyor' },
+                { status: 'warn', title: 'Watermark', desc: 'AI üretim watermark\'ı opsiyonel' },
+                { status: 'pass', title: 'Log Kaydı', desc: 'Üretim logları tutuluyor' }
+            ]
+        },
+        recs: [
+            { severity: 'critical', title: 'Prompt Injection Koruması', desc: 'Zararlı prompt\'ları filtreleyin ve sanitize edin.', action: 'Filtre Ekle' },
+            { severity: 'critical', title: 'NSFW Filtresi Aktifleştirin', desc: 'Uygunsuz içerik üretimini engelleyin.', action: 'Aktifleştir' },
+            { severity: 'high', title: 'Telif Hakkı Taraması', desc: 'AI görselleri telif kontrolünden geçirin.', action: 'Yapılandır' },
+            { severity: 'medium', title: 'EXIF Veri Temizleme', desc: 'Üretilen görsellerin metadata\'sını temizleyin.', action: 'Otomatik Temizle' },
+            { severity: 'low', title: 'AI Watermark Zorunlu', desc: 'Tüm AI görsellerine watermark ekleyin.', action: 'Ayarla' }
+        ]
+    },
+    tabby: {
+        score: 91, grade: 'ÇOK GÜVENLİ', gradeClass: 'pass',
+        cats: [
+            { label: 'Ağ Güvenliği', icon: '🌐', bg: 'rgba(99,102,241,.12)', score: 94 },
+            { label: 'Veri Gizliliği', icon: '🔒', bg: 'rgba(34,197,94,.12)', score: 92 },
+            { label: 'GDPR / KVKK', icon: '🇪🇺', bg: 'rgba(147,51,234,.12)', score: 88 },
+            { label: 'Container Güvenliği', icon: '🐳', bg: 'rgba(59,130,246,.12)', score: 93 },
+            { label: 'Model Güvenliği', icon: '🤖', bg: 'rgba(245,158,11,.12)', score: 90 },
+            { label: 'Erişim Kontrolü', icon: '🔑', bg: 'rgba(236,72,153,.12)', score: 89 }
+        ],
+        checks: {
+            security: [
+                { status: 'pass', title: 'TLS/SSL Şifreleme', desc: 'TLS 1.3, HSTS aktif' },
+                { status: 'pass', title: 'Firewall Kuralları', desc: 'Minimal port açık' },
+                { status: 'pass', title: 'Container İzolasyonu', desc: 'Rootless Docker + seccomp' },
+                { status: 'pass', title: 'Rate Limiting', desc: 'Per-user rate limit aktif' },
+                { status: 'pass', title: 'Authentication', desc: 'OAuth2 + MFA' },
+                { status: 'warn', title: 'Secret Scanning', desc: 'Kod içi secret taraması güçlendirilebilir' }
+            ],
+            compliance: [
+                { status: 'pass', title: 'Veri Yerelliği', desc: 'Kod yerel sunucuda işleniyor' },
+                { status: 'pass', title: 'Veri Şifreleme', desc: 'Transit + rest şifrelemesi' },
+                { status: 'pass', title: 'Veri Saklama', desc: 'Otomatik temizleme aktif' },
+                { status: 'pass', title: 'Kullanıcı Onayı', desc: 'KVKK onaylı' },
+                { status: 'pass', title: 'Audit Trail', desc: 'Detaylı audit log' },
+                { status: 'warn', title: 'Data Export', desc: 'GDPR veri taşınabilirliği iyileştirilebilir' }
+            ]
+        },
+        recs: [
+            { severity: 'medium', title: 'Secret Scanning Güçlendirme', desc: 'Pre-commit hook ile secret taraması ekleyin.', action: 'Hook Ekle' },
+            { severity: 'low', title: 'GDPR Data Export', desc: 'Kullanıcı verilerini dışa aktarma aracı ekleyin.', action: 'Araç Ekle' },
+            { severity: 'low', title: 'SOC2 Uyumluluğu', desc: 'SOC2 Type II sertifikası için hazırlık yapın.', action: 'Detaylar' }
+        ]
+    }
+};
+
+// Clone some apps from existing ones with tweaks
+scanData.whisper = JSON.parse(JSON.stringify(scanData.ollama));
+scanData.whisper.score = 85; scanData.whisper.cats[2].score = 80;
+scanData.n8n = JSON.parse(JSON.stringify(scanData.sdxl));
+scanData.n8n.score = 83; scanData.n8n.grade = 'GÜVENLİ'; scanData.n8n.gradeClass = 'pass';
+scanData.n8n.cats.forEach(c => c.score = Math.min(c.score + 5, 98));
+scanData.jupyter = JSON.parse(JSON.stringify(scanData.tabby));
+scanData.jupyter.score = 88; scanData.jupyter.cats.forEach(c => c.score = Math.max(c.score - 3, 70));
+scanData.comfyui = JSON.parse(JSON.stringify(scanData.sdxl));
+scanData.comfyui.score = 76; scanData.comfyui.cats.forEach(c => c.score = Math.max(c.score - 3, 65));
+scanData.webui = JSON.parse(JSON.stringify(scanData.ollama));
+scanData.webui.score = 89;
+
+function startScan() {
+    const btn = document.getElementById('secScanBtn');
+    const progress = document.getElementById('secProgress');
+    const fill = document.getElementById('secProgressFill');
+    const text = document.getElementById('secProgressText');
+
+    btn.disabled = true;
+    progress.style.display = 'block';
+    document.getElementById('secResults').style.display = 'none';
+
+    const steps = [
+        { pct: 10, msg: 'Ağ bağlantıları taranıyor...' },
+        { pct: 25, msg: 'Port ve servis keşfi...' },
+        { pct: 40, msg: 'Container güvenlik analizi...' },
+        { pct: 55, msg: 'GDPR / KVKK uyumluluk kontrolü...' },
+        { pct: 70, msg: 'Model güvenlik doğrulaması...' },
+        { pct: 85, msg: 'Erişim kontrolü denetimi...' },
+        { pct: 95, msg: 'Rapor oluşturuluyor...' },
+        { pct: 100, msg: 'Tarama tamamlandı!' }
+    ];
+
+    let i = 0;
+    const timer = setInterval(() => {
+        if (i < steps.length) {
+            fill.style.width = steps[i].pct + '%';
+            text.textContent = steps[i].msg;
+            i++;
+        } else {
+            clearInterval(timer);
+            setTimeout(() => {
+                progress.style.display = 'none';
+                btn.disabled = false;
+                showResults();
+            }, 400);
+        }
+    }, 500);
+}
+
+function showResults() {
+    const app = document.getElementById('secApp').value;
+    const data = scanData[app] || scanData.ollama;
+
+    document.getElementById('secResults').style.display = 'block';
+
+    // Score ring
+    const circumference = 2 * Math.PI * 56;
+    const circle = document.getElementById('secScoreCircle');
+    circle.setAttribute('stroke-dasharray', circumference);
+    const color = data.score >= 85 ? '#22c55e' : data.score >= 70 ? '#f59e0b' : '#ef4444';
+    circle.setAttribute('stroke', color);
+
+    let currentScore = 0;
+    const scoreEl = document.getElementById('secScoreNum');
+    const scoreAnim = setInterval(() => {
+        currentScore += 2;
+        if (currentScore >= data.score) { currentScore = data.score; clearInterval(scoreAnim); }
+        scoreEl.textContent = currentScore;
+        scoreEl.style.color = color;
+        const offset = circumference - (currentScore / 100) * circumference;
+        circle.setAttribute('stroke-dashoffset', offset);
+    }, 30);
+
+    const gradeEl = document.getElementById('secGrade');
+    gradeEl.textContent = data.grade;
+    gradeEl.className = 'sec-score-grade ' + data.gradeClass;
+
+    // Categories
+    let catHtml = '';
+    data.cats.forEach(c => {
+        const cc = c.score >= 85 ? '#22c55e' : c.score >= 70 ? '#f59e0b' : '#ef4444';
+        catHtml += '<div class="sec-cat"><div class="sec-cat-icon" style="background:'+c.bg+'">'+c.icon+'</div>';
+        catHtml += '<div class="sec-cat-info"><div class="sec-cat-label"><span>'+c.label+'</span><span style="font-weight:700;color:'+cc+'">'+c.score+'/100</span></div>';
+        catHtml += '<div class="sec-cat-bar"><div class="sec-cat-fill" style="width:'+c.score+'%;background:'+cc+'"></div></div></div></div>';
+    });
+    document.getElementById('secCats').innerHTML = catHtml;
+
+    // Checklist
+    let checkHtml = '<div class="sec-check-section"><div class="sec-check-title">🛡️ Güvenlik Kontrolleri</div>';
+    data.checks.security.forEach(ch => {
+        const icon = ch.status === 'pass' ? 'fa-check' : ch.status === 'warn' ? 'fa-exclamation' : 'fa-times';
+        checkHtml += '<div class="sec-check-item"><div class="sec-check-icon '+ch.status+'"><i class="fas '+icon+'"></i></div>';
+        checkHtml += '<div class="sec-check-text"><strong>'+ch.title+'</strong><small>'+ch.desc+'</small></div></div>';
+    });
+    checkHtml += '</div><div class="sec-check-section"><div class="sec-check-title">🇪🇺 GDPR / KVKK Uyumluluk</div>';
+    data.checks.compliance.forEach(ch => {
+        const icon = ch.status === 'pass' ? 'fa-check' : ch.status === 'warn' ? 'fa-exclamation' : 'fa-times';
+        checkHtml += '<div class="sec-check-item"><div class="sec-check-icon '+ch.status+'"><i class="fas '+icon+'"></i></div>';
+        checkHtml += '<div class="sec-check-text"><strong>'+ch.title+'</strong><small>'+ch.desc+'</small></div></div>';
+    });
+    checkHtml += '</div>';
+    document.getElementById('secChecklist').innerHTML = checkHtml;
+
+    // Recommendations
+    let recHtml = '';
+    data.recs.forEach(r => {
+        recHtml += '<div class="sec-rec-item"><div class="sec-rec-sev '+r.severity+'"></div>';
+        recHtml += '<div class="sec-rec-content"><div class="sec-rec-title">'+r.title+'</div>';
+        recHtml += '<div class="sec-rec-desc">'+r.desc+'</div>';
+        recHtml += '<button class="sec-rec-action" onclick="showToast(\''+r.title+' uygulanıyor...\',\'success\')"><i class="fas fa-play"></i> '+r.action+'</button>';
+        recHtml += '</div></div>';
+    });
+    document.getElementById('secRecs').innerHTML = recHtml;
+
+    document.getElementById('secResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}

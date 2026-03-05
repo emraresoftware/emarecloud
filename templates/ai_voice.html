@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Sesli AI Admin - EmareCloud{% endblock %}
+{% block page_title %}Voice-Controlled AI Admin{% endblock %}
+
+{% block head %}
+<style>
+.vc-container{max-width:1100px;margin:0 auto}
+.vc-hero{background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.vc-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#a855f7,#ec4899);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.vc-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.vc-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.vc-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.vc-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.vc-mic-area{text-align:center;padding:40px 20px}
+.vc-mic-btn{width:100px;height:100px;border-radius:50%;border:none;cursor:pointer;font-size:32px;transition:all .3s;position:relative;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;box-shadow:0 8px 32px rgba(168,85,247,.3)}
+.vc-mic-btn:hover{transform:scale(1.05)}
+.vc-mic-btn.listening{animation:vcPulse 1.5s infinite}
+@keyframes vcPulse{0%{box-shadow:0 0 0 0 rgba(168,85,247,.4)}70%{box-shadow:0 0 0 20px rgba(168,85,247,0)}100%{box-shadow:0 0 0 0 rgba(168,85,247,0)}}
+.vc-wave{display:flex;align-items:center;justify-content:center;gap:3px;height:40px;margin-top:16px;opacity:0;transition:opacity .3s}
+.vc-wave.active{opacity:1}
+.vc-wave-bar{width:4px;border-radius:2px;background:#a855f7;animation:vcWave 1s ease-in-out infinite}
+@keyframes vcWave{0%,100%{height:8px}50%{height:28px}}
+.vc-wave-bar:nth-child(2){animation-delay:.1s}
+.vc-wave-bar:nth-child(3){animation-delay:.2s}
+.vc-wave-bar:nth-child(4){animation-delay:.3s}
+.vc-wave-bar:nth-child(5){animation-delay:.4s}
+.vc-wave-bar:nth-child(6){animation-delay:.3s}
+.vc-wave-bar:nth-child(7){animation-delay:.2s}
+.vc-transcript{margin-top:16px;padding:16px;border-radius:12px;background:var(--bg-input);font-size:14px;min-height:40px;display:none}
+.vc-transcript.active{display:block}
+.vc-commands{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.vc-cmd{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:var(--bg-input);cursor:pointer;transition:all .2s}
+.vc-cmd:hover{background:rgba(168,85,247,.08);transform:translateX(4px)}
+.vc-cmd-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.vc-cmd-text{font-size:13px;font-weight:600;color:#a855f7}
+.vc-cmd-desc{font-size:11px;color:var(--text-secondary)}
+.vc-chat{display:flex;flex-direction:column;gap:12px;max-height:400px;overflow-y:auto;padding:4px}
+.vc-msg{max-width:80%;padding:14px 18px;border-radius:16px;font-size:13px;line-height:1.6;animation:vcFade .3s}
+@keyframes vcFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.vc-msg.user{align-self:flex-end;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;border-bottom-right-radius:4px}
+.vc-msg.ai{align-self:flex-start;background:var(--bg-input);border:1px solid var(--border-color);border-bottom-left-radius:4px}
+.vc-msg .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-bottom:4px}
+.vc-quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.vc-quick-btn{padding:8px 14px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.vc-quick-btn:hover{border-color:#a855f7;color:#a855f7}
+.vc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.vc-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.vc-stat-val{font-size:28px;font-weight:800}
+.vc-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+@media(max-width:768px){.vc-msg{max-width:95%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="vc-container">
+    <div class="vc-hero">
+        <div class="vc-hero-icon"><i class="fas fa-microphone"></i></div>
+        <div>
+            <h2>Voice-Controlled AI Admin</h2>
+            <p>Sesli komutlarla sunucunuzu yönetin. "Ollama'yı başlat", "CPU durumunu göster", "Yedek al" — eller serbest.</p>
+        </div>
+    </div>
+
+    <div class="vc-stats">
+        <div class="vc-stat"><div class="vc-stat-val" style="color:#a855f7">142</div><div class="vc-stat-lbl">Sesli Komut</div></div>
+        <div class="vc-stat"><div class="vc-stat-val" style="color:#22c55e">97%</div><div class="vc-stat-lbl">Tanıma Doğruluğu</div></div>
+        <div class="vc-stat"><div class="vc-stat-val" style="color:#ec4899">3</div><div class="vc-stat-lbl">Desteklenen Dil</div></div>
+        <div class="vc-stat"><div class="vc-stat-val" style="color:#f59e0b">0.8s</div><div class="vc-stat-lbl">Ort. Yanıt Süresi</div></div>
+    </div>
+
+    <div class="vc-card">
+        <h3><i class="fas fa-microphone-lines" style="color:#a855f7"></i> Sesli Kontrol</h3>
+        <div class="vc-mic-area">
+            <button class="vc-mic-btn" id="vcMicBtn" onclick="toggleListening()"><i class="fas fa-microphone"></i></button>
+            <div class="vc-wave" id="vcWave">
+                <div class="vc-wave-bar"></div><div class="vc-wave-bar"></div><div class="vc-wave-bar"></div>
+                <div class="vc-wave-bar"></div><div class="vc-wave-bar"></div><div class="vc-wave-bar"></div><div class="vc-wave-bar"></div>
+            </div>
+            <div class="vc-transcript" id="vcTranscript"></div>
+            <div class="vc-quick">
+                <div class="vc-quick-btn" onclick="simulateCommand('Sunucu durumunu göster')">🖥️ Sunucu durumu</div>
+                <div class="vc-quick-btn" onclick="simulateCommand('Ollama servisini başlat')">🦙 Ollama başlat</div>
+                <div class="vc-quick-btn" onclick="simulateCommand('Yedek al')">💾 Yedek al</div>
+                <div class="vc-quick-btn" onclick="simulateCommand('CPU kullanımını göster')">📊 CPU durumu</div>
+                <div class="vc-quick-btn" onclick="simulateCommand('Güvenlik taraması yap')">🔒 Güvenlik tara</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="vc-card">
+        <h3><i class="fas fa-comments" style="color:#ec4899"></i> Komut Geçmişi</h3>
+        <div class="vc-chat" id="vcChat">
+            <div class="vc-msg ai">
+                <div class="tag" style="background:rgba(168,85,247,.15);color:#a855f7">🎤 Sesli Asistan</div>
+                Merhaba! Sesli komut vermek için mikrofon butonuna basın veya hızlı komutlardan birini seçin.
+            </div>
+        </div>
+    </div>
+
+    <div class="vc-card">
+        <h3><i class="fas fa-terminal" style="color:#22c55e"></i> Kullanılabilir Komutlar</h3>
+        <div class="vc-commands" id="vcCommands"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let listening=false;
+function toggleListening(){
+    listening=!listening;
+    const btn=document.getElementById('vcMicBtn');
+    const wave=document.getElementById('vcWave');
+    const tr=document.getElementById('vcTranscript');
+    if(listening){
+        btn.classList.add('listening');wave.classList.add('active');tr.classList.add('active');
+        tr.innerHTML='<span style="color:var(--text-secondary)">🔴 Dinleniyor...</span>';
+        setTimeout(()=>{
+            simulateCommand('Sunucu durumunu göster');
+            toggleListening();
+        },3000);
+    }else{
+        btn.classList.remove('listening');wave.classList.remove('active');tr.classList.remove('active');
+    }
+}
+
+const responses={
+    'sunucu durumunu göster':{icon:'🖥️',text:'Sunucu durumu:<br>• CPU: %42 ✅<br>• RAM: %67 ✅<br>• Disk: %38 ✅<br>• Uptime: 47 gün<br>• Tüm servisler aktif.'},
+    'ollama servisini başlat':{icon:'🦙',text:'Ollama servisi başlatılıyor...<br>✅ Ollama v0.3.12 aktif<br>✅ Llama 3 8B yüklü<br>✅ Mistral 7B yüklü<br>Port 11434 dinleniyor.'},
+    'yedek al':{icon:'💾',text:'Yedekleme başlatıldı:<br>• PostgreSQL: 4.2 GB ⏳<br>• Redis: 128 MB ✅<br>• Config: 12 KB ✅<br>Tahmini süre: 3 dakika'},
+    'cpu kullanımını göster':{icon:'📊',text:'CPU Kullanımı:<br>• Toplam: %42 (8 core)<br>• Ollama: %18<br>• PostgreSQL: %12<br>• Nginx: %3<br>• Diğer: %9<br>Durum: Normal ✅'},
+    'güvenlik taraması yap':{icon:'🔒',text:'Güvenlik taraması başlatıldı...<br>✅ Firewall: Aktif (22,80,443)<br>✅ SSL: Geçerli (267 gün)<br>✅ SELinux: Enforcing<br>⚠️ 3 paket güncellenmeli<br>Skor: 94/100'}
+};
+
+function simulateCommand(cmd){
+    const chat=document.getElementById('vcChat');
+    chat.innerHTML+='<div class="vc-msg user">🎤 "'+cmd+'"</div>';
+    chat.innerHTML+='<div class="vc-msg ai"><div class="tag" style="background:rgba(168,85,247,.15);color:#a855f7">🤖 AI Yanıtı</div><span style="color:var(--text-secondary)">İşleniyor...</span></div>';
+    chat.scrollTop=chat.scrollHeight;
+    const key=cmd.toLowerCase();
+    const resp=responses[key]||{icon:'💬',text:'Anlaşıldı! "'+cmd+'" komutu işleniyor...<br>✅ İşlem tamamlandı.'};
+    setTimeout(()=>{
+        const msgs=chat.querySelectorAll('.vc-msg');
+        const last=msgs[msgs.length-1];
+        last.innerHTML='<div class="tag" style="background:rgba(168,85,247,.15);color:#a855f7">'+resp.icon+' AI Yanıtı</div>'+resp.text;
+        chat.scrollTop=chat.scrollHeight;
+    },1000);
+}
+
+const commands=[
+    {icon:'🖥️',bg:'rgba(99,102,241,.12)',text:'"Sunucu durumunu göster"',desc:'CPU, RAM, Disk özeti'},
+    {icon:'🦙',bg:'rgba(168,85,247,.12)',text:'"Ollama\'yı başlat/durdur"',desc:'AI servis kontrolü'},
+    {icon:'💾',bg:'rgba(59,130,246,.12)',text:'"Yedek al"',desc:'Anlık yedekleme'},
+    {icon:'📊',bg:'rgba(34,197,94,.12)',text:'"CPU/RAM kullanımını göster"',desc:'Kaynak izleme'},
+    {icon:'🔒',bg:'rgba(239,68,68,.12)',text:'"Güvenlik taraması yap"',desc:'Firewall + SSL kontrolü'},
+    {icon:'🐳',bg:'rgba(14,165,233,.12)',text:'"Docker containerları listele"',desc:'Container yönetimi'},
+    {icon:'🔄',bg:'rgba(245,158,11,.12)',text:'"Servisleri yeniden başlat"',desc:'Systemctl restart'},
+    {icon:'📝',bg:'rgba(236,72,153,.12)',text:'"Son logları göster"',desc:'Hata log kontrolü'},
+    {icon:'🌐',bg:'rgba(34,197,94,.12)',text:'"DNS durumunu kontrol et"',desc:'Domain sağlık kontrolü'},
+    {icon:'🔥',bg:'rgba(239,68,68,.12)',text:'"Firewall kurallarını göster"',desc:'Port/IP kontrolü'},
+    {icon:'💰',bg:'rgba(168,85,247,.12)',text:'"EP bakiyemi göster"',desc:'Token bakiye sorgulama'},
+    {icon:'⚡',bg:'rgba(245,158,11,.12)',text:'"Performans raporu oluştur"',desc:'Detaylı analiz'}
+];
+const cc=document.getElementById('vcCommands');
+cc.innerHTML=commands.map(c=>'<div class="vc-cmd" onclick="simulateCommand('+JSON.stringify(c.text.replace(/"/g,''))+')"><div class="vc-cmd-icon" style="background:'+c.bg+'">'+c.icon+'</div><div><div class="vc-cmd-text">'+c.text+'</div><div class="vc-cmd-desc">'+c.desc+'</div></div></div>').join('');
+</script>
+{% endblock %}

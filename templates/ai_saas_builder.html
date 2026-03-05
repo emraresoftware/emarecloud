@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}One-Click AI SaaS Builder - EmareCloud{% endblock %}
+{% block page_title %}AI SaaS Builder{% endblock %}
+
+{% block head %}
+<style>
+.saas-container{max-width:1100px;margin:0 auto}
+.saas-hero{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:32px;margin-bottom:28px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.saas-hero-icon{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#ec4899);display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;flex-shrink:0}
+.saas-hero-text h2{margin:0 0 4px;font-size:22px;font-weight:800}
+.saas-hero-text p{margin:0;color:var(--text-secondary);font-size:14px}
+.saas-steps{display:flex;gap:0;margin-bottom:28px;position:relative}
+.saas-step{flex:1;background:var(--bg-card);border:2px solid var(--border-color);border-radius:16px;padding:24px;text-align:center;cursor:pointer;transition:all .3s;position:relative;z-index:1}
+.saas-step.active{border-color:#6366f1;background:rgba(99,102,241,.04)}
+.saas-step.done{border-color:#22c55e;background:rgba(34,197,94,.04)}
+.saas-step-num{width:36px;height:36px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;background:var(--bg-input);color:var(--text-secondary)}
+.saas-step.active .saas-step-num{background:#6366f1;color:#fff}
+.saas-step.done .saas-step-num{background:#22c55e;color:#fff}
+.saas-step-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.saas-step-desc{font-size:12px;color:var(--text-secondary)}
+.saas-connector{position:absolute;top:50%;height:2px;background:var(--border-color);z-index:0}
+.saas-panel{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:28px;margin-bottom:24px;display:none}
+.saas-panel.active{display:block}
+.saas-panel h3{margin:0 0 20px;font-size:18px;font-weight:700}
+.saas-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px}
+.saas-field label{display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.saas-field input,.saas-field select,.saas-field textarea{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:14px}
+.saas-field textarea{min-height:80px;resize:vertical}
+.saas-templates{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.saas-tpl{padding:18px;border:2px solid var(--border-color);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s}
+.saas-tpl:hover{border-color:#6366f1}
+.saas-tpl.selected{border-color:#6366f1;background:rgba(99,102,241,.06)}
+.saas-tpl-icon{font-size:32px;margin-bottom:8px}
+.saas-tpl-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.saas-tpl-desc{font-size:12px;color:var(--text-secondary)}
+.saas-pricing-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.saas-pricing-card{padding:18px;border:2px solid var(--border-color);border-radius:14px;cursor:pointer;transition:all .2s}
+.saas-pricing-card:hover{border-color:#9333ea}
+.saas-pricing-card.selected{border-color:#9333ea;background:rgba(147,51,234,.06)}
+.saas-pricing-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.saas-pricing-price{font-size:22px;font-weight:800;color:#22c55e}
+.saas-pricing-feat{font-size:12px;color:var(--text-secondary);margin-top:8px}
+.saas-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:12px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.saas-btn-primary{background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff}
+.saas-btn-success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
+.saas-btn-outline{border:2px solid var(--border-color);background:transparent;color:var(--text-primary)}
+.saas-btn:hover{opacity:.9;transform:translateY(-1px)}
+.saas-btn-row{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
+.saas-preview{background:var(--bg-input);border-radius:16px;padding:24px;margin-bottom:20px}
+.saas-preview h4{margin:0 0 12px;font-size:15px;font-weight:700}
+.saas-preview-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px}
+.saas-preview-item:last-child{border-bottom:none}
+.saas-preview-item span:first-child{color:var(--text-secondary)}
+.saas-launch{text-align:center;padding:40px 20px}
+.saas-launch-icon{font-size:64px;margin-bottom:16px}
+.saas-launch h3{font-size:22px;font-weight:800;margin-bottom:8px}
+.saas-launch p{color:var(--text-secondary);font-size:14px;margin-bottom:20px}
+.saas-progress{height:8px;background:var(--border-color);border-radius:4px;overflow:hidden;max-width:400px;margin:0 auto 16px}
+.saas-progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#6366f1,#22c55e);transition:width .5s;width:0}
+.saas-progress-text{font-size:13px;color:var(--text-secondary)}
+.saas-done{display:none;text-align:center;padding:40px}
+.saas-done-icon{font-size:64px;margin-bottom:16px}
+.saas-done h3{color:#22c55e;font-size:22px;font-weight:800;margin-bottom:8px}
+.saas-done-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.saas-done-link{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;border:1px solid var(--border-color);transition:all .2s;cursor:pointer}
+.saas-done-link:hover{border-color:#6366f1;color:#6366f1}
+@media(max-width:768px){.saas-steps{flex-direction:column;gap:8px}.saas-form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="saas-container">
+    <div class="saas-hero">
+        <div class="saas-hero-icon"><i class="fas fa-rocket"></i></div>
+        <div class="saas-hero-text">
+            <h2>One-Click AI SaaS Builder</h2>
+            <p>AI fikrinizi 3 adımda gelir üreten bir SaaS'a dönüştürün. API, faturalandırma ve token sistemi hazır.</p>
+        </div>
+    </div>
+
+    <div class="saas-steps">
+        <div class="saas-step active" id="saasStep1"><div class="saas-step-num">1</div><div class="saas-step-title">AI Modelini Seç</div><div class="saas-step-desc">Temel veya özel model</div></div>
+        <div class="saas-step" id="saasStep2"><div class="saas-step-num">2</div><div class="saas-step-title">API & Fiyatlandırma</div><div class="saas-step-desc">Endpoint + ödeme planı</div></div>
+        <div class="saas-step" id="saasStep3"><div class="saas-step-num">3</div><div class="saas-step-title">Yayınla & Kazan</div><div class="saas-step-desc">Tek tıkla deploy</div></div>
+    </div>
+
+    <!-- Step 1: Model Selection -->
+    <div class="saas-panel active" id="saasPanel1">
+        <h3>🤖 AI Modelinizi Seçin</h3>
+        <div class="saas-form-grid">
+            <div class="saas-field"><label>SaaS Adı</label><input type="text" id="saasName" placeholder="Örn: TurkChat AI"></div>
+            <div class="saas-field"><label>Açıklama</label><input type="text" id="saasDesc" placeholder="AI chatbot hizmeti"></div>
+        </div>
+        <p style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:12px">📦 Hazır Şablonlardan Seçin:</p>
+        <div class="saas-templates" id="saasTpls"></div>
+        <div class="saas-btn-row"><button class="saas-btn saas-btn-primary" onclick="goStep(2)"><i class="fas fa-arrow-right"></i> Devam</button></div>
+    </div>
+
+    <!-- Step 2: API & Pricing -->
+    <div class="saas-panel" id="saasPanel2">
+        <h3>💰 API & Fiyatlandırma Ayarları</h3>
+        <div class="saas-form-grid">
+            <div class="saas-field"><label>API Endpoint Prefix</label><input type="text" id="saasApi" placeholder="/api/v1/chat"></div>
+            <div class="saas-field"><label>Rate Limit (req/dk)</label><input type="number" id="saasRate" value="60"></div>
+            <div class="saas-field"><label>Ödeme Yöntemi</label><select id="saasPayment"><option value="stripe">Stripe</option><option value="iyzico">Iyzico</option><option value="token">EP Token</option><option value="both">Stripe + Token</option></select></div>
+            <div class="saas-field"><label>API Key Formatı</label><select><option>Bearer Token</option><option>API Key Header</option><option>OAuth2</option></select></div>
+        </div>
+        <p style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:12px">💳 Fiyat Planları Oluşturun:</p>
+        <div class="saas-pricing-cards" id="saasPricing"></div>
+        <div class="saas-btn-row">
+            <button class="saas-btn saas-btn-outline" onclick="goStep(1)"><i class="fas fa-arrow-left"></i> Geri</button>
+            <button class="saas-btn saas-btn-primary" onclick="goStep(3)"><i class="fas fa-arrow-right"></i> Devam</button>
+        </div>
+    </div>
+
+    <!-- Step 3: Review & Launch -->
+    <div class="saas-panel" id="saasPanel3">
+        <h3>🚀 Son Kontrol & Yayınla</h3>
+        <div class="saas-preview" id="saasReview"></div>
+        <div class="saas-launch" id="saasLaunch">
+            <div class="saas-launch-icon">🚀</div>
+            <h3>SaaS'ınız Hazır!</h3>
+            <p>Aşağıdaki butona tıklayın, AI SaaS'ınız otomatik deploy edilsin.</p>
+            <button class="saas-btn saas-btn-success" onclick="deploySaaS()" id="saasDeployBtn"><i class="fas fa-play"></i> Deploy Et & Yayınla</button>
+        </div>
+        <div class="saas-launch" id="saasDeploying" style="display:none">
+            <div class="saas-launch-icon">⚙️</div>
+            <h3>Deploy Ediliyor...</h3>
+            <div class="saas-progress"><div class="saas-progress-fill" id="saasProgFill"></div></div>
+            <div class="saas-progress-text" id="saasProgText">Başlatılıyor...</div>
+        </div>
+        <div class="saas-done" id="saasDone">
+            <div class="saas-done-icon">🎉</div>
+            <h3>SaaS'ınız Canlıda!</h3>
+            <p>AI SaaS uygulamanız başarıyla deploy edildi ve satışa hazır.</p>
+            <div class="saas-done-links">
+                <div class="saas-done-link" onclick="showToast('API docs açılıyor','success')"><i class="fas fa-book"></i> API Docs</div>
+                <div class="saas-done-link" onclick="showToast('Dashboard açılıyor','success')"><i class="fas fa-chart-line"></i> Gelir Dashboard</div>
+                <div class="saas-done-link" onclick="showToast('Marketplace\'de görüntüle','success')"><i class="fas fa-store"></i> Marketplace</div>
+                <div class="saas-done-link" onclick="showToast('Paylaşım linki kopyalandı','success')"><i class="fas fa-share-nodes"></i> Paylaş</div>
+            </div>
+        </div>
+        <div class="saas-btn-row" id="saasBackRow">
+            <button class="saas-btn saas-btn-outline" onclick="goStep(2)"><i class="fas fa-arrow-left"></i> Geri</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templates=[
+    {icon:'💬',name:'AI Chatbot SaaS',desc:'Müşteri hizmeti chatbot API\'si',model:'Ollama + Llama 3.1',features:['Chat API','Streaming','Context Memory']},
+    {icon:'✍️',name:'İçerik Üretim SaaS',desc:'Blog, SEO, sosyal medya içeriği',model:'LLM + n8n',features:['Text Generation','SEO','Multi-lang']},
+    {icon:'🎨',name:'Görsel Üretim SaaS',desc:'Logo, banner, ürün fotoğrafı',model:'Stable Diffusion XL',features:['Image API','Styles','Batch']},
+    {icon:'💻',name:'Kod Asistanı SaaS',desc:'Code completion & review',model:'Tabby + CodeLlama',features:['Completion','Review','Refactor']},
+    {icon:'🎙️',name:'Ses İşleme SaaS',desc:'STT, TTS, ses klonlama',model:'Whisper + Bark',features:['STT API','TTS API','Clone']},
+    {icon:'📊',name:'Veri Analiz SaaS',desc:'Rapor ve tahmin API\'si',model:'PyTorch + Pandas',features:['Predict API','Reports','Charts']}
+];
+
+const pricing=[
+    {name:'Free',price:0,feat:'100 istek/ay · 1 API key · Community destek'},
+    {name:'Starter',price:9,feat:'5,000 istek/ay · 3 API key · Email destek'},
+    {name:'Pro',price:29,feat:'50,000 istek/ay · 10 API key · Öncelikli destek'},
+    {name:'Enterprise',price:99,feat:'Sınırsız · Sınırsız key · SLA + destek'}
+];
+
+let selectedTpl=0,selectedPlan=2;
+
+function renderTpls(){
+    const c=document.getElementById('saasTpls');
+    let h='';
+    templates.forEach((t,i)=>{
+        h+='<div class="saas-tpl '+(i===selectedTpl?'selected':'')+'" onclick="selectTpl('+i+')"><div class="saas-tpl-icon">'+t.icon+'</div><div class="saas-tpl-name">'+t.name+'</div><div class="saas-tpl-desc">'+t.desc+'</div></div>';
+    });
+    c.innerHTML=h;
+}
+
+function renderPricing(){
+    const c=document.getElementById('saasPricing');
+    let h='';
+    pricing.forEach((p,i)=>{
+        h+='<div class="saas-pricing-card '+(i===selectedPlan?'selected':'')+'" onclick="selectPlan('+i+')"><div class="saas-pricing-name">'+p.name+'</div><div class="saas-pricing-price">'+(p.price===0?'Ücretsiz':'$'+p.price+'/ay')+'</div><div class="saas-pricing-feat">'+p.feat+'</div></div>';
+    });
+    c.innerHTML=h;
+}
+
+function selectTpl(i){selectedTpl=i;renderTpls();}
+function selectPlan(i){selectedPlan=i;renderPricing();}
+
+function goStep(n){
+    for(let i=1;i<=3;i++){
+        document.getElementById('saasPanel'+i).classList.remove('active');
+        document.getElementById('saasStep'+i).classList.remove('active','done');
+    }
+    document.getElementById('saasPanel'+n).classList.add('active');
+    document.getElementById('saasStep'+n).classList.add('active');
+    for(let i=1;i<n;i++)document.getElementById('saasStep'+i).classList.add('done');
+
+    if(n===3){
+        const name=document.getElementById('saasName').value||'My AI SaaS';
+        const tpl=templates[selectedTpl];
+        const rev=document.getElementById('saasReview');
+        let h='<h4>📋 Özet</h4>';
+        h+='<div class="saas-preview-item"><span>SaaS Adı</span><strong>'+name+'</strong></div>';
+        h+='<div class="saas-preview-item"><span>AI Model</span><strong>'+tpl.model+'</strong></div>';
+        h+='<div class="saas-preview-item"><span>Şablon</span><strong>'+tpl.name+'</strong></div>';
+        h+='<div class="saas-preview-item"><span>Fiyat Planı</span><strong>'+pricing.length+' plan (Free → $99/ay)</strong></div>';
+        h+='<div class="saas-preview-item"><span>Ödeme</span><strong>'+(document.getElementById('saasPayment')?.value||'stripe')+'</strong></div>';
+        h+='<div class="saas-preview-item"><span>API Endpoint</span><strong>'+(document.getElementById('saasApi')?.value||'/api/v1/chat')+'</strong></div>';
+        h+='<div class="saas-preview-item"><span>Rate Limit</span><strong>'+(document.getElementById('saasRate')?.value||60)+' req/dk</strong></div>';
+        h+='<div class="saas-preview-item"><span>Özellikler</span><strong>'+tpl.features.join(', ')+'</strong></div>';
+        rev.innerHTML=h;
+    }
+}
+
+function deploySaaS(){
+    document.getElementById('saasLaunch').style.display='none';
+    document.getElementById('saasBackRow').style.display='none';
+    const deploying=document.getElementById('saasDeploying');
+    deploying.style.display='block';
+    const fill=document.getElementById('saasProgFill');
+    const text=document.getElementById('saasProgText');
+    const steps=[
+        {pct:10,msg:'Docker container hazırlanıyor...'},
+        {pct:20,msg:'AI model indiriliyor...'},
+        {pct:35,msg:'API gateway yapılandırılıyor...'},
+        {pct:50,msg:'Ödeme entegrasyonu kuruluyor...'},
+        {pct:65,msg:'SSL sertifikası alınıyor...'},
+        {pct:75,msg:'Veritabanı migrate ediliyor...'},
+        {pct:85,msg:'Health check kontrolü...'},
+        {pct:95,msg:'DNS kayıtları güncelleniyor...'},
+        {pct:100,msg:'Deploy tamamlandı!'}
+    ];
+    let i=0;
+    const timer=setInterval(()=>{
+        if(i<steps.length){fill.style.width=steps[i].pct+'%';text.textContent=steps[i].msg;i++;}
+        else{clearInterval(timer);setTimeout(()=>{deploying.style.display='none';document.getElementById('saasDone').style.display='block';},500);}
+    },700);
+}
+
+renderTpls();
+renderPricing();
+</script>
+{% endblock %}

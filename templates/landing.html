@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EmareCloud — Altyapıyı Hizmete Dönüştürün</title>
+  <meta name="description" content="SSH sunucu yönetimi, sanal makine, 58+ uygulama pazarı, AI araçları ve fatura motoru. Self-hosted, güvenli, ölçeklenebilir altyapı yönetim paneli.">
+  <meta name="keywords" content="emarecloud, sunucu yönetimi, hosting panel, self-hosted, VPS, LXD, SSH, AI platform">
+  <meta property="og:title" content="EmareCloud — Altyapıyı Hizmete Dönüştürün">
+  <meta property="og:description" content="SSH, VM, 58+ uygulama pazarı ve AI araçlarını tek panelde. Gelir üretin.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #030712;
+      --bg-nav:      rgba(3, 7, 18, 0.85);
+      --bg-elevated: #0f172a;
+      --bg-card:     #111827;
+      --bg-card-hover: #1e293b;
+      --primary:     #6366f1;
+      --primary-light:#818cf8;
+      --primary-dark: #4f46e5;
+      --violet:      #8b5cf6;
+      --green:       #22c55e;
+      --amber:       #f59e0b;
+      --red:         #ef4444;
+      --cyan:        #06b6d4;
+      --text:        #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted:  #64748b;
+      --border:      rgba(99, 102, 241, 0.18);
+      --border-solid:rgba(99, 102, 241, 0.35);
+      --glow:        rgba(99, 102, 241, 0.2);
+      --radius-sm:   8px;
+      --radius-md:   14px;
+      --radius-lg:   22px;
+      --radius-xl:   32px;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: \'Inter\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    @keyframes float   { 0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @keyframes pulse   { 0%,100%{opacity:.5}50%{opacity:1}}
+    @keyframes slideUp { from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn  { from{opacity:0}to{opacity:1}}
+
+    .animate-in     { animation: slideUp .6s ease-out forwards; opacity: 0; }
+    .delay-1        { animation-delay: .1s; }
+    .delay-2        { animation-delay: .2s; }
+    .delay-3        { animation-delay: .3s; }
+    .delay-4        { animation-delay: .4s; }
+    .delay-5        { animation-delay: .5s; }
+
+    /* NAV */
+    .nav {
+      position: fixed; top: 0; left: 0; width: 100%;
+      z-index: 1000;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .85rem 2rem;
+      background: var(--bg-nav);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      transition: all .3s;
+    }
+    .nav-logo { display: flex; align-items: center; gap: .6rem; font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em; }
+    .nav-logo .logo-mark {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--primary), var(--violet));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 900; color: #fff;
+    }
+    .nav-links { display: flex; gap: 1.8rem; align-items: center; list-style: none; }
+    .nav-links a { font-size: .875rem; color: var(--text-secondary); font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-actions { display: flex; gap: .6rem; align-items: center; }
+    .btn-ghost { padding: .45rem 1rem; border-radius: var(--radius-sm); font-size: .875rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: color .2s; background: none; border: none; }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-primary { padding: .45rem 1.1rem; border-radius: var(--radius-sm); background: var(--primary); color: #fff; font-size: .875rem; font-weight: 600; cursor: pointer; border: none; transition: background .2s, transform .15s; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    /* HERO */
+    .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 7rem 2rem 4rem; position: relative; overflow: hidden; text-align: center; }
+    .hero-glow { position: absolute; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.18) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%,-55%); pointer-events: none; z-index: 0; }
+    .hero-glow-2 { position: absolute; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,.1) 0%, transparent 70%); top: 20%; right: 10%; pointer-events: none; z-index: 0; }
+    .hero-badge { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem 1rem; border-radius: 999px; background: rgba(99,102,241,.12); border: 1px solid var(--border-solid); font-size: .8rem; font-weight: 600; color: var(--primary-light); margin-bottom: 1.5rem; position: relative; z-index: 1; }
+    .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    .hero-title { font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.1; position: relative; z-index: 1; max-width: 800px; }
+    .hero-title .grad { background: linear-gradient(135deg, var(--primary-light) 0%, var(--violet) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { margin-top: 1.25rem; font-size: 1.1rem; color: var(--text-secondary); max-width: 560px; position: relative; z-index: 1; }
+    .hero-ctas { display: flex; gap: .75rem; margin-top: 2.2rem; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+    .btn-hero-primary { padding: .8rem 1.8rem; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--primary), var(--violet)); color: #fff; font-size: 1rem; font-weight: 700; border: none; cursor: pointer; transition: transform .2s, box-shadow .2s; box-shadow: 0 4px 24px rgba(99,102,241,.4); display: inline-block; }
+    .btn-hero-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,.55); }
+    .btn-hero-secondary { padding: .8rem 1.8rem; border-radius: var(--radius-md); background: rgba(255,255,255,.05); border: 1px solid var(--border-solid); color: var(--text); font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s, transform .2s; display: inline-block; }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,.09); transform: translateY(-2px); }
+    .hero-stats { display: flex; gap: 2.5rem; margin-top: 3rem; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+    .hero-stat { text-align: center; }
+    .hero-stat .val { display: block; font-size: 1.75rem; font-weight: 900; color: var(--text); letter-spacing: -.03em; }
+    .hero-stat .lbl { font-size: .78rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* Panel Mockup */
+    .hero-visual { position: relative; z-index: 1; margin-top: 4rem; width: 100%; max-width: 780px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 0 1px var(--border); }
+    .panel-header { display: flex; align-items: center; gap: .5rem; padding: .75rem 1rem; background: #0f172a; border-bottom: 1px solid var(--border); }
+    .panel-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .panel-dot.r{background:#ef4444} .panel-dot.y{background:#f59e0b} .panel-dot.g{background:#22c55e}
+    .panel-url { flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 5px; padding: .25rem .6rem; font-size: .72rem; color: var(--text-muted); text-align: center; }
+    .panel-body { display: grid; grid-template-columns: 180px 1fr; height: 320px; }
+    .panel-sidebar { background: #0a0f1e; border-right: 1px solid var(--border); padding: .75rem 0; display: flex; flex-direction: column; gap: .15rem; }
+    .panel-sidebar .s-section { font-size: .62rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; padding: .6rem 1rem .2rem; }
+    .panel-sidebar .s-item { display: flex; align-items: center; gap: .6rem; padding: .42rem 1rem; font-size: .75rem; color: var(--text-secondary); cursor: default; border-radius: 4px; margin: 0 .4rem; }
+    .panel-sidebar .s-item.active { background: rgba(99,102,241,.15); color: var(--primary-light); }
+    .panel-sidebar .s-item .s-icon { font-size: .8rem; }
+    .panel-main { padding: 1rem; overflow: hidden; }
+    .panel-row { display: flex; gap: .75rem; margin-bottom: .75rem; }
+    .panel-metric { flex: 1; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem; }
+    .pm-label { font-size: .65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing:.06em; }
+    .pm-val   { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: .15rem; }
+    .pm-trend { font-size: .65rem; color: var(--green); margin-top: .1rem; }
+    .panel-servers { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem; }
+    .ps-header { font-size: .7rem; color: var(--text-muted); margin-bottom: .5rem; font-weight:600; }
+    .ps-item { display: flex; align-items: center; justify-content: space-between; padding: .35rem 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .7rem; }
+    .ps-item:last-child { border-bottom: none; }
+    .ps-name { color: var(--text); font-weight: 500; }
+    .ps-badge { padding: .15rem .45rem; border-radius: 4px; font-size: .6rem; font-weight: 700; }
+    .ps-badge.online  { background: rgba(34,197,94,.15); color: var(--green); }
+    .ps-badge.warning { background: rgba(245,158,11,.15); color: var(--amber); }
+    .ps-cpu { color: var(--text-secondary); font-size: .65rem; }
+
+    /* SECTIONS */
+    .section { padding: 6rem 2rem; max-width: 1180px; margin: 0 auto; }
+    .section-label { display: inline-block; font-size: .78rem; font-weight: 700; color: var(--primary-light); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .8rem; }
+    .section-title { font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.15; }
+    .section-sub { color: var(--text-secondary); font-size: 1.05rem; margin-top: .75rem; max-width: 580px; }
+    .section-head { margin-bottom: 3.5rem; }
+
+    /* FEATURES */
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .feat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.75rem; transition: border-color .25s, transform .25s, box-shadow .25s; position: relative; overflow: hidden; }
+    .feat-card::before { content: \'\'; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(99,102,241,.06), transparent); opacity: 0; transition: opacity .25s; }
+    .feat-card:hover { border-color: var(--border-solid); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon { width: 46px; height: 46px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 1.1rem; }
+    .feat-icon.indigo{background:rgba(99,102,241,.15)} .feat-icon.violet{background:rgba(139,92,246,.15)} .feat-icon.green{background:rgba(34,197,94,.15)} .feat-icon.amber{background:rgba(245,158,11,.15)} .feat-icon.cyan{background:rgba(6,182,212,.15)} .feat-icon.red{background:rgba(239,68,68,.15)}
+    .feat-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .feat-card p  { font-size: .875rem; color: var(--text-secondary); line-height: 1.6; }
+    .feat-tag { display: inline-block; font-size: .68rem; font-weight: 700; padding: .15rem .55rem; border-radius: 4px; margin-top: .9rem; }
+    .feat-tag.indigo{background:rgba(99,102,241,.15);color:var(--primary-light)} .feat-tag.green{background:rgba(34,197,94,.15);color:var(--green)} .feat-tag.amber{background:rgba(245,158,11,.15);color:var(--amber)} .feat-tag.cyan{background:rgba(6,182,212,.15);color:var(--cyan)}
+
+    /* STEPS */
+    .steps-bg { background: var(--bg-elevated); }
+    .steps-inner { max-width: 1180px; margin: 0 auto; padding: 6rem 2rem; }
+    .steps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; position: relative; }
+    .steps-grid::before { content: \'\'; position: absolute; top: 28px; left: calc(10% + 1.5rem); right: calc(10% + 1.5rem); height: 1px; background: linear-gradient(90deg, transparent, var(--border-solid), transparent); pointer-events: none; }
+    .step-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1.5rem 1rem; }
+    .step-num { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; margin-bottom: 1rem; position: relative; z-index: 1; border: 2px solid var(--border-solid); background: var(--bg-card); color: var(--primary-light); }
+    .step-num.active { background: linear-gradient(135deg, var(--primary), var(--violet)); border-color: transparent; color: #fff; box-shadow: 0 0 24px rgba(99,102,241,.5); }
+    .step-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; }
+    .step-card p  { font-size: .8rem; color: var(--text-secondary); line-height: 1.55; }
+
+    /* PRICING */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .plan-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; position: relative; transition: transform .25s, box-shadow .25s, border-color .25s; }
+    .plan-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,.45); }
+    .plan-card.popular { border-color: var(--border-solid); box-shadow: 0 0 0 1px var(--border-solid), 0 8px 40px rgba(99,102,241,.2); }
+    .plan-badge { position: absolute; top: -1px; left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, var(--primary), var(--violet)); color: #fff; font-size: .7rem; font-weight: 700; padding: .25rem .9rem; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+    .plan-name { font-size: .78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+    .plan-tagline { margin-top: .3rem; font-size: .875rem; color: var(--text-secondary); }
+    .plan-price { margin: 1.25rem 0; display: flex; align-items: baseline; gap: .3rem; }
+    .plan-price .price { font-size: 2.4rem; font-weight: 900; letter-spacing: -.03em; }
+    .plan-price .curr { font-size: 1.1rem; font-weight: 700; color: var(--text-secondary); }
+    .plan-price .per  { font-size: .8rem; color: var(--text-muted); }
+    .plan-price.free .price { color: var(--green); }
+    .plan-divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .plan-features li { display: flex; align-items: flex-start; gap: .6rem; font-size: .85rem; color: var(--text-secondary); }
+    .plan-features li .fi { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .6rem; flex-shrink: 0; margin-top: .15rem; }
+    .plan-features li .fi.yes { background: rgba(34,197,94,.15); color: var(--green); }
+    .plan-features li .fi.no  { background: rgba(100,116,139,.1); color: var(--text-muted); }
+    .plan-cta { display: block; width: 100%; margin-top: 1.75rem; padding: .75rem; border-radius: var(--radius-sm); text-align: center; font-weight: 700; font-size: .9rem; cursor: pointer; transition: all .2s; border: none; }
+    .plan-cta.primary { background: linear-gradient(135deg, var(--primary), var(--violet)); color: #fff; box-shadow: 0 4px 20px rgba(99,102,241,.4); }
+    .plan-cta.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(99,102,241,.55); }
+    .plan-cta.secondary { background: rgba(255,255,255,.05); border: 1px solid var(--border-solid); color: var(--text); }
+    .plan-cta.secondary:hover { background: rgba(255,255,255,.09); }
+
+    /* SECURITY */
+    .security-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .sec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.6rem; transition: border-color .25s, transform .25s; }
+    .sec-card:hover { border-color: var(--border-solid); transform: translateY(-2px); }
+    .sec-icon { font-size: 1.6rem; margin-bottom: .85rem; }
+    .sec-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .45rem; }
+    .sec-card p  { font-size: .82rem; color: var(--text-secondary); line-height: 1.6; }
+
+    /* COMPARISON */
+    .comp-wrap { overflow-x: auto; }
+    .comp-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .comp-table th { padding: .9rem 1.2rem; font-size: .78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; border-bottom: 1px solid var(--border); text-align: left; }
+    .comp-table th.highlight { color: var(--primary-light); }
+    .comp-table td { padding: .85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text-secondary); }
+    .comp-table td:first-child { font-weight: 600; color: var(--text); }
+    .comp-table td.highlight { color: var(--text); }
+    .comp-table tr:hover td { background: rgba(255,255,255,.02); }
+    .comp-yes  { color: var(--green); font-weight: 700; }
+    .comp-no   { color: var(--text-muted); }
+    .comp-part { color: var(--amber); }
+
+    /* FAQ */
+    .faq-list  { display: flex; flex-direction: column; gap: .75rem; max-width: 740px; margin: 0 auto; }
+    .faq-item  { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; transition: border-color .2s; }
+    .faq-item.open { border-color: var(--border-solid); }
+    .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 1.3rem; cursor: pointer; background: none; border: none; color: var(--text); font-size: .925rem; font-weight: 600; text-align: left; gap: 1rem; }
+    .faq-q .faq-arrow { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; font-size: .7rem; flex-shrink: 0; transition: transform .3s, background .2s; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); background: rgba(99,102,241,.2); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height .35s ease, padding .35s; padding: 0 1.3rem; }
+    .faq-item.open .faq-a { max-height: 400px; padding-bottom: 1.1rem; }
+    .faq-a p { font-size: .875rem; color: var(--text-secondary); line-height: 1.65; }
+
+    /* APPS SCROLL */
+    .apps-scroll-wrap { overflow: hidden; position: relative; }
+    .apps-scroll-wrap::before,.apps-scroll-wrap::after { content: \'\'; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2; pointer-events: none; }
+    .apps-scroll-wrap::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+    .apps-scroll-wrap::after  { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+    .apps-scroll { display: flex; gap: .75rem; animation: scroll-apps 40s linear infinite; width: max-content; padding: .5rem 0; }
+    @keyframes scroll-apps { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    .apps-scroll:hover { animation-play-state: paused; }
+    .app-chip { display: flex; align-items: center; gap: .5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .5rem .9rem; font-size: .8rem; white-space: nowrap; color: var(--text-secondary); transition: border-color .2s, color .2s; }
+    .app-chip:hover { border-color: var(--border-solid); color: var(--text); }
+    .app-chip .app-icon { font-size: 1rem; }
+
+    /* CTA BANNER */
+    .cta-banner { max-width: 1180px; margin: 0 auto 6rem; padding: 4rem 3rem; border-radius: var(--radius-xl); background: linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(139,92,246,.1) 100%); border: 1px solid var(--border-solid); text-align: center; position: relative; overflow: hidden; }
+    .cta-banner::before { content: \'\'; position: absolute; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.15) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+    .cta-banner h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 900; letter-spacing: -.03em; position: relative; }
+    .cta-banner p { color: var(--text-secondary); margin-top: .75rem; font-size: 1rem; position: relative; }
+    .cta-banner .ctas { display: flex; gap: .75rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
+
+    /* FOOTER */
+    footer { background: var(--bg-elevated); border-top: 1px solid var(--border); padding: 3.5rem 2rem 2rem; }
+    .footer-inner { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; }
+    .footer-brand .brand-logo { display: flex; align-items: center; gap: .55rem; font-size: 1.05rem; font-weight: 800; margin-bottom: .8rem; }
+    .footer-brand .brand-logo .lm { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, var(--primary), var(--violet)); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 900; color: #fff; }
+    .footer-brand p { font-size: .83rem; color: var(--text-muted); line-height: 1.65; max-width: 260px; }
+    .footer-brand .socials { display: flex; gap: .6rem; margin-top: 1rem; }
+    .footer-brand .social-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); background: rgba(255,255,255,.06); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: .75rem; color: var(--text-secondary); transition: color .2s, border-color .2s, background .2s; }
+    .footer-brand .social-btn:hover { color: var(--text); border-color: var(--border-solid); background: rgba(255,255,255,.1); }
+    .footer-col h4 { font-size: .8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 1rem; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+    .footer-col ul li a { font-size: .85rem; color: var(--text-secondary); transition: color .2s; }
+    .footer-col ul li a:hover { color: var(--text); }
+    .footer-bottom { max-width: 1180px; margin: 2rem auto 0; display: flex; justify-content: space-between; align-items: center; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: .78rem; color: var(--text-muted); flex-wrap: wrap; gap: .5rem; }
+    .footer-bottom a { color: var(--text-secondary); transition: color .2s; }
+    .footer-bottom a:hover { color: var(--text); }
+
+    /* STATUS BUBBLE */
+    .status-bubble { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; display: flex; align-items: center; gap: .55rem; background: var(--bg-card); border: 1px solid var(--border-solid); border-radius: 999px; padding: .5rem 1rem; font-size: .78rem; color: var(--text-secondary); cursor: pointer; transition: border-color .2s, box-shadow .2s; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+    .status-bubble:hover { border-color: var(--primary); box-shadow: 0 4px 20px rgba(99,102,241,.3); }
+    .status-bubble .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .features-grid,.security-grid { grid-template-columns: 1fr 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+      .steps-grid { grid-template-columns: 1fr 1fr; }
+      .steps-grid::before { display: none; }
+      .footer-inner { grid-template-columns: 1fr 1fr; }
+      .panel-body { grid-template-columns: 1fr; height: auto; }
+      .panel-sidebar { display: none; }
+    }
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .features-grid,.security-grid,.steps-grid { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .cta-banner { padding: 2.5rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav" id="navbar">
+  <a href="/landing" class="nav-logo">
+    <div class="logo-mark">EC</div>
+    EmareCloud
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Özellikler</a></li>
+    <li><a href="#how-it-works">Nasıl Çalışır</a></li>
+    <li><a href="#pricing">Fiyatlandırma</a></li>
+    <li><a href="#security">Güvenlik</a></li>
+    <li><a href="#faq">SSS</a></li>
+  </ul>
+  <div class="nav-actions">
+    <a href="/login" class="btn-ghost">Giriş Yap</a>
+    <a href="/register" class="btn-primary">Ücretsiz Başla</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-badge animate-in">
+    <span class="dot"></span>
+    Türkiye\'nin Self-Hosted Altyapı Platformu
+  </div>
+  <h1 class="hero-title animate-in delay-1">
+    Altyapınızı<br><span class="grad">Akıllıca Yönetin</span>
+  </h1>
+  <p class="hero-sub animate-in delay-2">
+    SSH sunucu yönetimi, sanal makineler, 58+ uygulama pazarı ve AI araçları tek panelde.
+    Kurumsal güvenlik, fatura motoru ve EMARE Token ekosistemi ile gelir üretin.
+  </p>
+  <div class="hero-ctas animate-in delay-3">
+    <a href="/register" class="btn-hero-primary">🚀 Ücretsiz Başla</a>
+    <a href="#how-it-works" class="btn-hero-secondary">⚡ Nasıl Çalışır?</a>
+  </div>
+  <div class="hero-stats animate-in delay-4">
+    <div class="hero-stat"><span class="val">58+</span><span class="lbl">Hazır Uygulama</span></div>
+    <div class="hero-stat"><span class="val">6</span><span class="lbl">Güvenlik Katmanı</span></div>
+    <div class="hero-stat"><span class="val">4</span><span class="lbl">RBAC Seviyesi</span></div>
+    <div class="hero-stat"><span class="val">7/24</span><span class="lbl">İzleme</span></div>
+    <div class="hero-stat"><span class="val">∞</span><span class="lbl">Sunucu Bağlantısı</span></div>
+  </div>
+  <div class="hero-visual animate-in delay-5">
+    <div class="panel-header">
+      <div class="panel-dot r"></div><div class="panel-dot y"></div><div class="panel-dot g"></div>
+      <div class="panel-url">panel.emarecloud.tr</div>
+    </div>
+    <div class="panel-body">
+      <div class="panel-sidebar">
+        <div class="s-section">Dashboard</div>
+        <div class="s-item active"><span class="s-icon">📊</span> Genel Bakış</div>
+        <div class="s-item"><span class="s-icon">🖥️</span> Sunucularım</div>
+        <div class="s-section">Yönetim</div>
+        <div class="s-item"><span class="s-icon">📦</span> Uygulama Pazarı</div>
+        <div class="s-item"><span class="s-icon">🖥️</span> Sanal Makineler</div>
+        <div class="s-item"><span class="s-icon">🛡️</span> Güvenlik Duvarı</div>
+        <div class="s-section">AI & Analiz</div>
+        <div class="s-item"><span class="s-icon">🤖</span> AI Dashboard</div>
+        <div class="s-item"><span class="s-icon">💎</span> EMARE Token</div>
+      </div>
+      <div class="panel-main">
+        <div class="panel-row">
+          <div class="panel-metric"><div class="pm-label">Sunucular</div><div class="pm-val">12</div><div class="pm-trend">↑ 3 bu ay eklendi</div></div>
+          <div class="panel-metric"><div class="pm-label">Çalışan VM\'ler</div><div class="pm-val">38</div><div class="pm-trend">↑ %100 uptime</div></div>
+          <div class="panel-metric"><div class="pm-label">Aylık Gelir</div><div class="pm-val">₺84k</div><div class="pm-trend">↑ %12 artış</div></div>
+        </div>
+        <div class="panel-servers">
+          <div class="ps-header">SUNUCU DURUMU</div>
+          <div class="ps-item"><span class="ps-name">prod-tr-01</span><span class="ps-badge online">● Çevrimiçi</span><span class="ps-cpu">CPU 14%</span></div>
+          <div class="ps-item"><span class="ps-name">prod-de-01</span><span class="ps-badge online">● Çevrimiçi</span><span class="ps-cpu">CPU 28%</span></div>
+          <div class="ps-item"><span class="ps-name">staging-01</span><span class="ps-badge warning">⚠ Yüksek CPU</span><span class="ps-cpu">CPU 87%</span></div>
+          <div class="ps-item"><span class="ps-name">backup-01</span><span class="ps-badge online">● Çevrimiçi</span><span class="ps-cpu">CPU 3%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APPS MARQUEE -->
+<div style="padding:1rem 0 3rem;overflow:hidden;max-width:1180px;margin:0 auto">
+  <p style="text-align:center;font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1.2rem">58+ Uygulama — Tek Tıkla Kur</p>
+  <div class="apps-scroll-wrap">
+    <div class="apps-scroll">
+      <div class="app-chip"><span class="app-icon">🤖</span>Ollama LLM</div>
+      <div class="app-chip"><span class="app-icon">🎛️</span>n8n Otomasyon</div>
+      <div class="app-chip"><span class="app-icon">📊</span>Grafana</div>
+      <div class="app-chip"><span class="app-icon">🐳</span>Portainer</div>
+      <div class="app-chip"><span class="app-icon">💬</span>Mattermost</div>
+      <div class="app-chip"><span class="app-icon">📁</span>Nextcloud</div>
+      <div class="app-chip"><span class="app-icon">🔐</span>Vaultwarden</div>
+      <div class="app-chip"><span class="app-icon">📧</span>Mailcow</div>
+      <div class="app-chip"><span class="app-icon">🚀</span>Coolify</div>
+      <div class="app-chip"><span class="app-icon">🗄️</span>PostgreSQL</div>
+      <div class="app-chip"><span class="app-icon">🔴</span>Redis</div>
+      <div class="app-chip"><span class="app-icon">⚡</span>Traefik</div>
+      <div class="app-chip"><span class="app-icon">🔎</span>Uptime Kuma</div>
+      <div class="app-chip"><span class="app-icon">🧠</span>Open WebUI</div>
+      <div class="app-chip"><span class="app-icon">📈</span>Prometheus</div>
+      <div class="app-chip"><span class="app-icon">🌐</span>Nginx Proxy</div>
+      <div class="app-chip"><span class="app-icon">🤖</span>Flowise AI</div>
+      <div class="app-chip"><span class="app-icon">🔧</span>Gitea</div>
+      <div class="app-chip"><span class="app-icon">📦</span>Docker Registry</div>
+      <div class="app-chip"><span class="app-icon">🜁</span>Minio S3</div>
+      <!-- duplicate for infinite loop -->
+      <div class="app-chip"><span class="app-icon">🤖</span>Ollama LLM</div>
+      <div class="app-chip"><span class="app-icon">🎛️</span>n8n Otomasyon</div>
+      <div class="app-chip"><span class="app-icon">📊</span>Grafana</div>
+      <div class="app-chip"><span class="app-icon">🐳</span>Portainer</div>
+      <div class="app-chip"><span class="app-icon">💬</span>Mattermost</div>
+      <div class="app-chip"><span class="app-icon">📁</span>Nextcloud</div>
+      <div class="app-chip"><span class="app-icon">🔐</span>Vaultwarden</div>
+      <div class="app-chip"><span class="app-icon">📧</span>Mailcow</div>
+      <div class="app-chip"><span class="app-icon">🚀</span>Coolify</div>
+      <div class="app-chip"><span class="app-icon">🗄️</span>PostgreSQL</div>
+      <div class="app-chip"><span class="app-icon">🔴</span>Redis</div>
+      <div class="app-chip"><span class="app-icon">⚡</span>Traefik</div>
+      <div class="app-chip"><span class="app-icon">🔎</span>Uptime Kuma</div>
+      <div class="app-chip"><span class="app-icon">🧠</span>Open WebUI</div>
+      <div class="app-chip"><span class="app-icon">📈</span>Prometheus</div>
+      <div class="app-chip"><span class="app-icon">🌐</span>Nginx Proxy</div>
+      <div class="app-chip"><span class="app-icon">🤖</span>Flowise AI</div>
+      <div class="app-chip"><span class="app-icon">🔧</span>Gitea</div>
+      <div class="app-chip"><span class="app-icon">📦</span>Docker Registry</div>
+      <div class="app-chip"><span class="app-icon">🜁</span>Minio S3</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-head">
+    <div class="section-label">ÖZELLİKLER</div>
+    <h2 class="section-title">Tek Panel. Her Şey.</h2>
+    <p class="section-sub">SSH\'dan VM yönetimine, uygulama pazarından AI araçlarına — altyapınızın her boyutunu kapsayan modüler ekosistem.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon indigo">🖥️</div>
+      <h3>SSH Sunucu Yönetimi</h3>
+      <p>Sınırsız Linux sunucuyu SSH üzerinden bağlayın. Gerçek zamanlı CPU, RAM, disk metrikleri. Tarayıcı tabanlı web terminal ile komut çalıştırın.</p>
+      <span class="feat-tag indigo">AES-256-GCM Şifreleme</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon violet">🖥️</div>
+      <h3>Sanal Makine (LXD)</h3>
+      <p>LXD container\'ları oluşturun, başlatın, durdurun, silin. OS imajı seçin, kaynak ayırın, web konsoldan yönetin. Üretim ortamı kalitesinde izolasyon.</p>
+      <span class="feat-tag indigo">LXD + Container</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon amber">📦</div>
+      <h3>58+ Uygulama Pazarı</h3>
+      <p>Ollama, n8n, Grafana, Portainer, Nextcloud ve çok daha fazlası. Tek tıkla deploy, Docker stack yönetimi, otomatik yapılandırma.</p>
+      <span class="feat-tag amber">1-Click Deploy</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon cyan">🤖</div>
+      <h3>AI Destekli Araçlar</h3>
+      <p>20+ AI modülü: log analizi, anomali tespiti, maliyet optimizasyonu, SaaS builder, kod asistanı, performans tahmini. Local LLM desteği.</p>
+      <span class="feat-tag cyan">Ollama + OpenAI</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon red">🛡️</div>
+      <h3>RBAC & Çok Kiracılı</h3>
+      <p>4 seviye rol (super_admin / admin / operator / read_only), 57+ korumalı endpoint. Her organizasyon izole — tam multi-tenant mimari.</p>
+      <span class="feat-tag indigo">4 Seviye RBAC</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon green">💎</div>
+      <h3>EMARE Token Ekosistemi</h3>
+      <p>EMARE Token ile abonelik ödeyin, ödül kazanın. On-chain marketplace, staking, vesting ve RewardPool. Web3 entegrasyonu dahil.</p>
+      <span class="feat-tag green">Blockchain Entegre</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="steps-bg" id="how-it-works">
+  <div class="steps-inner">
+    <div class="section-head" style="text-align:center">
+      <div class="section-label">NASIL ÇALIŞIR</div>
+      <h2 class="section-title">5 Adımda Başlayın</h2>
+      <p class="section-sub" style="margin:.75rem auto 0">Kurulumdan gelir elde etmeye 15 dakikada geçin. Teknik bilgi gerekmez.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card"><div class="step-num active">1</div><h3>Kurun</h3><p>Tek komutla sunucunuza kurun. Docker veya bare-metal, 60 saniye.</p></div>
+      <div class="step-card"><div class="step-num">2</div><h3>Sunucu Ekleyin</h3><p>SSH bilgilerinizi girin. AES-256-GCM şifreli, güvenli bağlantı kurulur.</p></div>
+      <div class="step-card"><div class="step-num">3</div><h3>İzleyin</h3><p>CPU, RAM, disk, network — tüm metrikler gerçek zamanlı dashboard\'da.</p></div>
+      <div class="step-card"><div class="step-num">4</div><h3>Dağıtın</h3><p>Uygulama pazarından tek tıkla deploy. Firewall ve backup otomatik.</p></div>
+      <div class="step-card"><div class="step-num">5</div><h3>Kazanın</h3><p>Müşterilerinize hosting veya AI API olarak sunun. Fatura motoru hazır.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-head" style="text-align:center">
+    <div class="section-label">FİYATLANDIRMA</div>
+    <h2 class="section-title">İşletmenize Uygun Plan</h2>
+    <p class="section-sub" style="margin:0 auto">14 gün ücretsiz deneyin. Kredi kartı gerekmez. EMARE Token ile de ödeyebilirsiniz.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="plan-card">
+      <div class="plan-name">Community</div>
+      <div class="plan-tagline">Başlamak için ideal</div>
+      <div class="plan-price free"><span class="price">Ücretsiz</span></div>
+      <hr class="plan-divider">
+      <ul class="plan-features">
+        <li><span class="fi yes">✓</span>3 Sunucu bağlantısı</li>
+        <li><span class="fi yes">✓</span>1 Kullanıcı hesabı</li>
+        <li><span class="fi yes">✓</span>Temel sunucu izleme</li>
+        <li><span class="fi yes">✓</span>Web terminal</li>
+        <li><span class="fi yes">✓</span>10 Uygulama deploy</li>
+        <li><span class="fi yes">✓</span>Topluluk desteği</li>
+        <li><span class="fi no">✗</span>RBAC & çoklu kullanıcı</li>
+        <li><span class="fi no">✗</span>AI araçları</li>
+        <li><span class="fi no">✗</span>Fatura motoru</li>
+      </ul>
+      <a href="/register" class="plan-cta secondary">Ücretsiz Başla</a>
+    </div>
+    <div class="plan-card popular">
+      <div class="plan-badge">En Popüler</div>
+      <div class="plan-name">Professional</div>
+      <div class="plan-tagline">Büyüyen altyapılar için</div>
+      <div class="plan-price pro"><span class="curr">₺</span><span class="price">4.990</span><span class="per">/ay</span></div>
+      <hr class="plan-divider">
+      <ul class="plan-features">
+        <li><span class="fi yes">✓</span>Sınırsız sunucu bağlantısı</li>
+        <li><span class="fi yes">✓</span>10 Kullanıcı hesabı</li>
+        <li><span class="fi yes">✓</span>Tam RBAC yetkilendirme</li>
+        <li><span class="fi yes">✓</span>Tüm 58+ uygulama</li>
+        <li><span class="fi yes">✓</span>AI araçları (20+ modül)</li>
+        <li><span class="fi yes">✓</span>LXD sanal makineler</li>
+        <li><span class="fi yes">✓</span>Fatura motoru</li>
+        <li><span class="fi yes">✓</span>Multi-tenant organizasyon</li>
+        <li><span class="fi yes">✓</span>Öncelikli destek</li>
+      </ul>
+      <a href="/register" class="plan-cta primary">14 Gün Ücretsiz Dene</a>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-tagline">Büyük operasyonlar için</div>
+      <div class="plan-price pro"><span class="price" style="font-size:1.8rem">Özel Teklif</span></div>
+      <hr class="plan-divider">
+      <ul class="plan-features">
+        <li><span class="fi yes">✓</span>Tüm Professional özellikler</li>
+        <li><span class="fi yes">✓</span>Sınırsız kullanıcı</li>
+        <li><span class="fi yes">✓</span>White-label panel</li>
+        <li><span class="fi yes">✓</span>Özel EMARE Token entegrasyonu</li>
+        <li><span class="fi yes">✓</span>SLA garantisi</li>
+        <li><span class="fi yes">✓</span>Dedicated destek hattı</li>
+        <li><span class="fi yes">✓</span>On-premise kurulum desteği</li>
+        <li><span class="fi yes">✓</span>Özel geliştirme & entegrasyon</li>
+        <li><span class="fi yes">✓</span>Partner yönetim paneli</li>
+      </ul>
+      <a href="mailto:emre@emareas.com" class="plan-cta secondary">Teklif Al</a>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<div class="steps-bg" id="security">
+  <div class="steps-inner">
+    <div class="section-head" style="text-align:center">
+      <div class="section-label">GÜVENLİK</div>
+      <h2 class="section-title">6 Katmanlı Savunma</h2>
+      <p class="section-sub" style="margin:0 auto">Her seviyede koruma — sıfır güven mimarisi, kurumsal standartlar.</p>
+    </div>
+    <div class="security-grid">
+      <div class="sec-card"><div class="sec-icon">🔐</div><h3>Kimlik Doğrulama</h3><p>Bcrypt hash, brute-force koruması, opsiyonel 2FA (TOTP), güçlü şifre politikası ve güvenli oturum yönetimi.</p></div>
+      <div class="sec-card"><div class="sec-icon">🏛️</div><h3>RBAC Yetkilendirme</h3><p>4 seviyeli rol sistemi, 57+ korumalı endpoint. Organizasyon bazlı erişim kontrolü, decorator tabanlı guard\'lar.</p></div>
+      <div class="sec-card"><div class="sec-icon">🔒</div><h3>Şifreleme</h3><p>SSH bilgileri AES-256-GCM ile şifreli. TLS 1.3+ zorunluluğu. RSA-4096 tabanlı lisans sistemi.</p></div>
+      <div class="sec-card"><div class="sec-icon">📋</div><h3>Audit & İzleme</h3><p>Değiştirilemez audit log (hash chain), IP tracking, structured JSON loglama, rotasyonlu log dosyaları.</p></div>
+      <div class="sec-card"><div class="sec-icon">🤖</div><h3>AI Güvenlik</h3><p>Prompt injection koruması, PII filtreleme, output sanitization, model sandbox. AI Anayasası uyumlu.</p></div>
+      <div class="sec-card"><div class="sec-icon">🌐</div><h3>Uyumluluk</h3><p>KVKK & GDPR uyumlu. CSRF koruması, güvenlik başlıkları (CSP, HSTS). SIEM export, SOC2 hazırlık.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARISON -->
+<section class="section">
+  <div class="section-head" style="text-align:center">
+    <div class="section-label">KARŞILAŞTIRMA</div>
+    <h2 class="section-title">Fark Nerede?</h2>
+    <p class="section-sub" style="margin:0 auto">EmareCloud sadece sunucu yönetmez — iş kurdurur.</p>
+  </div>
+  <div class="comp-wrap">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Özellik</th><th>cPanel</th><th>Plesk</th><th>Coolify</th><th class="highlight">EmareCloud</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>SSH Sunucu Yönetimi</td><td class="comp-part">Kısıtlı</td><td class="comp-part">Kısıtlı</td><td class="comp-yes">✓</td><td class="comp-yes highlight">✓</td></tr>
+        <tr><td>LXD Sanal Makineler</td><td class="comp-no">✗</td><td class="comp-part">Ücretli</td><td class="comp-no">✗</td><td class="comp-yes highlight">✓</td></tr>
+        <tr><td>58+ Uygulama Pazarı</td><td class="comp-no">✗</td><td class="comp-part">Az seçenek</td><td class="comp-part">Sınırlı</td><td class="comp-yes highlight">✓</td></tr>
+        <tr><td>AI/ML Araçları</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-yes highlight">20+ Modül</td></tr>
+        <tr><td>RBAC Yetkilendirme</td><td class="comp-part">Temel</td><td class="comp-part">Temel</td><td class="comp-no">✗</td><td class="comp-yes highlight">4 Seviye</td></tr>
+        <tr><td>Multi-Tenant</td><td class="comp-no">✗</td><td class="comp-part">Ücretli</td><td class="comp-no">✗</td><td class="comp-yes highlight">✓</td></tr>
+        <tr><td>Fatura Motoru</td><td class="comp-part">Eklenti</td><td class="comp-part">Eklenti</td><td class="comp-no">✗</td><td class="comp-yes highlight">✓ Dahil</td></tr>
+        <tr><td>Blockchain / Token</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-yes highlight">EMARE Token</td></tr>
+        <tr><td>Self-Hosted</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-yes">✓</td><td class="comp-yes highlight">✓</td></tr>
+        <tr><td>Açık Kaynak</td><td class="comp-no">✗</td><td class="comp-no">✗</td><td class="comp-yes">✓</td><td class="comp-yes highlight">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq" style="padding-top:2rem">
+  <div class="section-head" style="text-align:center">
+    <div class="section-label">SSS</div>
+    <h2 class="section-title">Sıkça Sorulan Sorular</h2>
+  </div>
+  <div class="faq-list">
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Kurulum için teknik bilgi gerekiyor mu?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>Hayır. Otomatik kurulum betiği (<code>setup.sh</code>) sizi 7 adımla yönlendiriyor: bağımlılık kurulumu, şifreleme anahtarı, admin kullanıcı ve port ayarı. Ortalama kurulum süresi 5 dakika. Docker kullanıyorsanız tek komutla çalışır.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Self-hosted ne anlama geliyor? Verilerim nerede saklanıyor?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>EmareCloud\'u kendi sunucunuza kurarsınız. Tüm veriler — SSH kimlik bilgileri, sunucu metrikleri, kullanıcılar — yalnızca sizin sunucunuzda tutulur. Bize hiçbir veri gönderilmez. SSH bilgileri AES-256-GCM ile yerel olarak şifrelenir.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Kaç sunucu bağlayabilirim?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>Community planında 3 sunucu, Professional ve Enterprise planlarda sınırsız sunucu bağlantısı mevcuttur. Sunucular herhangi bir Linux dağıtımında çalışabilir; cloud VPS, bare-metal veya home server fark etmez.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">EMARE Token nedir, ne işe yarıyor?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>EMARE Token, EmareCloud ekosisteminin utility token\'ıdır. Abonelik ödemelerinde kullanabilir, RewardPool üzerinden ödül kazanabilir, on-chain marketplace\'te alım-satım yapabilir ve staking ile pasif gelir elde edebilirsiniz. Web3 cüzdanınızla bağlanın, DApp\'ten yönetin.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Ücretsiz deneme gerçekten ücretsiz mi?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>Evet. Community planı kalıcı olarak ücretsizdir — kredi kartı gerekmez. Professional için 14 günlük ücretsiz deneme sunuyoruz, süre dolduğunda istediğiniz zaman iptal edin. Gizli ücret yok.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">Multi-tenant mimari nasıl çalışıyor?<span class="faq-arrow">▼</span></button>
+      <div class="faq-a"><p>Her organizasyon (tenant) kendi izole alanında çalışır. Farklı organizasyonların kullanıcıları birbirinin sunucularını, verilerini veya ayarlarını göremez. Yöneticiler organizasyonlar arası kullanıcı tanımlayabilir, RBAC ile hassas yetki kontrolü uygulayabilir.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<div style="padding:0 2rem">
+  <div class="cta-banner">
+    <h2>Altyapınızı Bugün Dönüştürün</h2>
+    <p>Kayıt olun, 5 dakikada panel çalışıyor. 14 gün tüm özellikler ücretsiz.</p>
+    <div class="ctas">
+      <a href="/register" class="btn-hero-primary">🚀 Ücretsiz Başla</a>
+      <a href="mailto:emre@emareas.com" class="btn-hero-secondary" style="display:inline-block;padding:.8rem 1.8rem;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(99,102,241,.35);color:#f1f5f9;font-size:1rem;font-weight:600">📩 Demo İste</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="brand-logo"><div class="lm">EC</div>EmareCloud</div>
+      <p>Self-hosted altyapı yönetim platformu. SSH, VM, uygulama pazarı, AI araçları ve EMARE Token ekosistemi tek panelde.</p>
+      <div class="socials">
+        <a href="mailto:emre@emareas.com" class="social-btn" title="E-posta">✉</a>
+        <a href="https://github.com" class="social-btn" title="GitHub" style="display:flex;align-items:center;justify-content:center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.015-1.23-.015-2.235-3.015.553-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Ürün</h4>
+      <ul>
+        <li><a href="#features">Özellikler</a></li>
+        <li><a href="#pricing">Fiyatlandırma</a></li>
+        <li><a href="#security">Güvenlik</a></li>
+        <li><a href="#faq">SSS</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Geliştirici</h4>
+      <ul>
+        <li><a href="/docs">API Dokümantasyon</a></li>
+        <li><a href="#how-it-works">Kurulum Kılavuzu</a></li>
+        <li><a href="https://github.com">GitHub</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Şirket</h4>
+      <ul>
+        <li><a href="mailto:emre@emareas.com">İletişim</a></li>
+        <li><a href="/register">Kayıt Ol</a></li>
+        <li><a href="/login">Giriş Yap</a></li>
+        <li><a href="https://asistan.emarecloud.tr">Emare Asistan</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 EmareCloud. Tüm hakları saklıdır. — emre@emareas.com</span>
+    <div style="display:flex;gap:1rem">
+      <a href="#">Gizlilik Politikası</a>
+      <a href="#">Kullanım Koşulları</a>
+      <a href="#">KVKK</a>
+    </div>
+  </div>
+</footer>
+
+<div class="status-bubble" onclick="window.location=\'/login\'">
+  <span class="dot"></span>
+  <span><strong style="color:var(--text)">EC</strong> EmareCloud &nbsp;·&nbsp; Çevrimiçi</span>
+</div>
+
+<script>
+  (function() {
+    var nav = document.getElementById(\'navbar\');
+    window.addEventListener(\'scroll\', function() {
+      nav.style.padding = window.scrollY > 40 ? \'.5rem 2rem\' : \'.85rem 2rem\';
+    });
+  })();
+
+  function toggleFaq(btn) {
+    var item = btn.closest(\'.faq-item\');
+    var isOpen = item.classList.contains(\'open\');
+    document.querySelectorAll(\'.faq-item.open\').forEach(function(el) { el.classList.remove(\'open\'); });
+    if (!isOpen) item.classList.add(\'open\');
+  }
+
+  (function() {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) { e.target.style.animationPlayState = \'running\'; io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(\'.animate-in\').forEach(function(el) {
+      el.style.animationPlayState = \'paused\';
+      io.observe(el);
+    });
+  })();
+</script>
+</body>
+</html>

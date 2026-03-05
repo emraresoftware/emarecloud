@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş — EmareCloud</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-primary);
+            padding: 1rem;
+        }
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+        }
+        .auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-green));
+        }
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .auth-logo-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(147,51,234,0.1));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: var(--accent-blue);
+            margin-bottom: 0.75rem;
+        }
+        .auth-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.2rem;
+            letter-spacing: -0.02em;
+        }
+        .auth-logo p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .auth-alerts {
+            margin-bottom: 1.25rem;
+        }
+        .auth-alert {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        .auth-alert-error {
+            background: rgba(248,113,113,0.08);
+            border: 1px solid rgba(248,113,113,0.2);
+            color: var(--accent-red);
+        }
+        .auth-alert-info, .auth-alert-warning {
+            background: rgba(99,102,241,0.08);
+            border: 1px solid rgba(99,102,241,0.2);
+            color: var(--accent-blue);
+        }
+        .auth-alert-success {
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.2);
+            color: var(--accent-green);
+        }
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.15rem;
+        }
+        .auth-field label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+        }
+        .auth-field input {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.92rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .auth-field input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+        .auth-field input::placeholder {
+            color: var(--text-muted);
+        }
+        .auth-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .auth-remember {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .auth-remember input {
+            accent-color: var(--accent-blue);
+        }
+        .auth-submit {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(to right, #6366f1, #9333ea);
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-family: inherit;
+        }
+        .auth-submit:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        .auth-footer p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .auth-security-note {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <h1>EmareCloud</h1>
+                <p>Altyapı Yönetim Paneli</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="auth-alerts">
+                {% for category, message in messages %}
+                <div class="auth-alert auth-alert-{{ category }}">
+                    <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="auth-form" autocomplete="on">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="auth-field">
+                    <label><i class="fas fa-user"></i> Kullanıcı Adı</label>
+                    <input type="text" name="username" required autofocus
+                           placeholder="admin" autocomplete="username">
+                </div>
+
+                <div class="auth-field">
+                    <label><i class="fas fa-lock"></i> Şifre</label>
+                    <input type="password" name="password" required
+                           placeholder="••••••••" autocomplete="current-password">
+                </div>
+
+                <div class="auth-options">
+                    <label class="auth-remember">
+                        <input type="checkbox" name="remember"> Beni hatırla
+                    </label>
+                </div>
+
+                <button type="submit" class="auth-submit">
+                    <i class="fas fa-sign-in-alt"></i> Giriş Yap
+                </button>
+            </form>
+
+            <div class="auth-security-note">
+                <i class="fas fa-shield-alt"></i>
+                Oturum güvenli bağlantı ile korunmaktadır
+            </div>
+
+            <div class="auth-footer">
+                <p>EmareCloud v{{ app_version | default('1.0.0') }} — Altyapı Yönetim Paneli</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

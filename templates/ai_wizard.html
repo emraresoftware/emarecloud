@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% block title %}AI Use-Case Wizard - EmareCloud{% endblock %}
+{% block page_title %}AI Use-Case Wizard{% endblock %}
+
+{% block head %}
+<style>
+/* ── AI Wizard Styles ───────────────────────────── */
+.wizard-container { max-width: 860px; margin: 0 auto; }
+
+/* Progress bar */
+.wizard-progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 40px; }
+.wizard-step-indicator { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+.wizard-step-circle {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px;
+    background: var(--bg-card); border: 3px solid var(--border-color);
+    color: var(--text-secondary); transition: all .4s ease;
+}
+.wizard-step-circle.active { border-color: #6366f1; color: #6366f1; box-shadow: 0 0 0 6px rgba(99,102,241,.15); }
+.wizard-step-circle.done { background: #6366f1; border-color: #6366f1; color: #fff; }
+.wizard-step-label { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.wizard-step-label.active { color: #6366f1; }
+.wizard-step-label.done { color: #22c55e; }
+.wizard-step-line { width: 80px; height: 3px; background: var(--border-color); margin: 0 -4px; margin-bottom: 24px; transition: background .4s; }
+.wizard-step-line.done { background: #6366f1; }
+
+/* Step panels */
+.wizard-panel { display: none; animation: wizFadeIn .4s ease; }
+.wizard-panel.active { display: block; }
+@keyframes wizFadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+.wizard-question-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 20px; padding: 40px; text-align: center;
+}
+.wizard-question-icon { font-size: 48px; margin-bottom: 16px; }
+.wizard-question-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.wizard-question-desc { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+
+/* Option grid */
+.wizard-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; text-align: left; }
+.wizard-option {
+    background: var(--bg-input); border: 2px solid var(--border-color);
+    border-radius: 14px; padding: 20px; cursor: pointer;
+    transition: all .25s ease; position: relative;
+}
+.wizard-option:hover { border-color: #6366f1; transform: translateY(-2px); box-shadow: 0 4px 20px rgba(99,102,241,.12); }
+.wizard-option.selected { border-color: #6366f1; background: rgba(99,102,241,.06); }
+.wizard-option.selected::after {
+    content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+    position: absolute; top: 12px; right: 12px; color: #6366f1; font-size: 14px;
+}
+.wizard-option-icon { font-size: 28px; margin-bottom: 10px; }
+.wizard-option-title { font-weight: 700; font-size: 15px; color: var(--text-primary); margin-bottom: 4px; }
+.wizard-option-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+/* Navigation */
+.wizard-nav { display: flex; justify-content: space-between; margin-top: 24px; }
+.wizard-nav .btn { min-width: 140px; padding: 12px 24px; font-size: 15px; font-weight: 600; border-radius: 12px; }
+
+/* Result panel */
+.wizard-result {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 20px; padding: 40px; text-align: center;
+}
+.wizard-result-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    color: #fff; padding: 8px 20px; border-radius: 30px;
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 20px;
+}
+.wizard-result-title { font-size: 28px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+.wizard-result-desc { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; max-width: 560px; margin-left: auto; margin-right: auto; }
+
+/* Stack card */
+.wizard-stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 32px; text-align: left; }
+.wizard-stack-item {
+    background: var(--bg-input); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px;
+}
+.wizard-stack-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.wizard-stack-icon.purple { background: rgba(147,51,234,.12); color: #9333ea; }
+.wizard-stack-icon.blue { background: rgba(99,102,241,.12); color: #6366f1; }
+.wizard-stack-icon.green { background: rgba(34,197,94,.12); color: #22c55e; }
+.wizard-stack-icon.orange { background: rgba(245,158,11,.12); color: #f59e0b; }
+.wizard-stack-icon.red { background: rgba(239,68,68,.12); color: #ef4444; }
+.wizard-stack-icon.cyan { background: rgba(6,182,212,.12); color: #06b6d4; }
+.wizard-stack-name { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+.wizard-stack-role { font-size: 12px; color: var(--text-secondary); }
+
+.wizard-result-meta { display: flex; justify-content: center; gap: 32px; margin-bottom: 28px; flex-wrap: wrap; }
+.wizard-meta-item { text-align: center; }
+.wizard-meta-value { font-size: 22px; font-weight: 800; color: #6366f1; display: block; }
+.wizard-meta-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+
+.wizard-result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.wizard-result-actions .btn { padding: 12px 28px; font-size: 15px; font-weight: 600; border-radius: 12px; }
+.btn-gradient {
+    background: linear-gradient(135deg, #6366f1, #9333ea); color: #fff; border: none;
+    cursor: pointer; transition: all .2s;
+}
+.btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.3); }
+
+/* EP reward ribbon */
+.wizard-ep-ribbon {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(34,197,94,.1); color: #22c55e;
+    padding: 10px 20px; border-radius: 10px;
+    font-weight: 700; font-size: 14px; margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+    .wizard-question-card, .wizard-result { padding: 24px 16px; }
+    .wizard-options { grid-template-columns: 1fr; }
+    .wizard-stack-grid { grid-template-columns: 1fr; }
+    .wizard-step-line { width: 40px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+    <!-- Progress -->
+    <div class="wizard-progress" id="wizProgress">
+        <div class="wizard-step-indicator">
+            <div class="wizard-step-circle active" id="wizCircle1">1</div>
+            <span class="wizard-step-label active" id="wizLabel1">Hedef</span>
+        </div>
+        <div class="wizard-step-line" id="wizLine1"></div>
+        <div class="wizard-step-indicator">
+            <div class="wizard-step-circle" id="wizCircle2">2</div>
+            <span class="wizard-step-label" id="wizLabel2">Seviye</span>
+        </div>
+        <div class="wizard-step-line" id="wizLine2"></div>
+        <div class="wizard-step-indicator">
+            <div class="wizard-step-circle" id="wizCircle3">3</div>
+            <span class="wizard-step-label" id="wizLabel3">Bütçe</span>
+        </div>
+    </div>
+
+    <!-- STEP 1: Ne yapmak istiyorsun? -->
+    <div class="wizard-panel active" id="wizPanel1">
+        <div class="wizard-question-card">
+            <div class="wizard-question-icon">🎯</div>
+            <div class="wizard-question-title">Ne yapmak istiyorsun?</div>
+            <div class="wizard-question-desc">Yapay zeka ile ulaşmak istediğin hedefi seç. Geri kalanını biz hallederiz.</div>
+            <div class="wizard-options" id="wizOpts1">
+                <div class="wizard-option" data-value="chatbot" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">💬</div>
+                    <div class="wizard-option-title">AI Chatbot</div>
+                    <div class="wizard-option-desc">Müşteri desteği, iç iletişim veya kişisel asistan</div>
+                </div>
+                <div class="wizard-option" data-value="content" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">✍️</div>
+                    <div class="wizard-option-title">İçerik Üretimi</div>
+                    <div class="wizard-option-desc">Blog, sosyal medya, metin ve görsel üretimi</div>
+                </div>
+                <div class="wizard-option" data-value="code" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">💻</div>
+                    <div class="wizard-option-title">Kod Geliştirme</div>
+                    <div class="wizard-option-desc">AI destekli yazılım geliştirme, code review</div>
+                </div>
+                <div class="wizard-option" data-value="analytics" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">📊</div>
+                    <div class="wizard-option-title">Veri Analizi</div>
+                    <div class="wizard-option-desc">Tahmin modelleri, raporlama, iş zekası</div>
+                </div>
+                <div class="wizard-option" data-value="image" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">🎨</div>
+                    <div class="wizard-option-title">Görsel Üretimi</div>
+                    <div class="wizard-option-desc">Logo, ürün görseli, sanat eseri oluşturma</div>
+                </div>
+                <div class="wizard-option" data-value="automation" onclick="wizSelect(1, this)">
+                    <div class="wizard-option-icon">⚡</div>
+                    <div class="wizard-option-title">Otomasyon</div>
+                    <div class="wizard-option-desc">İş akışı otomasyonu, belge işleme, RPA</div>
+                </div>
+            </div>
+            <div class="wizard-nav">
+                <div></div>
+                <button class="btn btn-primary" id="wizNext1" onclick="wizNextStep(1)" disabled>
+                    Devam <i class="fas fa-arrow-right" style="margin-left:8px"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2: Teknik seviye -->
+    <div class="wizard-panel" id="wizPanel2">
+        <div class="wizard-question-card">
+            <div class="wizard-question-icon">🧠</div>
+            <div class="wizard-question-title">Teknik seviyen ne?</div>
+            <div class="wizard-question-desc">Sana en uygun kurulumu önerelim — hiç kod bilmesen bile çalışır!</div>
+            <div class="wizard-options" id="wizOpts2">
+                <div class="wizard-option" data-value="beginner" onclick="wizSelect(2, this)">
+                    <div class="wizard-option-icon">🌱</div>
+                    <div class="wizard-option-title">Yeni Başlayan</div>
+                    <div class="wizard-option-desc">Kod bilmiyorum, tek tıkla kurulsun istiyorum</div>
+                </div>
+                <div class="wizard-option" data-value="intermediate" onclick="wizSelect(2, this)">
+                    <div class="wizard-option-icon">🔧</div>
+                    <div class="wizard-option-title">Orta Seviye</div>
+                    <div class="wizard-option-desc">Temel terminal ve Docker bilgim var</div>
+                </div>
+                <div class="wizard-option" data-value="advanced" onclick="wizSelect(2, this)">
+                    <div class="wizard-option-icon">🚀</div>
+                    <div class="wizard-option-title">İleri Seviye</div>
+                    <div class="wizard-option-desc">DevOps, ML pipeline, model eğitimi yapabilirim</div>
+                </div>
+            </div>
+            <div class="wizard-nav">
+                <button class="btn btn-secondary" onclick="wizPrevStep(2)">
+                    <i class="fas fa-arrow-left" style="margin-right:8px"></i> Geri
+                </button>
+                <button class="btn btn-primary" id="wizNext2" onclick="wizNextStep(2)" disabled>
+                    Devam <i class="fas fa-arrow-right" style="margin-left:8px"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 3: Bütçe -->
+    <div class="wizard-panel" id="wizPanel3">
+        <div class="wizard-question-card">
+            <div class="wizard-question-icon">💰</div>
+            <div class="wizard-question-title">Aylık bütçen ne kadar?</div>
+            <div class="wizard-question-desc">Bütçene en uygun sunucu + yazılım kombinasyonunu seçelim.</div>
+            <div class="wizard-options" id="wizOpts3">
+                <div class="wizard-option" data-value="free" onclick="wizSelect(3, this)">
+                    <div class="wizard-option-icon">🆓</div>
+                    <div class="wizard-option-title">Ücretsiz / Deneme</div>
+                    <div class="wizard-option-desc">Sadece denemek istiyorum, para harcamak istemiyorum</div>
+                </div>
+                <div class="wizard-option" data-value="starter" onclick="wizSelect(3, this)">
+                    <div class="wizard-option-icon">💵</div>
+                    <div class="wizard-option-title">$10 – $49 / ay</div>
+                    <div class="wizard-option-desc">Küçük projeler, kişisel kullanım</div>
+                </div>
+                <div class="wizard-option" data-value="pro" onclick="wizSelect(3, this)">
+                    <div class="wizard-option-icon">💎</div>
+                    <div class="wizard-option-title">$50 – $199 / ay</div>
+                    <div class="wizard-option-desc">Profesyonel projeler, startup</div>
+                </div>
+                <div class="wizard-option" data-value="enterprise" onclick="wizSelect(3, this)">
+                    <div class="wizard-option-icon">🏢</div>
+                    <div class="wizard-option-title">$200+ / ay</div>
+                    <div class="wizard-option-desc">Kurumsal çözümler, yüksek trafik</div>
+                </div>
+            </div>
+            <div class="wizard-nav">
+                <button class="btn btn-secondary" onclick="wizPrevStep(3)">
+                    <i class="fas fa-arrow-left" style="margin-right:8px"></i> Geri
+                </button>
+                <button class="btn btn-gradient" id="wizNext3" onclick="wizShowResult()" disabled>
+                    <i class="fas fa-magic" style="margin-right:8px"></i> Çözümü Göster
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="wizard-panel" id="wizPanelResult">
+        <div class="wizard-result">
+            <div class="wizard-result-badge">
+                <i class="fas fa-sparkles"></i> Sana Özel AI Çözümü
+            </div>
+            <div class="wizard-result-title" id="wizResTitle">—</div>
+            <div class="wizard-result-desc" id="wizResDesc">—</div>
+
+            <div class="wizard-result-meta" id="wizResMeta">
+                <div class="wizard-meta-item">
+                    <span class="wizard-meta-value" id="wizResApps">0</span>
+                    <span class="wizard-meta-label">Uygulama</span>
+                </div>
+                <div class="wizard-meta-item">
+                    <span class="wizard-meta-value" id="wizResCPU">—</span>
+                    <span class="wizard-meta-label">Min CPU</span>
+                </div>
+                <div class="wizard-meta-item">
+                    <span class="wizard-meta-value" id="wizResRAM">—</span>
+                    <span class="wizard-meta-label">Min RAM</span>
+                </div>
+                <div class="wizard-meta-item">
+                    <span class="wizard-meta-value" id="wizResTime">—</span>
+                    <span class="wizard-meta-label">Kurulum</span>
+                </div>
+            </div>
+
+            <div class="wizard-stack-grid" id="wizResStack"></div>
+
+            <div class="wizard-result-actions">
+                <a href="/market" class="btn btn-gradient" onclick="setTimeout(()=>document.getElementById('tabStacks')?.click(),200)">
+                    <i class="fas fa-rocket" style="margin-right:8px"></i> Hemen Kur
+                </a>
+                <button class="btn btn-secondary" onclick="wizReset()">
+                    <i class="fas fa-redo" style="margin-right:8px"></i> Tekrar Başla
+                </button>
+            </div>
+
+            <div class="wizard-ep-ribbon">
+                <i class="fas fa-coins"></i>
+                Stack Builder ile kur → <strong>+50 EP</strong> kazanırsın!
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── AI Use-Case Wizard Engine ──────────────────────────────
+(function(){
+    const state = { step: 1, answers: {} };
+
+    // Solution database
+    const solutions = {
+        chatbot: {
+            beginner: {
+                free:       { title: 'Ollama Chat Başlangıç Paketi', desc: 'Kendi sunucunda çalışan ücretsiz AI chatbot. Ollama + Open WebUI ile hemen başla.', apps: [{n:'Ollama',r:'AI Engine',i:'fas fa-robot',c:'purple'},{n:'Open WebUI',r:'Chat Arayüzü',i:'fas fa-comments',c:'blue'},{n:'Nginx',r:'Reverse Proxy',i:'fas fa-server',c:'green'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Chatbot Startup Paketi', desc: 'Müşteri desteği için hazır chatbot. PrivateGPT ile dokümanlarını AI\'a öğret.', apps: [{n:'Ollama',r:'LLM Engine',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'Doküman AI',i:'fas fa-file-alt',c:'blue'},{n:'Open WebUI',r:'Chat UI',i:'fas fa-comments',c:'green'},{n:'Nginx',r:'Reverse Proxy',i:'fas fa-server',c:'orange'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Pro AI Chatbot Platformu', desc: 'Yüksek trafikli chatbot. Load balancer, Redis cache ve monitoring dahil.', apps: [{n:'Ollama',r:'LLM Engine',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'RAG Engine',i:'fas fa-brain',c:'blue'},{n:'Redis',r:'Cache Layer',i:'fas fa-database',c:'red'},{n:'Nginx',r:'Load Balancer',i:'fas fa-server',c:'green'},{n:'Prometheus',r:'Monitoring',i:'fas fa-chart-line',c:'orange'}], cpu:'8 vCPU',ram:'16 GB',time:'~15 dk' },
+                enterprise: { title: 'Enterprise AI Chatbot Suite', desc: 'Kurumsal seviye: Multi-model orchestration, GPU acceleration, HA setup.', apps: [{n:'Ollama',r:'Multi-Model',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'RAG Pipeline',i:'fas fa-brain',c:'blue'},{n:'Redis Cluster',r:'Distributed Cache',i:'fas fa-database',c:'red'},{n:'PostgreSQL',r:'Vector DB',i:'fas fa-table',c:'cyan'},{n:'Nginx',r:'HA Proxy',i:'fas fa-server',c:'green'},{n:'Grafana',r:'Observability',i:'fas fa-chart-area',c:'orange'}], cpu:'16 vCPU',ram:'32 GB',time:'~25 dk' },
+            },
+            intermediate: {
+                free:       { title: 'Ollama + WebUI Dev Kit', desc: 'Geliştirici dostu chatbot ortamı. API erişimi ile kendi uygulamanı bağla.', apps: [{n:'Ollama',r:'LLM + API',i:'fas fa-robot',c:'purple'},{n:'Open WebUI',r:'Chat + API',i:'fas fa-comments',c:'blue'},{n:'Docker',r:'Container Runtime',i:'fab fa-docker',c:'cyan'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Chatbot Dev Platform', desc: 'API-first chatbot. Kendi frontend\'ini bağla veya hazır WebUI kullan.', apps: [{n:'Ollama',r:'LLM Engine',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'RAG + API',i:'fas fa-file-alt',c:'blue'},{n:'PostgreSQL',r:'Vector Store',i:'fas fa-table',c:'cyan'},{n:'Nginx',r:'API Gateway',i:'fas fa-server',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Production Chatbot Stack', desc: 'Üretime hazır: CI/CD, monitoring, auto-restart, SSL dahil.', apps: [{n:'Ollama',r:'LLM Engine',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'RAG Pipeline',i:'fas fa-brain',c:'blue'},{n:'Redis',r:'Session Cache',i:'fas fa-database',c:'red'},{n:'PostgreSQL',r:'Vector DB',i:'fas fa-table',c:'cyan'},{n:'Certbot',r:'SSL/TLS',i:'fas fa-lock',c:'green'},{n:'Prometheus',r:'Metrics',i:'fas fa-chart-line',c:'orange'}], cpu:'8 vCPU',ram:'16 GB',time:'~15 dk' },
+                enterprise: { title: 'Enterprise Chatbot Cluster', desc: 'Dağıtık mimari, GPU node, A/B testing, audit logging.', apps: [{n:'Ollama',r:'GPU Cluster',i:'fas fa-robot',c:'purple'},{n:'PrivateGPT',r:'RAG Cluster',i:'fas fa-brain',c:'blue'},{n:'Redis Sentinel',r:'HA Cache',i:'fas fa-database',c:'red'},{n:'PostgreSQL',r:'HA Vector DB',i:'fas fa-table',c:'cyan'},{n:'Traefik',r:'Service Mesh',i:'fas fa-project-diagram',c:'green'},{n:'Grafana Stack',r:'Full Observability',i:'fas fa-chart-area',c:'orange'}], cpu:'16+ vCPU',ram:'64 GB',time:'~30 dk' },
+            },
+            advanced: {
+                free:       { title: 'LLM Dev Sandbox', desc: 'Model fine-tuning ve API geliştirme ortamı. Kendi modelini eğit.', apps: [{n:'Ollama',r:'Model Serve',i:'fas fa-robot',c:'purple'},{n:'Jupyter',r:'Notebook',i:'fas fa-code',c:'blue'},{n:'Docker',r:'Containers',i:'fab fa-docker',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~5 dk' },
+                starter:    { title: 'Custom LLM Pipeline', desc: 'Kendi RAG pipeline\'ını kur. Fine-tune, embed, serve.', apps: [{n:'Ollama',r:'Model Serve',i:'fas fa-robot',c:'purple'},{n:'ChromaDB',r:'Vector Store',i:'fas fa-database',c:'blue'},{n:'FastAPI',r:'API Layer',i:'fas fa-bolt',c:'green'},{n:'Jupyter',r:'Training',i:'fas fa-code',c:'orange'}], cpu:'4 vCPU',ram:'16 GB',time:'~10 dk' },
+                pro:        { title: 'ML Ops Chatbot Platform', desc: 'Full MLOps: model registry, A/B deploy, monitoring, auto-scale.', apps: [{n:'Ollama',r:'Model Serve',i:'fas fa-robot',c:'purple'},{n:'MLflow',r:'Model Registry',i:'fas fa-box',c:'blue'},{n:'ChromaDB',r:'Vector DB',i:'fas fa-database',c:'cyan'},{n:'FastAPI',r:'API Gateway',i:'fas fa-bolt',c:'green'},{n:'Prometheus',r:'ML Metrics',i:'fas fa-chart-line',c:'orange'},{n:'Grafana',r:'Dashboards',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'32 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise AI Platform', desc: 'Multi-tenant, multi-model, GPU cluster, compliance-ready.', apps: [{n:'vLLM',r:'GPU Inference',i:'fas fa-microchip',c:'purple'},{n:'Ollama',r:'Model Hub',i:'fas fa-robot',c:'blue'},{n:'Weaviate',r:'Vector Search',i:'fas fa-search',c:'cyan'},{n:'Kubernetes',r:'Orchestration',i:'fas fa-dharmachakra',c:'green'},{n:'Vault',r:'Secrets',i:'fas fa-key',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'32+ vCPU',ram:'128 GB',time:'~45 dk' },
+            },
+        },
+        content: {
+            beginner: {
+                free:       { title: 'AI Yazar Başlangıç', desc: 'Blog yazıları, sosyal medya içeriği oluştur. Ollama ile ücretsiz.', apps: [{n:'Ollama',r:'AI Yazar',i:'fas fa-pen-fancy',c:'purple'},{n:'Open WebUI',r:'Yazım Arayüzü',i:'fas fa-edit',c:'blue'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'İçerik Stüdyosu', desc: 'AI metin + görsel üretimi bir arada. Blog, sosyal medya, pazarlama.', apps: [{n:'Ollama',r:'Metin AI',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'Görsel AI',i:'fas fa-image',c:'blue'},{n:'Open WebUI',r:'Dashboard',i:'fas fa-edit',c:'green'},{n:'Nginx',r:'Web Server',i:'fas fa-server',c:'orange'}], cpu:'4 vCPU',ram:'8 GB',time:'~15 dk' },
+                pro:        { title: 'Pro İçerik Platformu', desc: 'SEO optimizasyonlu metin, görsel ve video içerik üretim hattı.', apps: [{n:'Ollama',r:'LLM Engine',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'Image Gen',i:'fas fa-image',c:'blue'},{n:'Open WebUI',r:'Content Hub',i:'fas fa-edit',c:'green'},{n:'PostgreSQL',r:'Content DB',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Queue',i:'fas fa-database',c:'red'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Content Factory', desc: 'Çok dilli, çok kanallı içerik üretim fabrikası. Marka tutarlılığı dahil.', apps: [{n:'Ollama',r:'Multi-Model',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'Brand Visuals',i:'fas fa-image',c:'blue'},{n:'PostgreSQL',r:'Asset DB',i:'fas fa-table',c:'cyan'},{n:'MinIO',r:'Media Store',i:'fas fa-box',c:'green'},{n:'Redis',r:'Job Queue',i:'fas fa-database',c:'red'},{n:'Grafana',r:'Analytics',i:'fas fa-chart-area',c:'orange'}], cpu:'16 vCPU',ram:'32 GB',time:'~30 dk' },
+            },
+            intermediate: {
+                free:       { title: 'Content Dev Kit', desc: 'API ile içerik üretimi. Kendi arayüzünü bağla.', apps: [{n:'Ollama',r:'Content API',i:'fas fa-pen-fancy',c:'purple'},{n:'Docker',r:'Runtime',i:'fab fa-docker',c:'cyan'},{n:'Nginx',r:'Proxy',i:'fas fa-server',c:'green'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Content Pipeline', desc: 'Otomasyon destekli içerik hattı. Zamanlayıcı ile otomatik paylaşım.', apps: [{n:'Ollama',r:'LLM API',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'Image API',i:'fas fa-image',c:'blue'},{n:'n8n',r:'Automation',i:'fas fa-project-diagram',c:'orange'},{n:'PostgreSQL',r:'Storage',i:'fas fa-table',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~15 dk' },
+                pro:        { title: 'Content Ops Platform', desc: 'Content pipeline + analytics + A/B testing.', apps: [{n:'Ollama',r:'Multi-Model',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'Visual AI',i:'fas fa-image',c:'blue'},{n:'n8n',r:'Workflows',i:'fas fa-project-diagram',c:'orange'},{n:'PostgreSQL',r:'Analytics DB',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Cache',i:'fas fa-database',c:'red'},{n:'Prometheus',r:'Monitoring',i:'fas fa-chart-line',c:'green'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Content Lab', desc: 'Tam entegre kurumsal içerik laboratuvarı.', apps: [{n:'Ollama',r:'Content AI',i:'fas fa-pen-fancy',c:'purple'},{n:'ComfyUI',r:'Visual Pipeline',i:'fas fa-image',c:'blue'},{n:'n8n',r:'Orchestrator',i:'fas fa-project-diagram',c:'orange'},{n:'PostgreSQL',r:'Content Lake',i:'fas fa-table',c:'cyan'},{n:'MinIO',r:'Asset CDN',i:'fas fa-box',c:'green'},{n:'Grafana',r:'Analytics',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~30 dk' },
+            },
+            advanced: {
+                free:       { title: 'AI Writer SDK', desc: 'Fine-tune edilebilir content modeli.', apps: [{n:'Ollama',r:'Fine-tune',i:'fas fa-pen-fancy',c:'purple'},{n:'Jupyter',r:'Development',i:'fas fa-code',c:'blue'}], cpu:'4 vCPU',ram:'8 GB',time:'~5 dk' },
+                starter:    { title: 'Custom Content Engine', desc: 'Kendi content modelini eğit ve serve et.', apps: [{n:'Ollama',r:'Model Serve',i:'fas fa-pen-fancy',c:'purple'},{n:'Stable Diffusion',r:'LoRA Train',i:'fas fa-image',c:'blue'},{n:'FastAPI',r:'Content API',i:'fas fa-bolt',c:'green'},{n:'Jupyter',r:'Training',i:'fas fa-code',c:'orange'}], cpu:'4 vCPU',ram:'16 GB',time:'~15 dk' },
+                pro:        { title: 'ML Content Platform', desc: 'Model training pipeline + A/B + analytics.', apps: [{n:'Ollama',r:'Model Hub',i:'fas fa-pen-fancy',c:'purple'},{n:'ComfyUI',r:'Image Pipeline',i:'fas fa-image',c:'blue'},{n:'MLflow',r:'Experiments',i:'fas fa-flask',c:'green'},{n:'FastAPI',r:'Serve Layer',i:'fas fa-bolt',c:'orange'},{n:'PostgreSQL',r:'Vector Index',i:'fas fa-table',c:'cyan'},{n:'Grafana',r:'ML Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'32 GB',time:'~25 dk' },
+                enterprise: { title: 'Enterprise Content AI Factory', desc: 'Full pipeline: train, evaluate, deploy, monitor, iterate.', apps: [{n:'vLLM',r:'High Perf Serve',i:'fas fa-microchip',c:'purple'},{n:'ComfyUI',r:'Visual Pipeline',i:'fas fa-image',c:'blue'},{n:'MLflow',r:'ML Ops',i:'fas fa-flask',c:'green'},{n:'Kubernetes',r:'Orchestration',i:'fas fa-dharmachakra',c:'cyan'},{n:'MinIO',r:'Data Lake',i:'fas fa-box',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'32 vCPU',ram:'64 GB',time:'~40 dk' },
+            },
+        },
+        code: {
+            beginner: {
+                free:       { title: 'AI Kod Asistanı', desc: 'Kendi Copilot\'un! Tabby ile AI destekli kod yazımı.', apps: [{n:'Tabby',r:'Code AI',i:'fas fa-laptop-code',c:'purple'},{n:'VS Code Server',r:'Editör',i:'fas fa-code',c:'blue'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Dev Workstation', desc: 'Tam geliştirme ortamı: AI asistan + versiyon kontrolü + CI.', apps: [{n:'Tabby',r:'AI Copilot',i:'fas fa-laptop-code',c:'purple'},{n:'Gitea',r:'Git Server',i:'fab fa-git-alt',c:'blue'},{n:'VS Code Server',r:'Cloud IDE',i:'fas fa-code',c:'green'},{n:'Docker',r:'Containers',i:'fab fa-docker',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Pro Dev Platform', desc: 'CI/CD, code review AI, container registry dahil tam platform.', apps: [{n:'Tabby',r:'AI Copilot',i:'fas fa-laptop-code',c:'purple'},{n:'Gitea',r:'Git + CI/CD',i:'fab fa-git-alt',c:'blue'},{n:'SonarQube',r:'Code Quality',i:'fas fa-bug',c:'green'},{n:'Registry',r:'Container Reg',i:'fas fa-box',c:'cyan'},{n:'VS Code Server',r:'Cloud IDE',i:'fas fa-code',c:'orange'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Dev Suite', desc: 'Kurumsal: güvenlik taraması, compliance, multi-team.', apps: [{n:'Tabby',r:'AI Code Engine',i:'fas fa-laptop-code',c:'purple'},{n:'GitLab',r:'DevSecOps',i:'fab fa-gitlab',c:'blue'},{n:'SonarQube',r:'SAST',i:'fas fa-bug',c:'green'},{n:'Harbor',r:'Registry',i:'fas fa-box',c:'cyan'},{n:'Vault',r:'Secrets',i:'fas fa-key',c:'orange'},{n:'Grafana',r:'Dev Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~30 dk' },
+            },
+            intermediate: {
+                free:       { title: 'Dev Sandbox', desc: 'AI destekli geliştirme sandbox\'u.', apps: [{n:'Tabby',r:'AI Assist',i:'fas fa-laptop-code',c:'purple'},{n:'Gitea',r:'Git',i:'fab fa-git-alt',c:'blue'},{n:'Docker',r:'Dev Env',i:'fab fa-docker',c:'cyan'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'Full Stack AI Dev', desc: 'Frontend + backend + AI asistan ile tam geliştirme.', apps: [{n:'Tabby',r:'AI Copilot',i:'fas fa-laptop-code',c:'purple'},{n:'Gitea',r:'Git + CI',i:'fab fa-git-alt',c:'blue'},{n:'PostgreSQL',r:'Database',i:'fas fa-table',c:'cyan'},{n:'Docker Compose',r:'Multi-Service',i:'fab fa-docker',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'DevOps AI Platform', desc: 'Full DevOps: GitOps, container orchestration, AI review.', apps: [{n:'Tabby',r:'AI Engine',i:'fas fa-laptop-code',c:'purple'},{n:'Gitea',r:'GitOps',i:'fab fa-git-alt',c:'blue'},{n:'SonarQube',r:'Quality Gate',i:'fas fa-bug',c:'green'},{n:'Docker Swarm',r:'Orchestration',i:'fab fa-docker',c:'cyan'},{n:'Prometheus',r:'Monitoring',i:'fas fa-chart-line',c:'orange'},{n:'Grafana',r:'Dashboards',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise DevSecOps', desc: 'Zero-trust, SAST/DAST, compliance pipeline.', apps: [{n:'Tabby',r:'AI Security',i:'fas fa-laptop-code',c:'purple'},{n:'GitLab',r:'DevSecOps',i:'fab fa-gitlab',c:'blue'},{n:'SonarQube',r:'SAST',i:'fas fa-bug',c:'green'},{n:'Trivy',r:'Container Scan',i:'fas fa-shield-alt',c:'cyan'},{n:'Vault',r:'PKI + Secrets',i:'fas fa-key',c:'orange'},{n:'Grafana Stack',r:'Audit + Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16+ vCPU',ram:'32 GB',time:'~35 dk' },
+            },
+            advanced: {
+                free:       { title: 'ML Dev Environment', desc: 'ML model geliştirme ortamı.', apps: [{n:'Tabby',r:'Code AI',i:'fas fa-laptop-code',c:'purple'},{n:'Jupyter',r:'Notebooks',i:'fas fa-code',c:'blue'},{n:'Docker',r:'ML Containers',i:'fab fa-docker',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~5 dk' },
+                starter:    { title: 'ML Engineering Kit', desc: 'Model training + serving + monitoring.', apps: [{n:'Tabby',r:'AI Pair Prog',i:'fas fa-laptop-code',c:'purple'},{n:'MLflow',r:'Experiment Track',i:'fas fa-flask',c:'blue'},{n:'Jupyter',r:'Training',i:'fas fa-code',c:'green'},{n:'FastAPI',r:'Model Serve',i:'fas fa-bolt',c:'orange'}], cpu:'4 vCPU',ram:'16 GB',time:'~10 dk' },
+                pro:        { title: 'MLOps Platform', desc: 'Tam MLOps lifecycle: train, test, deploy, monitor, retrain.', apps: [{n:'Tabby',r:'Code AI',i:'fas fa-laptop-code',c:'purple'},{n:'MLflow',r:'ML Lifecycle',i:'fas fa-flask',c:'blue'},{n:'Kubeflow',r:'ML Pipeline',i:'fas fa-project-diagram',c:'green'},{n:'Jupyter',r:'Research',i:'fas fa-code',c:'cyan'},{n:'Prometheus',r:'ML Metrics',i:'fas fa-chart-line',c:'orange'},{n:'Grafana',r:'Dashboards',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~25 dk' },
+                enterprise: { title: 'Enterprise MLOps Suite', desc: 'Production ML: feature store, model registry, A/B, compliance.', apps: [{n:'vLLM',r:'Inference',i:'fas fa-microchip',c:'purple'},{n:'MLflow',r:'Registry',i:'fas fa-flask',c:'blue'},{n:'Kubeflow',r:'Pipelines',i:'fas fa-project-diagram',c:'green'},{n:'Feast',r:'Feature Store',i:'fas fa-database',c:'cyan'},{n:'Kubernetes',r:'Orchestration',i:'fas fa-dharmachakra',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'32+ vCPU',ram:'128 GB',time:'~45 dk' },
+            },
+        },
+        analytics: {
+            beginner: {
+                free:       { title: 'AI Veri Analiz Başlangıç', desc: 'Verilerini AI ile analiz et. Grafik ve rapor oluştur.', apps: [{n:'Ollama',r:'AI Analiz',i:'fas fa-chart-bar',c:'purple'},{n:'Metabase',r:'Dashboard',i:'fas fa-chart-pie',c:'blue'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'İş Zekası Paketi', desc: 'AI destekli iş zekası: otomatik rapor + tahmin modeli.', apps: [{n:'Ollama',r:'AI Engine',i:'fas fa-chart-bar',c:'purple'},{n:'Metabase',r:'BI Dashboard',i:'fas fa-chart-pie',c:'blue'},{n:'PostgreSQL',r:'Data Warehouse',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Cache',i:'fas fa-database',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Pro Analytics Platform', desc: 'Gelişmiş analitik: ML tahminler, anomali tespiti, real-time.', apps: [{n:'Ollama',r:'ML Engine',i:'fas fa-chart-bar',c:'purple'},{n:'Metabase',r:'Reporting',i:'fas fa-chart-pie',c:'blue'},{n:'PostgreSQL',r:'OLAP',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Streaming',i:'fas fa-database',c:'green'},{n:'Grafana',r:'Real-time',i:'fas fa-chart-area',c:'orange'}], cpu:'8 vCPU',ram:'16 GB',time:'~15 dk' },
+                enterprise: { title: 'Enterprise BI Suite', desc: 'Kurumsal analitik: data lake, ETL, ML pipeline.', apps: [{n:'Ollama',r:'AI Layer',i:'fas fa-chart-bar',c:'purple'},{n:'Apache Superset',r:'Enterprise BI',i:'fas fa-chart-pie',c:'blue'},{n:'PostgreSQL',r:'Data Warehouse',i:'fas fa-table',c:'cyan'},{n:'MinIO',r:'Data Lake',i:'fas fa-box',c:'green'},{n:'Airflow',r:'ETL Pipeline',i:'fas fa-project-diagram',c:'orange'},{n:'Grafana',r:'Monitoring',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~30 dk' },
+            },
+            intermediate: {
+                free:       { title: 'Data Science Sandbox', desc: 'Jupyter + AI ile veri keşfi.', apps: [{n:'Jupyter',r:'Notebooks',i:'fas fa-code',c:'purple'},{n:'Ollama',r:'AI Assist',i:'fas fa-robot',c:'blue'},{n:'Docker',r:'Runtime',i:'fab fa-docker',c:'cyan'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'Data Pipeline Kit', desc: 'ETL + analiz + raporlama pipeline\'ı.', apps: [{n:'Jupyter',r:'Analysis',i:'fas fa-code',c:'purple'},{n:'Metabase',r:'Reporting',i:'fas fa-chart-pie',c:'blue'},{n:'PostgreSQL',r:'Storage',i:'fas fa-table',c:'cyan'},{n:'Ollama',r:'AI Engine',i:'fas fa-robot',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Analytics Ops', desc: 'Otomatik ETL, ML pipeline, alerting.', apps: [{n:'Jupyter',r:'Research',i:'fas fa-code',c:'purple'},{n:'Metabase',r:'BI',i:'fas fa-chart-pie',c:'blue'},{n:'Airflow',r:'Orchestration',i:'fas fa-project-diagram',c:'green'},{n:'PostgreSQL',r:'OLAP',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Cache',i:'fas fa-database',c:'red'},{n:'Prometheus',r:'Alerting',i:'fas fa-bell',c:'orange'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Data Platform', desc: 'Full data mesh: lakehouse, ML, real-time.', apps: [{n:'Apache Superset',r:'BI Layer',i:'fas fa-chart-pie',c:'purple'},{n:'Airflow',r:'Pipeline Mgmt',i:'fas fa-project-diagram',c:'blue'},{n:'PostgreSQL',r:'Warehouse',i:'fas fa-table',c:'cyan'},{n:'MinIO',r:'Lakehouse',i:'fas fa-box',c:'green'},{n:'Kafka',r:'Streaming',i:'fas fa-stream',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'16+ vCPU',ram:'64 GB',time:'~35 dk' },
+            },
+            advanced: {
+                free:       { title: 'ML Research Lab', desc: 'Araştırma ve prototip ortamı.', apps: [{n:'Jupyter',r:'Research',i:'fas fa-code',c:'purple'},{n:'Ollama',r:'LLM Tools',i:'fas fa-robot',c:'blue'},{n:'Docker',r:'ML Env',i:'fab fa-docker',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~5 dk' },
+                starter:    { title: 'ML Analytics Pipeline', desc: 'End-to-end ML analytics.', apps: [{n:'Jupyter',r:'Experiments',i:'fas fa-code',c:'purple'},{n:'MLflow',r:'Tracking',i:'fas fa-flask',c:'blue'},{n:'PostgreSQL',r:'Feature Store',i:'fas fa-table',c:'cyan'},{n:'FastAPI',r:'Predict API',i:'fas fa-bolt',c:'green'}], cpu:'4 vCPU',ram:'16 GB',time:'~10 dk' },
+                pro:        { title: 'Data Science Platform', desc: 'Full DS platform: experiment, train, deploy, monitor.', apps: [{n:'Jupyter',r:'Research',i:'fas fa-code',c:'purple'},{n:'MLflow',r:'Lifecycle',i:'fas fa-flask',c:'blue'},{n:'Apache Spark',r:'Big Data',i:'fas fa-fire',c:'orange'},{n:'PostgreSQL',r:'Feature DB',i:'fas fa-table',c:'cyan'},{n:'Airflow',r:'Scheduler',i:'fas fa-project-diagram',c:'green'},{n:'Grafana',r:'ML Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~25 dk' },
+                enterprise: { title: 'Enterprise ML Platform', desc: 'Production ML at scale.', apps: [{n:'Kubeflow',r:'ML Pipeline',i:'fas fa-project-diagram',c:'purple'},{n:'MLflow',r:'Registry',i:'fas fa-flask',c:'blue'},{n:'Apache Spark',r:'Distributed',i:'fas fa-fire',c:'orange'},{n:'MinIO',r:'Data Lake',i:'fas fa-box',c:'green'},{n:'Kubernetes',r:'Compute',i:'fas fa-dharmachakra',c:'cyan'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'32+ vCPU',ram:'128 GB',time:'~45 dk' },
+            },
+        },
+        image: {
+            beginner: {
+                free:       { title: 'AI Görsel Başlangıç', desc: 'Metin yaz, görsel oluşsun! Stable Diffusion ile ücretsiz.', apps: [{n:'Stable Diffusion',r:'Image AI',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Arayüz',i:'fas fa-image',c:'blue'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                starter:    { title: 'AI Görsel Stüdyo', desc: 'Logo, ürün görseli, sosyal medya görselleri tek tıkla.', apps: [{n:'Stable Diffusion',r:'Generation',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Visual Editor',i:'fas fa-image',c:'blue'},{n:'Ollama',r:'Prompt Helper',i:'fas fa-robot',c:'green'},{n:'Nginx',r:'Gallery',i:'fas fa-server',c:'orange'}], cpu:'4 vCPU',ram:'12 GB',time:'~15 dk' },
+                pro:        { title: 'Pro Visual AI Platform', desc: 'Yüksek çözünürlük, batch üretim, stil tutarlılığı.', apps: [{n:'Stable Diffusion',r:'SDXL Engine',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Pipeline Editor',i:'fas fa-image',c:'blue'},{n:'Ollama',r:'Captioning',i:'fas fa-robot',c:'green'},{n:'MinIO',r:'Asset Storage',i:'fas fa-box',c:'cyan'},{n:'PostgreSQL',r:'Metadata',i:'fas fa-table',c:'orange'}], cpu:'8 vCPU',ram:'24 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Visual AI Suite', desc: 'Brand-consistent AI visuals at scale.', apps: [{n:'Stable Diffusion',r:'Multi-Model',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Workflow Engine',i:'fas fa-image',c:'blue'},{n:'Ollama',r:'AI Director',i:'fas fa-robot',c:'green'},{n:'MinIO',r:'DAM',i:'fas fa-box',c:'cyan'},{n:'PostgreSQL',r:'Asset Index',i:'fas fa-table',c:'orange'},{n:'Grafana',r:'Usage Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'48 GB',time:'~30 dk' },
+            },
+            intermediate: {
+                free:       { title: 'SD Dev Kit', desc: 'API erişimli görsel üretimi.', apps: [{n:'Stable Diffusion',r:'API Mode',i:'fas fa-palette',c:'purple'},{n:'Docker',r:'Runtime',i:'fab fa-docker',c:'cyan'},{n:'Nginx',r:'Proxy',i:'fas fa-server',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                starter:    { title: 'Visual API Platform', desc: 'REST API ile görsel üretimi. Kendi uygulamanı bağla.', apps: [{n:'Stable Diffusion',r:'Generation API',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Pipeline',i:'fas fa-image',c:'blue'},{n:'FastAPI',r:'API Layer',i:'fas fa-bolt',c:'green'},{n:'Redis',r:'Job Queue',i:'fas fa-database',c:'orange'}], cpu:'4 vCPU',ram:'12 GB',time:'~15 dk' },
+                pro:        { title: 'Image Generation Pipeline', desc: 'Batch processing, LoRA training, API serving.', apps: [{n:'Stable Diffusion',r:'SDXL + LoRA',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Workflow',i:'fas fa-image',c:'blue'},{n:'FastAPI',r:'API Gateway',i:'fas fa-bolt',c:'green'},{n:'Redis',r:'Queue + Cache',i:'fas fa-database',c:'orange'},{n:'MinIO',r:'Object Store',i:'fas fa-box',c:'cyan'},{n:'Prometheus',r:'Metrics',i:'fas fa-chart-line',c:'red'}], cpu:'8 vCPU',ram:'24 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise Image Factory', desc: 'Production image generation with compliance.', apps: [{n:'Stable Diffusion',r:'Multi-GPU',i:'fas fa-palette',c:'purple'},{n:'ComfyUI',r:'Enterprise Wf',i:'fas fa-image',c:'blue'},{n:'FastAPI',r:'API Mesh',i:'fas fa-bolt',c:'green'},{n:'MinIO',r:'CDN + DAM',i:'fas fa-box',c:'cyan'},{n:'PostgreSQL',r:'Audit Trail',i:'fas fa-table',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'16+ vCPU',ram:'48 GB',time:'~30 dk' },
+            },
+            advanced: {
+                free:       { title: 'SD Research Lab', desc: 'Model fine-tuning ve araştırma.', apps: [{n:'Stable Diffusion',r:'Training',i:'fas fa-palette',c:'purple'},{n:'Jupyter',r:'Research',i:'fas fa-code',c:'blue'},{n:'Docker',r:'GPU Runtime',i:'fab fa-docker',c:'cyan'}], cpu:'4 vCPU',ram:'16 GB',time:'~10 dk' },
+                starter:    { title: 'Custom Model Studio', desc: 'Kendi stil modelini eğit (LoRA/DreamBooth).', apps: [{n:'Stable Diffusion',r:'Fine-tune',i:'fas fa-palette',c:'purple'},{n:'Kohya SS',r:'LoRA Trainer',i:'fas fa-graduation-cap',c:'blue'},{n:'ComfyUI',r:'Testing',i:'fas fa-image',c:'green'},{n:'Jupyter',r:'Experiments',i:'fas fa-code',c:'orange'}], cpu:'8 vCPU',ram:'24 GB',time:'~15 dk' },
+                pro:        { title: 'Visual ML Platform', desc: 'Custom model training + serving + A/B testing.', apps: [{n:'Stable Diffusion',r:'Model Zoo',i:'fas fa-palette',c:'purple'},{n:'Kohya SS',r:'Training',i:'fas fa-graduation-cap',c:'blue'},{n:'MLflow',r:'Model Registry',i:'fas fa-flask',c:'green'},{n:'ComfyUI',r:'Pipeline',i:'fas fa-image',c:'cyan'},{n:'FastAPI',r:'Serve',i:'fas fa-bolt',c:'orange'},{n:'Grafana',r:'GPU Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'48 GB',time:'~25 dk' },
+                enterprise: { title: 'Enterprise Visual AI Lab', desc: 'Multi-model training, distributed inference, compliance.', apps: [{n:'vLLM',r:'Diffusion Serve',i:'fas fa-microchip',c:'purple'},{n:'Kohya SS',r:'Multi-GPU Train',i:'fas fa-graduation-cap',c:'blue'},{n:'MLflow',r:'Model Lifecycle',i:'fas fa-flask',c:'green'},{n:'Kubernetes',r:'GPU Pool',i:'fas fa-dharmachakra',c:'cyan'},{n:'MinIO',r:'Dataset Store',i:'fas fa-box',c:'orange'},{n:'Grafana Stack',r:'Full Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'32+ vCPU',ram:'96 GB',time:'~40 dk' },
+            },
+        },
+        automation: {
+            beginner: {
+                free:       { title: 'AI Otomasyon Başlangıç', desc: 'n8n ile görsel otomasyon. Kod bilmeden iş akışı kur.', apps: [{n:'n8n',r:'Otomasyon',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Motor',i:'fas fa-robot',c:'blue'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Workflow Studio', desc: 'Email, belge işleme, form otomasyonu AI ile.', apps: [{n:'n8n',r:'Workflows',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Process',i:'fas fa-robot',c:'blue'},{n:'PostgreSQL',r:'Data Store',i:'fas fa-table',c:'cyan'},{n:'Nginx',r:'Webhook',i:'fas fa-server',c:'green'}], cpu:'2 vCPU',ram:'4 GB',time:'~10 dk' },
+                pro:        { title: 'Pro Automation Platform', desc: 'Gelişmiş otomasyon: scheduled tasks, API entegrasyonlar.', apps: [{n:'n8n',r:'Enterprise Wf',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Engine',i:'fas fa-robot',c:'blue'},{n:'PostgreSQL',r:'State Store',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Queue',i:'fas fa-database',c:'green'},{n:'Prometheus',r:'Monitoring',i:'fas fa-chart-line',c:'orange'}], cpu:'4 vCPU',ram:'8 GB',time:'~15 dk' },
+                enterprise: { title: 'Enterprise RPA Suite', desc: 'Kurumsal otomasyon: BPMN, compliance, audit trail.', apps: [{n:'n8n',r:'Orchestrator',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Decision',i:'fas fa-robot',c:'blue'},{n:'PostgreSQL',r:'Process DB',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Event Bus',i:'fas fa-database',c:'green'},{n:'Vault',r:'Credentials',i:'fas fa-key',c:'orange'},{n:'Grafana',r:'Process Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+            },
+            intermediate: {
+                free:       { title: 'Automation Dev Kit', desc: 'API-first otomasyon geliştirme.', apps: [{n:'n8n',r:'Workflow API',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI API',i:'fas fa-robot',c:'blue'},{n:'Docker',r:'Runtime',i:'fab fa-docker',c:'cyan'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'Workflow Engine', desc: 'Custom workflow geliştirme + AI entegrasyon.', apps: [{n:'n8n',r:'Engine',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'NLP + AI',i:'fas fa-robot',c:'blue'},{n:'PostgreSQL',r:'State Machine',i:'fas fa-table',c:'cyan'},{n:'FastAPI',r:'Custom API',i:'fas fa-bolt',c:'green'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'iPaaS Platform', desc: 'Integration platform: ETL, API mesh, event-driven.', apps: [{n:'n8n',r:'iPaaS Core',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Layer',i:'fas fa-robot',c:'blue'},{n:'PostgreSQL',r:'Integration DB',i:'fas fa-table',c:'cyan'},{n:'Redis',r:'Event Stream',i:'fas fa-database',c:'green'},{n:'Prometheus',r:'SLA Monitor',i:'fas fa-chart-line',c:'orange'},{n:'Grafana',r:'Dashboards',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'16 GB',time:'~15 dk' },
+                enterprise: { title: 'Enterprise iPaaS', desc: 'Multi-tenant integration platform.', apps: [{n:'n8n',r:'Orchestrator',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Decision',i:'fas fa-robot',c:'blue'},{n:'Kafka',r:'Event Bus',i:'fas fa-stream',c:'cyan'},{n:'PostgreSQL',r:'Process Store',i:'fas fa-table',c:'green'},{n:'Vault',r:'Security',i:'fas fa-key',c:'orange'},{n:'Grafana Stack',r:'Observability',i:'fas fa-chart-area',c:'red'}], cpu:'16 vCPU',ram:'32 GB',time:'~25 dk' },
+            },
+            advanced: {
+                free:       { title: 'Process AI Lab', desc: 'Custom AI process geliştirme.', apps: [{n:'n8n',r:'Workflow',i:'fas fa-project-diagram',c:'purple'},{n:'Jupyter',r:'ML Dev',i:'fas fa-code',c:'blue'},{n:'Docker',r:'Containers',i:'fab fa-docker',c:'cyan'}], cpu:'2 vCPU',ram:'4 GB',time:'~5 dk' },
+                starter:    { title: 'AI Process Engine', desc: 'ML-powered iş süreci otomasyonu.', apps: [{n:'n8n',r:'Orchestrator',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'NLP Engine',i:'fas fa-robot',c:'blue'},{n:'FastAPI',r:'Process API',i:'fas fa-bolt',c:'green'},{n:'PostgreSQL',r:'State Store',i:'fas fa-table',c:'cyan'}], cpu:'4 vCPU',ram:'8 GB',time:'~10 dk' },
+                pro:        { title: 'Intelligent Automation', desc: 'AI decision engine + process mining + RPA.', apps: [{n:'n8n',r:'Process Engine',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'Decision AI',i:'fas fa-robot',c:'blue'},{n:'MLflow',r:'Model Serve',i:'fas fa-flask',c:'green'},{n:'FastAPI',r:'API Gateway',i:'fas fa-bolt',c:'cyan'},{n:'PostgreSQL',r:'Process Log',i:'fas fa-table',c:'orange'},{n:'Grafana',r:'Process Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'8 vCPU',ram:'16 GB',time:'~20 dk' },
+                enterprise: { title: 'Enterprise AI Automation', desc: 'Full hyperautomation platform.', apps: [{n:'n8n',r:'Hyperautomation',i:'fas fa-project-diagram',c:'purple'},{n:'Ollama',r:'AI Core',i:'fas fa-robot',c:'blue'},{n:'Kafka',r:'Event Stream',i:'fas fa-stream',c:'cyan'},{n:'MLflow',r:'ML Ops',i:'fas fa-flask',c:'green'},{n:'Kubernetes',r:'Scale',i:'fas fa-dharmachakra',c:'orange'},{n:'Grafana Stack',r:'Full Metrics',i:'fas fa-chart-area',c:'red'}], cpu:'16+ vCPU',ram:'32 GB',time:'~30 dk' },
+            },
+        },
+    };
+
+    // Selection handler
+    window.wizSelect = function(step, el) {
+        var opts = document.querySelectorAll('#wizOpts' + step + ' .wizard-option');
+        opts.forEach(function(o) { o.classList.remove('selected'); });
+        el.classList.add('selected');
+        state.answers['step' + step] = el.dataset.value;
+        var btn = document.getElementById('wizNext' + step);
+        if (btn) btn.disabled = false;
+    };
+
+    // Navigation
+    window.wizNextStep = function(fromStep) {
+        if (!state.answers['step' + fromStep]) return;
+        var toStep = fromStep + 1;
+        document.getElementById('wizPanel' + fromStep).classList.remove('active');
+        document.getElementById('wizPanel' + toStep).classList.add('active');
+        // Update progress
+        document.getElementById('wizCircle' + fromStep).classList.remove('active');
+        document.getElementById('wizCircle' + fromStep).classList.add('done');
+        document.getElementById('wizCircle' + fromStep).innerHTML = '<i class="fas fa-check"></i>';
+        document.getElementById('wizLabel' + fromStep).classList.remove('active');
+        document.getElementById('wizLabel' + fromStep).classList.add('done');
+        document.getElementById('wizLine' + fromStep).classList.add('done');
+        document.getElementById('wizCircle' + toStep).classList.add('active');
+        document.getElementById('wizLabel' + toStep).classList.add('active');
+        state.step = toStep;
+    };
+
+    window.wizPrevStep = function(fromStep) {
+        var toStep = fromStep - 1;
+        document.getElementById('wizPanel' + fromStep).classList.remove('active');
+        document.getElementById('wizPanel' + toStep).classList.add('active');
+        // Restore progress
+        document.getElementById('wizCircle' + fromStep).classList.remove('active');
+        document.getElementById('wizLabel' + fromStep).classList.remove('active');
+        document.getElementById('wizLine' + toStep).classList.remove('done');
+        document.getElementById('wizCircle' + toStep).classList.remove('done');
+        document.getElementById('wizCircle' + toStep).classList.add('active');
+        document.getElementById('wizCircle' + toStep).innerHTML = toStep;
+        document.getElementById('wizLabel' + toStep).classList.remove('done');
+        document.getElementById('wizLabel' + toStep).classList.add('active');
+        state.step = toStep;
+    };
+
+    // Show result
+    window.wizShowResult = function() {
+        if (!state.answers.step3) return;
+        var goal = state.answers.step1;
+        var level = state.answers.step2;
+        var budget = state.answers.step3;
+
+        var sol = null;
+        try { sol = solutions[goal][level][budget]; } catch(e) {}
+        if (!sol) {
+            // Fallback
+            sol = { title: 'Özel AI Çözümü', desc: 'Seçimlerinize göre özel bir çözüm hazırlıyoruz.', apps: [{n:'Ollama',r:'AI Engine',i:'fas fa-robot',c:'purple'},{n:'Docker',r:'Runtime',i:'fab fa-docker',c:'blue'}], cpu:'2 vCPU', ram:'4 GB', time:'~10 dk'};
+        }
+
+        // Hide step 3, show result
+        document.getElementById('wizPanel3').classList.remove('active');
+        document.getElementById('wizPanelResult').classList.add('active');
+
+        // Update progress
+        document.getElementById('wizCircle3').classList.remove('active');
+        document.getElementById('wizCircle3').classList.add('done');
+        document.getElementById('wizCircle3').innerHTML = '<i class="fas fa-check"></i>';
+        document.getElementById('wizLabel3').classList.remove('active');
+        document.getElementById('wizLabel3').classList.add('done');
+        document.getElementById('wizLine2').classList.add('done');
+
+        // Fill result
+        document.getElementById('wizResTitle').textContent = sol.title;
+        document.getElementById('wizResDesc').textContent = sol.desc;
+        document.getElementById('wizResApps').textContent = sol.apps.length;
+        document.getElementById('wizResCPU').textContent = sol.cpu;
+        document.getElementById('wizResRAM').textContent = sol.ram;
+        document.getElementById('wizResTime').textContent = sol.time;
+
+        var stackHTML = '';
+        sol.apps.forEach(function(app) {
+            stackHTML += '<div class="wizard-stack-item">';
+            stackHTML += '<div class="wizard-stack-icon ' + app.c + '"><i class="' + app.i + '"></i></div>';
+            stackHTML += '<div><div class="wizard-stack-name">' + app.n + '</div>';
+            stackHTML += '<div class="wizard-stack-role">' + app.r + '</div></div>';
+            stackHTML += '</div>';
+        });
+        document.getElementById('wizResStack').innerHTML = stackHTML;
+    };
+
+    // Reset
+    window.wizReset = function() {
+        state.step = 1;
+        state.answers = {};
+        // Reset panels
+        ['wizPanel1','wizPanel2','wizPanel3','wizPanelResult'].forEach(function(id) {
+            document.getElementById(id).classList.remove('active');
+        });
+        document.getElementById('wizPanel1').classList.add('active');
+        // Reset progress
+        for (var i = 1; i <= 3; i++) {
+            document.getElementById('wizCircle' + i).className = 'wizard-step-circle' + (i === 1 ? ' active' : '');
+            document.getElementById('wizCircle' + i).innerHTML = i;
+            document.getElementById('wizLabel' + i).className = 'wizard-step-label' + (i === 1 ? ' active' : '');
+        }
+        document.getElementById('wizLine1').classList.remove('done');
+        document.getElementById('wizLine2').classList.remove('done');
+        // Reset selections
+        document.querySelectorAll('.wizard-option').forEach(function(o) { o.classList.remove('selected'); });
+        // Reset buttons
+        for (var j = 1; j <= 3; j++) {
+            var btn = document.getElementById('wizNext' + j);
+            if (btn) btn.disabled = true;
+        }
+    };
+})();
+</script>
+{% endblock %}

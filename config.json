@@ -1,0 +1,51 @@
+{
+    "servers": [
+        {
+            "id": "srv-001",
+            "name": "Örnek Sunucu",
+            "host": "172.17.0.10",
+            "port": 22,
+            "username": "root",
+            "password": "*** encrypted in database ***",
+            "group": "Üretim",
+            "description": "Ana üretim sunucusu",
+            "tags": [
+                "linux",
+                "üretim"
+            ],
+            "added_at": "2026-03-01"
+        },
+        {
+            "id": "srv-fcebe5",
+            "name": "asistan",
+            "host": "77.92.152.3",
+            "port": 22,
+            "username": "root",
+            "password": "*** encrypted in database ***",
+            "group": "Genel",
+            "description": "",
+            "tags": [],
+            "added_at": "2026-03-01 02:43"
+        },
+        {
+            "id": "srv-5ee871",
+            "name": "anasunucu",
+            "host": "77.92.152.3",
+            "port": 2222,
+            "username": "root",
+            "password": "*** encrypted in database ***",
+            "group": "Genel",
+            "description": "",
+            "tags": [],
+            "added_at": "2026-03-01 02:51"
+        }
+    ],
+    "settings": {
+        "refresh_interval": 30,
+        "ssh_timeout": 10,
+        "max_concurrent_connections": 5,
+        "alert_cpu_threshold": 90,
+        "alert_ram_threshold": 85,
+        "alert_disk_threshold": 90
+    }
+}

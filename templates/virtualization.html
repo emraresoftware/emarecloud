@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}Sanallaştırma - Sunucu Yönetimi{% endblock %}
+{% block page_title %}Sanallaştırma{% endblock %}
+
+{% block content %}
+<p class="market-intro">LXD ile sanal makineleri (container) kontrol edin ve yönetin. Önce sunucu seçin, bağlanın, ardından sistem durumunu kontrol edip container'ları listeliyorsunuz.</p>
+
+<!-- Sunucu seçimi ve bağlantı -->
+<div class="section">
+    <div class="section-header">
+        <h2><i class="fas fa-server"></i> Sunucu seçin</h2>
+    </div>
+    <div class="virt-toolbar">
+        <select id="virtServerSelect" class="virt-select">
+            <option value="">— Sunucu seçin —</option>
+            {% for s in servers %}
+            <option value="{{ s.id }}" data-connected="{{ 'true' if s.connected else 'false' }}" data-reachable="{{ 'true' if s.reachable else 'false' }}">
+                {{ s.name }} ({{ s.host }}) {% if s.connected %}• Bağlı{% elif s.reachable %}• Çevrimiçi{% else %}• Çevrimdışı{% endif %}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="button" class="btn btn-secondary" id="virtConnectBtn" onclick="virtConnect()" style="display:none;">
+            <i class="fas fa-plug"></i> Bağlan
+        </button>
+        <button type="button" class="btn btn-primary" id="virtCheckBtn" onclick="virtCheckSystem()" style="display:none;">
+            <i class="fas fa-sync-alt"></i> Sistem kontrolü / Listeyi getir
+        </button>
+    </div>
+    <p class="text-muted" id="virtConnectHint">Sunucu seçin. Bağlı değilse "Bağlan"a tıklayın; LXD kurulu değilse Uygulama Pazarından LXD kurun.</p>
+</div>
+
+<!-- LXD sistem durumu -->
+<div class="section" id="virtStatusSection" style="display:none;">
+    <div class="section-header">
+        <h3><i class="fas fa-info-circle"></i> LXD sistem durumu</h3>
+    </div>
+    <div class="virt-status-box" id="virtStatusBox">
+        <p id="virtStatusText"></p>
+        <div id="virtStatusMeta" style="margin-top:0.5rem; font-size:0.9rem; color:var(--text-secondary);"></div>
+    </div>
+</div>
+
+<!-- Container listesi ve yönetim -->
+<div class="section" id="virtListSection" style="display:none;">
+    <div class="section-header">
+        <h3><i class="fas fa-cubes"></i> Sanal makineler (container)</h3>
+        <div>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="virtLoadList()"><i class="fas fa-sync-alt"></i> Yenile</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="virtOpenCreateModal()"><i class="fas fa-plus"></i> Yeni sanal makine</button>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead><tr><th>Ad</th><th>Durum</th><th>IP</th><th>İşlem</th></tr></thead>
+            <tbody id="virtTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Yeni Sanal Makine modal -->
+<div class="modal-overlay" id="virtCreateModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus-circle"></i> Yeni sanal makine</h3>
+            <button type="button" class="modal-close" onclick="virtCloseCreateModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Container adı *</label>
+                <input type="text" id="virtVmName" placeholder="örn: web01, db02">
+            </div>
+            <div class="form-group">
+                <label>Image (işletim sistemi)</label>
+                <select id="virtVmImage" style="width:100%;padding:0.6rem;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                    <option value="ubuntu:22.04">ubuntu:22.04</option>
+                    <option value="ubuntu:20.04">ubuntu:20.04</option>
+                    <option value="debian:12">debian:12</option>
+                    <option value="debian:11">debian:11</option>
+                    <option value="alpine:edge">alpine:edge</option>
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+                <div class="form-group">
+                    <label>RAM</label>
+                    <input type="text" id="virtVmMemory" value="1GB" placeholder="1GB">
+                </div>
+                <div class="form-group">
+                    <label>CPU</label>
+                    <input type="text" id="virtVmCpu" value="1" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label>Disk</label>
+                    <input type="text" id="virtVmDisk" value="10GB" placeholder="10GB">
+                </div>
+            </div>
+            <div class="form-actions" style="margin-top:1rem;">
+                <button type="button" class="btn btn-secondary" onclick="virtCloseCreateModal()">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="virtCreateSubmit()"><i class="fas fa-play"></i> Oluştur</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Container'da komut çalıştır modal -->
+<div class="modal-overlay" id="virtExecModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-terminal"></i> Komut çalıştır: <span id="virtExecName"></span></h3>
+            <button type="button" class="modal-close" onclick="virtCloseExecModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Komut</label>
+                <input type="text" id="virtExecCommand" placeholder="örn: apt update && apt list --upgradable" style="width:100%;">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="virtExecSubmit()"><i class="fas fa-play"></i> Çalıştır</button>
+            <pre class="output-box" id="virtExecOutput" style="margin-top:1rem;max-height:300px;display:none;"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const sel = document.getElementById('virtServerSelect');
+    if (sel) sel.addEventListener('change', virtOnServerChange);
+})();
+
+function virtCurrentServerId() {
+    return document.getElementById('virtServerSelect').value || '';
+}
+
+function virtOnServerChange() {
+    const id = virtCurrentServerId();
+    const opt = document.querySelector('#virtServerSelect option:checked');
+    const connected = opt && opt.dataset.connected === 'true';
+    const reachable = opt && opt.dataset.reachable === 'true';
+
+    document.getElementById('virtConnectBtn').style.display = (id && !connected && reachable) ? 'inline-flex' : 'none';
+    document.getElementById('virtCheckBtn').style.display = (id && connected) ? 'inline-flex' : 'none';
+    document.getElementById('virtStatusSection').style.display = 'none';
+    document.getElementById('virtListSection').style.display = 'none';
+}
+
+function virtConnect() {
+    const id = virtCurrentServerId();
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    showToast('Bağlanılıyor...', 'info');
+    fetch('/api/servers/' + id + '/connect', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.success ? 'Bağlandı' : data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                var opt = document.querySelector('#virtServerSelect option[value="' + id + '"]');
+                if (opt) opt.dataset.connected = 'true';
+                document.getElementById('virtConnectBtn').style.display = 'none';
+                document.getElementById('virtCheckBtn').style.display = 'inline-flex';
+            }
+        })
+        .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function virtCheckSystem() {
+    const id = virtCurrentServerId();
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    document.getElementById('virtStatusText').textContent = 'Kontrol ediliyor...';
+    document.getElementById('virtStatusMeta').textContent = '';
+    document.getElementById('virtStatusSection').style.display = 'block';
+    document.getElementById('virtListSection').style.display = 'none';
+
+    fetch('/api/servers/' + id + '/vms')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                document.getElementById('virtStatusText').textContent = data.message || 'Yüklenemedi.';
+                return;
+            }
+            const vms = data.vms;
+            if (!vms.available) {
+                document.getElementById('virtStatusText').textContent = vms.message || 'LXD kurulu değil. Uygulama Pazarından LXD kurun.';
+                document.getElementById('virtStatusMeta').textContent = '';
+                return;
+            }
+            const version = (vms.version || '').trim();
+            const count = (vms.containers || []).length;
+            document.getElementById('virtStatusText').textContent = 'LXD kurulu ve çalışıyor.';
+            document.getElementById('virtStatusMeta').textContent = (version ? 'Sürüm: ' + version + ' • ' : '') + 'Container sayısı: ' + count;
+            document.getElementById('virtListSection').style.display = 'block';
+            virtRenderTable(vms.containers || []);
+        })
+        .catch(function(err) {
+            document.getElementById('virtStatusText').textContent = 'Hata: ' + err.message;
+        });
+}
+
+function virtLoadList() {
+    virtCheckSystem();
+}
+
+function virtRenderTable(containers) {
+    const id = virtCurrentServerId();
+    const tbody = document.getElementById('virtTableBody');
+    tbody.innerHTML = '';
+    if (!containers.length) {
+        tbody.innerHTML = '<tr><td colspan="4">Henüz sanal makine yok. "Yeni sanal makine" ile oluşturun.</td></tr>';
+        return;
+    }
+    function esc(s) {
+        var d = document.createElement('div');
+        d.textContent = s == null ? '' : s;
+        return d.innerHTML;
+    }
+    function attrEsc(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    containers.forEach(function(vm) {
+        const state = (vm.state || '').toUpperCase();
+        const name = vm.name || '';
+        const aid = attrEsc(id);
+        const aname = attrEsc(name);
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="mono">' + esc(name) + '</td><td><span class="badge ' + (state === 'RUNNING' ? 'success' : 'warning') + '">' + state + '</span></td><td class="mono">' + esc(vm.ipv4 || '-') + '</td><td>' +
+            (state === 'RUNNING' ? '<button type="button" class="btn btn-sm btn-secondary virt-btn-stop" data-server-id="' + aid + '" data-vm-name="' + aname + '">Durdur</button> ' : '<button type="button" class="btn btn-sm btn-success virt-btn-start" data-server-id="' + aid + '" data-vm-name="' + aname + '">Başlat</button> ') +
+            '<button type="button" class="btn btn-sm btn-action virt-btn-exec" data-server-id="' + aid + '" data-vm-name="' + aname + '" title="Komut çalıştır"><i class="fas fa-terminal"></i></button> ' +
+            '<button type="button" class="btn btn-sm btn-danger virt-btn-delete" data-server-id="' + aid + '" data-vm-name="' + aname + '">Sil</button></td>';
+        tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.virt-btn-start').forEach(function(btn) { btn.onclick = function() { virtStart(btn.getAttribute('data-server-id'), btn.getAttribute('data-vm-name')); }; });
+    tbody.querySelectorAll('.virt-btn-stop').forEach(function(btn) { btn.onclick = function() { virtStop(btn.getAttribute('data-server-id'), btn.getAttribute('data-vm-name')); }; });
+    tbody.querySelectorAll('.virt-btn-exec').forEach(function(btn) { btn.onclick = function() { virtOpenExecModal(btn.getAttribute('data-server-id'), btn.getAttribute('data-vm-name')); }; });
+    tbody.querySelectorAll('.virt-btn-delete').forEach(function(btn) { btn.onclick = function() { virtDelete(btn.getAttribute('data-server-id'), btn.getAttribute('data-vm-name')); }; });
+}
+
+function virtOpenCreateModal() {
+    const id = virtCurrentServerId();
+    if (!id) { showToast('Sunucu seçin', 'warning'); return; }
+    document.getElementById('virtVmName').value = '';
+    document.getElementById('virtVmImage').value = 'ubuntu:22.04';
+    document.getElementById('virtVmMemory').value = '1GB';
+    document.getElementById('virtVmCpu').value = '1';
+    document.getElementById('virtVmDisk').value = '10GB';
+    fetch('/api/servers/' + id + '/vms/images')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            const sel = document.getElementById('virtVmImage');
+            if (data.success && data.images && data.images.length) {
+                sel.innerHTML = '';
+                data.images.forEach(function(img) {
+                    var opt = document.createElement('option');
+                    opt.value = img;
+                    opt.textContent = img;
+                    sel.appendChild(opt);
+                });
+            }
+        })
+        .catch(function() {});
+    document.getElementById('virtCreateModal').classList.add('show');
+}
+
+function virtCloseCreateModal() {
+    document.getElementById('virtCreateModal').classList.remove('show');
+}
+
+function virtCreateSubmit() {
+    const id = virtCurrentServerId();
+    const name = document.getElementById('virtVmName').value.trim();
+    if (!name) { showToast('Container adı girin', 'warning'); return; }
+    showToast('Oluşturuluyor...', 'info');
+    fetch('/api/servers/' + id + '/vms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: name,
+            image: document.getElementById('virtVmImage').value || 'ubuntu:22.04',
+            memory: document.getElementById('virtVmMemory').value.trim() || '1GB',
+            cpu: document.getElementById('virtVmCpu').value.trim() || '1',
+            disk: document.getElementById('virtVmDisk').value.trim() || '10GB'
+        })
+    })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) { virtCloseCreateModal(); virtLoadList(); }
+        })
+        .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function virtStart(serverId, name) {
+    showToast('Başlatılıyor...', 'info');
+    fetch('/api/servers/' + encodeURIComponent(serverId) + '/vms/' + encodeURIComponent(name) + '/start', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) virtLoadList();
+        })
+        .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function virtStop(serverId, name) {
+    showToast('Durduruluyor...', 'info');
+    fetch('/api/servers/' + encodeURIComponent(serverId) + '/vms/' + encodeURIComponent(name) + '/stop', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) virtLoadList();
+        })
+        .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+function virtDelete(serverId, name) {
+    if (!confirm('"' + name + '" sanal makinesi kalıcı olarak silinecek. Emin misiniz?')) return;
+    fetch('/api/servers/' + encodeURIComponent(serverId) + '/vms/' + encodeURIComponent(name), { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) virtLoadList();
+        })
+        .catch(function(err) { showToast('Hata: ' + err.message, 'error'); });
+}
+
+var virtExecServerId = '', virtExecVmName = '';
+function virtOpenExecModal(serverId, vmName) {
+    virtExecServerId = serverId;
+    virtExecVmName = vmName;
+    document.getElementById('virtExecName').textContent = vmName;
+    document.getElementById('virtExecCommand').value = '';
+    document.getElementById('virtExecOutput').style.display = 'none';
+    document.getElementById('virtExecOutput').textContent = '';
+    document.getElementById('virtExecModal').classList.add('show');
+}
+
+function virtCloseExecModal() {
+    document.getElementById('virtExecModal').classList.remove('show');
+}
+
+function virtExecSubmit() {
+    const cmd = document.getElementById('virtExecCommand').value.trim();
+    if (!cmd) { showToast('Komut girin', 'warning'); return; }
+    const outEl = document.getElementById('virtExecOutput');
+    outEl.style.display = 'block';
+    outEl.textContent = 'Çalıştırılıyor...';
+    fetch('/api/servers/' + encodeURIComponent(virtExecServerId) + '/vms/' + encodeURIComponent(virtExecVmName) + '/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd })
+    })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var t = '';
+            if (data.stdout) t += data.stdout;
+            if (data.stderr) t += (t ? '\n' : '') + data.stderr;
+            if (!t) t = data.success ? '(çıktı yok)' : 'Hata.';
+            outEl.textContent = t;
+        })
+        .catch(function(err) { outEl.textContent = 'Hata: ' + err.message; });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}AI Zero-Downtime Migration - EmareCloud{% endblock %}
+{% block page_title %}Zero-Downtime Migration Asistanı{% endblock %}
+
+{% block head %}
+<style>
+.mig-container{max-width:1100px;margin:0 auto}
+.mig-hero{background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(99,102,241,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.mig-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.mig-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.mig-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.mig-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.mig-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.mig-grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.mig-field{margin-bottom:14px}
+.mig-field label{display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.mig-field select,.mig-field input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:14px}
+.mig-servers{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-bottom:20px}
+.mig-server{padding:20px;border-radius:14px;background:var(--bg-input);text-align:center;border:2px solid var(--border-color)}
+.mig-server.active{border-color:#6366f1}
+.mig-server-icon{font-size:32px;margin-bottom:8px}
+.mig-server-name{font-size:15px;font-weight:700}
+.mig-server-loc{font-size:12px;color:var(--text-secondary)}
+.mig-server-specs{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.mig-server-specs span{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:var(--bg-card)}
+.mig-arrow{font-size:24px;color:#6366f1;text-align:center}
+.mig-apps{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.mig-app{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.mig-app-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.mig-app-info{flex:1}
+.mig-app-name{font-size:13px;font-weight:700}
+.mig-app-size{font-size:11px;color:var(--text-secondary)}
+.mig-app-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border-color);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:12px}
+.mig-app-check.checked{background:#22c55e;border-color:#22c55e;color:#fff}
+.mig-btn{padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.mig-btn:hover{transform:translateY(-1px);opacity:.9}
+.mig-btn-primary{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff}
+.mig-progress{display:none;margin-top:20px}
+.mig-progress.active{display:block}
+.mig-steps{display:flex;flex-direction:column;gap:12px}
+.mig-step{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input);transition:all .3s}
+.mig-step.active{background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.2)}
+.mig-step.done{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)}
+.mig-step-num{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;background:var(--border-color);color:var(--text-secondary)}
+.mig-step.active .mig-step-num{background:#0ea5e9;color:#fff}
+.mig-step.done .mig-step-num{background:#22c55e;color:#fff}
+.mig-step-info{flex:1}
+.mig-step-name{font-size:13px;font-weight:700}
+.mig-step-desc{font-size:11px;color:var(--text-secondary)}
+.mig-step-status{font-size:12px;font-weight:700}
+.mig-history{display:flex;flex-direction:column;gap:10px}
+.mig-hist{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--bg-input)}
+.mig-hist-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.mig-hist-info{flex:1}
+.mig-hist-title{font-size:13px;font-weight:700}
+.mig-hist-meta{font-size:11px;color:var(--text-secondary)}
+.mig-hist-time{font-size:12px;font-weight:600;color:var(--text-secondary)}
+@media(max-width:768px){.mig-grid2,.mig-servers{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mig-container">
+    <div class="mig-hero">
+        <div class="mig-hero-icon"><i class="fas fa-truck-fast"></i></div>
+        <div>
+            <h2>Zero-Downtime Migration Asistanı</h2>
+            <p>"Bu AI app'imi yeni sunucuya taşı" — Docker + veri + config + EP bakiyesi otomatik taşınır, sıfır kesinti.</p>
+        </div>
+    </div>
+
+    <div class="mig-card">
+        <h3><i class="fas fa-exchange-alt" style="color:#0ea5e9"></i> Taşıma Planı</h3>
+        <div class="mig-servers">
+            <div class="mig-server active">
+                <div class="mig-server-icon">🇹🇷</div>
+                <div class="mig-server-name">İstanbul TR-1</div>
+                <div class="mig-server-loc">185.189.54.104 · AlmaLinux 9.6</div>
+                <div class="mig-server-specs"><span>8 vCPU</span><span>15GB RAM</span><span>44GB SSD</span></div>
+            </div>
+            <div class="mig-arrow"><i class="fas fa-right-long"></i><br><span style="font-size:11px;color:var(--text-secondary)">Taşı</span></div>
+            <div class="mig-server">
+                <div class="mig-server-icon">🇩🇪</div>
+                <div class="mig-server-name">Frankfurt DE-1</div>
+                <div class="mig-server-loc">195.201.x.x · Ubuntu 24.04</div>
+                <div class="mig-server-specs"><span>16 vCPU</span><span>32GB RAM</span><span>200GB NVMe</span></div>
+            </div>
+        </div>
+
+        <h3 style="margin-top:20px"><i class="fas fa-boxes-stacked" style="color:#22c55e"></i> Taşınacak Uygulamalar</h3>
+        <div class="mig-apps" id="migApps"></div>
+
+        <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="mig-btn mig-btn-primary" onclick="startMigration()"><i class="fas fa-play"></i> Taşımayı Başlat</button>
+        </div>
+
+        <div class="mig-progress" id="migProgress">
+            <div style="margin-bottom:12px;font-weight:700;font-size:14px;display:flex;justify-content:space-between"><span id="migLabel">Hazırlanıyor...</span><span id="migPct" style="color:#0ea5e9">0%</span></div>
+            <div class="mig-steps" id="migSteps"></div>
+        </div>
+    </div>
+
+    <div class="mig-card">
+        <h3><i class="fas fa-history" style="color:#f59e0b"></i> Taşıma Geçmişi</h3>
+        <div class="mig-history" id="migHistory"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const apps=[
+    {icon:'🦙',bg:'rgba(99,102,241,.12)',name:'Ollama (Llama 3 + Mistral)',size:'6.4 GB',checked:true},
+    {icon:'🐘',bg:'rgba(59,130,246,.12)',name:'PostgreSQL Database',size:'4.2 GB',checked:true},
+    {icon:'🐳',bg:'rgba(14,165,233,.12)',name:'Docker Volumes',size:'1.8 GB',checked:true},
+    {icon:'🔴',bg:'rgba(239,68,68,.12)',name:'Redis Cache',size:'128 MB',checked:true},
+    {icon:'⚙️',bg:'rgba(245,158,11,.12)',name:'App Config & .env',size:'12 KB',checked:true},
+    {icon:'🔒',bg:'rgba(34,197,94,.12)',name:'SSL Sertifikaları',size:'24 KB',checked:true},
+    {icon:'💰',bg:'rgba(168,85,247,.12)',name:'EP Bakiye & Kullanıcı Verisi',size:'340 KB',checked:true}
+];
+const ac=document.getElementById('migApps');
+ac.innerHTML=apps.map(a=>'<div class="mig-app"><div class="mig-app-icon" style="background:'+a.bg+'">'+a.icon+'</div><div class="mig-app-info"><div class="mig-app-name">'+a.name+'</div><div class="mig-app-size">'+a.size+'</div></div><div class="mig-app-check'+(a.checked?' checked':'')+'" onclick="this.classList.toggle(\'checked\')">'+(a.checked?'<i class="fas fa-check"></i>':'')+'</div></div>').join('');
+
+const migrationSteps=[
+    {name:'Sağlık Kontrolü',desc:'Kaynak ve hedef sunucu erişilebilirlik testi'},
+    {name:'Snapshot Oluşturma',desc:'Anlık veri snapshot — uygulama çalışmaya devam eder'},
+    {name:'Veri Transferi',desc:'Şifreli kanal üzerinden bulk transfer (rsync + ssh)'},
+    {name:'Container Migrasyonu',desc:'Docker image ve volume taşıma'},
+    {name:'Konfigürasyon Senkronizasyonu',desc:'.env, nginx, systemd dosyaları'},
+    {name:'DNS Geçişi',desc:'DNS kayıtları atomik geçiş (TTL=60)'},
+    {name:'Sağlık Doğrulama',desc:'Hedef sunucuda tüm servislerin kontrolü'},
+    {name:'EP Bakiye Transferi',desc:'Kullanıcı bakiye ve işlem geçmişi taşıma'},
+    {name:'Geri Alma Noktası',desc:'Sorun olursa 1 tıkla eski sunucuya dön'}
+];
+
+function startMigration(){
+    const p=document.getElementById('migProgress');p.classList.add('active');
+    const sc=document.getElementById('migSteps');
+    sc.innerHTML=migrationSteps.map((s,i)=>'<div class="mig-step" id="migStep'+i+'"><div class="mig-step-num">'+(i+1)+'</div><div class="mig-step-info"><div class="mig-step-name">'+s.name+'</div><div class="mig-step-desc">'+s.desc+'</div></div><div class="mig-step-status" id="migStatus'+i+'">Bekliyor</div></div>').join('');
+    let i=0;
+    const iv=setInterval(()=>{
+        if(i>0){
+            document.getElementById('migStep'+(i-1)).classList.remove('active');
+            document.getElementById('migStep'+(i-1)).classList.add('done');
+            document.getElementById('migStatus'+(i-1)).innerHTML='<span style="color:#22c55e">✅ Tamam</span>';
+        }
+        if(i>=migrationSteps.length){
+            clearInterval(iv);
+            document.getElementById('migLabel').textContent='✅ Taşıma tamamlandı! Sıfır kesinti.';
+            document.getElementById('migPct').textContent='100%';
+            showToast('Migration başarıyla tamamlandı! Sıfır kesinti.','success');
+            return;
+        }
+        document.getElementById('migStep'+i).classList.add('active');
+        document.getElementById('migStatus'+i).innerHTML='<span style="color:#0ea5e9">⏳ Çalışıyor</span>';
+        const pct=Math.round(((i+1)/migrationSteps.length)*100);
+        document.getElementById('migLabel').textContent=migrationSteps[i].name+'...';
+        document.getElementById('migPct').textContent=pct+'%';
+        i++;
+    },1200);
+}
+
+const history=[
+    {dot:'#22c55e',title:'Ollama Stack → Frankfurt DE-1',meta:'6.4 GB · 12 dk · Sıfır kesinti',time:'Dün 14:30'},
+    {dot:'#22c55e',title:'PostgreSQL → Amsterdam NL-1',meta:'4.2 GB · 8 dk · Sıfır kesinti',time:'2 gün önce'},
+    {dot:'#f59e0b',title:'Docker Volumes → New York US-1',meta:'1.8 GB · 18 dk · 2sn kesinti (DNS)',time:'1 hafta önce'},
+    {dot:'#22c55e',title:'Full Stack → İstanbul TR-2',meta:'12.8 GB · 24 dk · Sıfır kesinti',time:'2 hafta önce'}
+];
+const hc=document.getElementById('migHistory');
+hc.innerHTML=history.map(h=>'<div class="mig-hist"><div class="mig-hist-dot" style="background:'+h.dot+'"></div><div class="mig-hist-info"><div class="mig-hist-title">'+h.title+'</div><div class="mig-hist-meta">'+h.meta+'</div></div><div class="mig-hist-time">'+h.time+'</div></div>').join('');
+</script>
+{% endblock %}

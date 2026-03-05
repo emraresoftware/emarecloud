@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}AI Demo Sandbox - EmareCloud{% endblock %}
+{% block page_title %}Instant AI Demo Sandbox{% endblock %}
+
+{% block head %}
+<style>
+.sb-container{max-width:1100px;margin:0 auto}
+.sb-hero{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(34,197,94,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.sb-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#22c55e);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.sb-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.sb-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.sb-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.sb-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:18px;text-align:center}
+.sb-stat-val{font-size:28px;font-weight:800}
+.sb-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.sb-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
+.sb-card h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sb-templates{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.sb-tmpl{padding:20px;border-radius:14px;border:2px solid var(--border-color);cursor:pointer;transition:.3s;position:relative;overflow:hidden}
+.sb-tmpl:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,.08)}
+.sb-tmpl.selected{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.sb-tmpl-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sb-tmpl-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.sb-tmpl-name{font-size:14px;font-weight:800}
+.sb-tmpl-cat{font-size:11px;color:var(--text-secondary)}
+.sb-tmpl-desc{font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px}
+.sb-tmpl-meta{display:flex;gap:12px;flex-wrap:wrap}
+.sb-tmpl-tag{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700}
+.sb-tmpl-timer{font-size:10px;color:var(--text-secondary);display:flex;align-items:center;gap:4px}
+.sb-launch-section{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:20px;border-radius:14px;background:var(--bg-input)}
+.sb-config{flex:1;display:flex;flex-direction:column;gap:8px;min-width:200px}
+.sb-config-row{display:flex;align-items:center;gap:10px}
+.sb-config-row label{font-size:12px;font-weight:700;min-width:80px;color:var(--text-secondary)}
+.sb-config-row select,.sb-config-row input{padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);font-size:12px;flex:1}
+.sb-launch-btn{padding:14px 32px;background:linear-gradient(135deg,#3b82f6,#22c55e);color:#fff;border:none;border-radius:14px;font-weight:800;font-size:16px;cursor:pointer;transition:all .3s;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:160px}
+.sb-launch-btn:hover{transform:scale(1.05);box-shadow:0 8px 32px rgba(59,130,246,.3)}
+.sb-launch-btn small{font-weight:500;font-size:11px;opacity:.8}
+.sb-terminal{background:#0d1117;border-radius:14px;padding:20px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#c9d1d9;min-height:200px;display:none;overflow:auto;max-height:300px}
+.sb-terminal .cmd{color:#58a6ff}.sb-terminal .ok{color:#3fb950}.sb-terminal .warn{color:#d29922}.sb-terminal .err{color:#f85149}
+.sb-active{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.sb-sandbox{padding:16px;border-radius:14px;background:var(--bg-input);position:relative}
+.sb-sandbox-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.sb-sandbox-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sb-sandbox-name{font-size:13px;font-weight:700}
+.sb-sandbox-status{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.sb-sandbox-meta{font-size:11px;color:var(--text-secondary);display:flex;gap:12px;margin-top:6px}
+.sb-sandbox-timer{font-size:13px;font-weight:800;text-align:center;margin-top:8px;padding:8px;border-radius:8px;background:var(--bg-card)}
+.sb-sandbox-actions{display:flex;gap:8px;margin-top:10px}
+.sb-sandbox-actions button{flex:1;padding:8px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+.sb-sandbox-actions button:hover{transform:scale(1.02)}
+@media(max-width:768px){.sb-launch-section{flex-direction:column}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sb-container">
+    <div class="sb-hero">
+        <div class="sb-hero-icon"><i class="fas fa-flask-vial"></i></div>
+        <div>
+            <h2>Instant AI Demo Sandbox</h2>
+            <p>5 dakikalık LXD container'lar ile AI uygulamalarını risk almadan canlı test edin.</p>
+        </div>
+    </div>
+
+    <div class="sb-stats">
+        <div class="sb-stat"><div class="sb-stat-val" style="color:#3b82f6">5:00</div><div class="sb-stat-lbl">Sandbox Süresi</div></div>
+        <div class="sb-stat"><div class="sb-stat-val" style="color:#22c55e">3</div><div class="sb-stat-lbl">Aktif Sandbox</div></div>
+        <div class="sb-stat"><div class="sb-stat-val" style="color:#6366f1">128</div><div class="sb-stat-lbl">Toplam Test</div></div>
+        <div class="sb-stat"><div class="sb-stat-val" style="color:#f59e0b">2.4s</div><div class="sb-stat-lbl">Ort. Başlama</div></div>
+    </div>
+
+    <div class="sb-card">
+        <h3><i class="fas fa-cube" style="color:#3b82f6"></i> Sandbox Şablonları</h3>
+        <div class="sb-templates" id="sbTemplates"></div>
+    </div>
+
+    <div class="sb-card">
+        <h3><i class="fas fa-rocket" style="color:#22c55e"></i> Yeni Sandbox Başlat</h3>
+        <div class="sb-launch-section">
+            <div class="sb-config">
+                <div class="sb-config-row"><label>Şablon:</label><select id="sbTmplSelect"><option>Ollama + WebUI</option><option>PostgreSQL + pgAdmin</option><option>Redis + Commander</option><option>WordPress + MySQL</option><option>Python ML Lab</option><option>Node.js API</option></select></div>
+                <div class="sb-config-row"><label>RAM:</label><select><option>512MB</option><option selected>1GB</option><option>2GB</option><option>4GB</option></select></div>
+                <div class="sb-config-row"><label>Süre:</label><select><option selected>5 dakika</option><option>10 dakika</option><option>15 dakika</option></select></div>
+            </div>
+            <button class="sb-launch-btn" onclick="launchSandbox()"><i class="fas fa-play" style="font-size:20px"></i>Başlat<small>~2.4s hazır</small></button>
+        </div>
+        <div class="sb-terminal" id="sbTerminal"></div>
+    </div>
+
+    <div class="sb-card">
+        <h3><i class="fas fa-layer-group" style="color:#f59e0b"></i> Aktif Sandbox'lar</h3>
+        <div class="sb-active" id="sbActive"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templates=[
+    {icon:'🧠',bg:'rgba(147,51,234,.12)',name:'Ollama + WebUI',cat:'AI / LLM',desc:'Ollama LLM engine + Open WebUI arayüzü ile yerel AI modelleri test edin.',tags:[{text:'GPU',bg:'#9333ea'},{text:'AI',bg:'#6366f1'}],time:'~3s hazır'},
+    {icon:'🐘',bg:'rgba(59,130,246,.12)',name:'PostgreSQL + pgAdmin',cat:'Veritabanı',desc:'PostgreSQL 16 + pgAdmin web arayüzü ile veritabanı şemalarını test edin.',tags:[{text:'DB',bg:'#3b82f6'},{text:'Web UI',bg:'#22c55e'}],time:'~2s hazır'},
+    {icon:'🔴',bg:'rgba(239,68,68,.12)',name:'Redis + Commander',cat:'Cache / NoSQL',desc:'Redis 7 + Redis Commander ile cache stratejilerini deneyin.',tags:[{text:'Cache',bg:'#ef4444'},{text:'NoSQL',bg:'#f59e0b'}],time:'~1.5s hazır'},
+    {icon:'📝',bg:'rgba(59,130,246,.12)',name:'WordPress + MySQL',cat:'CMS',desc:'WordPress + MySQL hazır ortamda tema ve eklenti geliştirme.',tags:[{text:'CMS',bg:'#3b82f6'},{text:'PHP',bg:'#6366f1'}],time:'~4s hazır'},
+    {icon:'🐍',bg:'rgba(34,197,94,.12)',name:'Python ML Lab',cat:'Machine Learning',desc:'JupyterLab + PyTorch + scikit-learn ile ML deneyleri yapın.',tags:[{text:'ML',bg:'#22c55e'},{text:'Python',bg:'#f59e0b'}],time:'~5s hazır'},
+    {icon:'💚',bg:'rgba(34,197,94,.12)',name:'Node.js API',cat:'Backend',desc:'Express.js + MongoDB hazır API geliştirme ortamı.',tags:[{text:'API',bg:'#22c55e'},{text:'Node',bg:'#6366f1'}],time:'~2s hazır'}
+];
+let selectedTmpl=0;
+document.getElementById('sbTemplates').innerHTML=templates.map((t,i)=>'<div class="sb-tmpl'+(i===0?' selected':'')+'" onclick="selectTmpl('+i+')"><div class="sb-tmpl-header"><div class="sb-tmpl-icon" style="background:'+t.bg+'">'+t.icon+'</div><div><div class="sb-tmpl-name">'+t.name+'</div><div class="sb-tmpl-cat">'+t.cat+'</div></div></div><div class="sb-tmpl-desc">'+t.desc+'</div><div class="sb-tmpl-meta">'+t.tags.map(tg=>'<span class="sb-tmpl-tag" style="background:'+tg.bg+'22;color:'+tg.bg+'">'+tg.text+'</span>').join('')+'<span class="sb-tmpl-timer"><i class="fas fa-clock"></i> '+t.time+'</span></div></div>').join('');
+
+function selectTmpl(i){
+    selectedTmpl=i;
+    document.querySelectorAll('.sb-tmpl').forEach((el,idx)=>el.classList.toggle('selected',idx===i));
+    document.getElementById('sbTmplSelect').selectedIndex=i;
+}
+
+const activeSandboxes=[
+    {icon:'🧠',bg:'rgba(147,51,234,.12)',name:'Ollama + WebUI',status:'Çalışıyor',statusBg:'#22c55e',port:'9378',ram:'1.2GB / 2GB',time:'3:42'},
+    {icon:'🐘',bg:'rgba(59,130,246,.12)',name:'PostgreSQL + pgAdmin',status:'Çalışıyor',statusBg:'#22c55e',port:'5432',ram:'512MB / 1GB',time:'2:15'},
+    {icon:'🔴',bg:'rgba(239,68,68,.12)',name:'Redis + Commander',status:'Çalışıyor',statusBg:'#22c55e',port:'6379',ram:'128MB / 512MB',time:'4:58'}
+];
+function renderActive(){
+    document.getElementById('sbActive').innerHTML=activeSandboxes.map((s,i)=>'<div class="sb-sandbox"><div class="sb-sandbox-header"><div class="sb-sandbox-icon" style="background:'+s.bg+'">'+s.icon+'</div><div style="flex:1"><div class="sb-sandbox-name">'+s.name+'</div><span class="sb-sandbox-status" style="background:'+s.statusBg+'22;color:'+s.statusBg+'">'+s.status+'</span></div></div><div class="sb-sandbox-meta"><span><i class="fas fa-network-wired"></i> :'+s.port+'</span><span><i class="fas fa-memory"></i> '+s.ram+'</span></div><div class="sb-sandbox-timer" id="timer-'+i+'">⏱️ '+s.time+' kaldı</div><div class="sb-sandbox-actions"><button style="background:#3b82f622;color:#3b82f6" onclick="window.open(\'#\')"><i class="fas fa-external-link"></i> Aç</button><button style="background:#f59e0b22;color:#f59e0b"><i class="fas fa-clock-rotate-left"></i> Uzat</button><button style="background:#ef444422;color:#ef4444" onclick="destroySandbox('+i+')"><i class="fas fa-trash"></i> Sil</button></div></div>').join('');
+}
+renderActive();
+
+function launchSandbox(){
+    const term=document.getElementById('sbTerminal');
+    const btn=event.target.closest('.sb-launch-btn');
+    const tmpl=templates[selectedTmpl];
+    term.style.display='block';
+    term.innerHTML='';
+    btn.disabled=true;
+    btn.style.opacity='.6';
+    const lines=[
+        {text:'$ lxc launch ubuntu:22.04 sandbox-'+Date.now(),cls:'cmd',delay:0},
+        {text:'Creating container...',cls:'warn',delay:400},
+        {text:'Container created successfully',cls:'ok',delay:900},
+        {text:'$ lxc exec sandbox -- apt install -y '+tmpl.name.split(' ')[0].toLowerCase(),cls:'cmd',delay:1200},
+        {text:'Installing packages...',cls:'warn',delay:1500},
+        {text:'Package installation complete',cls:'ok',delay:2000},
+        {text:'$ lxc exec sandbox -- systemctl start '+tmpl.name.split(' ')[0].toLowerCase(),cls:'cmd',delay:2200},
+        {text:'Service started on port '+['11434','5432','6379','80','8888','3000'][selectedTmpl],cls:'ok',delay:2500},
+        {text:'✅ Sandbox hazır! Erişim: http://localhost:'+['11434','5432','6379','80','8888','3000'][selectedTmpl],cls:'ok',delay:2800}
+    ];
+    lines.forEach(l=>{
+        setTimeout(()=>{
+            const div=document.createElement('div');
+            div.className=l.cls;
+            div.textContent=l.text;
+            term.appendChild(div);
+            term.scrollTop=term.scrollHeight;
+        },l.delay);
+    });
+    setTimeout(()=>{
+        btn.disabled=false;
+        btn.style.opacity='1';
+    },3000);
+}
+
+function destroySandbox(i){
+    activeSandboxes.splice(i,1);
+    renderActive();
+}
+</script>
+{% endblock %}

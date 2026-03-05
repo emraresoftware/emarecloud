@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% block title %}AI App Builder - EmareCloud{% endblock %}
+{% block page_title %}AI App Builder{% endblock %}
+
+{% block head %}
+<style>
+    .builder-hero {
+        background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(99,102,241,0.05) 50%, rgba(171,71,188,0.06) 100%);
+        border: 1px solid rgba(139,92,246,0.15);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .builder-hero::before {
+        content: '';
+        position: absolute; top: -50px; right: -50px;
+        width: 200px; height: 200px;
+        background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(171,71,188,0.08));
+        border-radius: 50%;
+        filter: blur(60px);
+    }
+    .builder-hero h2 {
+        font-size: 1.4rem; font-weight: 800; margin: 0 0 0.5rem 0;
+        background: linear-gradient(135deg, #9333ea, #818cf8, #c084fc);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .builder-hero p { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
+
+    /* Wizard Steps */
+    .builder-steps {
+        display: flex; gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .builder-step {
+        flex: 1;
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.8rem 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    .builder-step.active {
+        border-color: rgba(139,92,246,0.4);
+        background: rgba(139,92,246,0.06);
+    }
+    .builder-step.done {
+        border-color: rgba(34,197,94,0.3);
+        background: rgba(34,197,94,0.04);
+    }
+    .builder-step-num {
+        width: 28px; height: 28px; min-width: 28px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.82rem;
+        background: rgba(148,163,184,0.12);
+        color: var(--text-muted);
+    }
+    .builder-step.active .builder-step-num {
+        background: #8b5cf6; color: white;
+    }
+    .builder-step.done .builder-step-num {
+        background: #22c55e; color: white;
+    }
+    .builder-step-info { }
+    .builder-step-title { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+    .builder-step-desc { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* Main Builder Area */
+    .builder-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    @media (max-width: 900px) { .builder-grid { grid-template-columns: 1fr; } }
+
+    .builder-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .builder-panel-header {
+        padding: 0.8rem 1rem;
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: center; gap: 0.5rem;
+        font-weight: 700; font-size: 0.88rem;
+    }
+    .builder-panel-header i { color: #8b5cf6; }
+    .builder-panel-body { padding: 1rem; }
+
+    /* Chat-like AI input */
+    .builder-chat {
+        display: flex; flex-direction: column; gap: 0.5rem;
+        min-height: 300px;
+    }
+    .builder-chat-msg {
+        max-width: 85%; padding: 0.6rem 0.8rem;
+        border-radius: 10px; font-size: 0.82rem; line-height: 1.5;
+    }
+    .builder-chat-msg.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+    }
+    .builder-chat-msg.ai {
+        align-self: flex-start;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(148,163,184,0.1);
+        color: var(--text-primary);
+    }
+    .builder-chat-input-area {
+        display: flex; gap: 0.4rem; margin-top: auto;
+        padding-top: 0.8rem; border-top: 1px solid var(--border-color);
+    }
+    .builder-chat-input {
+        flex: 1;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 0.6rem 0.8rem;
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        outline: none;
+    }
+    .builder-chat-input:focus { border-color: #8b5cf6; }
+    .builder-chat-send {
+        padding: 0 1rem;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white; border: none; border-radius: 10px;
+        font-weight: 600; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .builder-chat-send:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,0.3); }
+
+    /* Preview panel */
+    .builder-preview-empty {
+        text-align: center; padding: 3rem 1rem; color: var(--text-muted);
+    }
+    .builder-preview-empty i { font-size: 3rem; opacity: 0.15; display: block; margin-bottom: 1rem; }
+
+    /* Template gallery */
+    .template-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.8rem; margin-top: 1rem;
+    }
+    .template-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+    }
+    .template-card:hover {
+        border-color: rgba(139,92,246,0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .template-card-emoji { font-size: 2rem; margin-bottom: 0.5rem; }
+    .template-card-title { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+    .template-card-desc { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .template-card-tag {
+        display: inline-block; margin-top: 0.4rem;
+        padding: 0.15rem 0.4rem; border-radius: 4px;
+        background: rgba(139,92,246,0.1); color: #9333ea;
+        font-size: 0.65rem; font-weight: 600;
+    }
+
+    /* Preview rendered app */
+    .app-preview {
+        background: #0a0e1a;
+        border-radius: 12px;
+        padding: 1rem;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+        color: #e2e8f0;
+        line-height: 1.6;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .app-preview .key { color: #67e8f9; }
+    .app-preview .val { color: #a5f3c4; }
+    .app-preview .comment { color: #64748b; }
+
+    /* Publish button */
+    .builder-publish-btn {
+        width: 100%;
+        padding: 0.7rem;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white; border: none; border-radius: 10px;
+        font-weight: 700; font-size: 0.9rem;
+        cursor: pointer; transition: all 0.2s;
+        margin-top: 1rem;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .builder-publish-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
+    .builder-publish-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="builder-hero">
+    <h2>✨ No-Code AI App Builder</h2>
+    <p>Yazılım bilmene gerek yok — AI ile uygulamanı oluştur, markete yayınla, kazanmaya başla.</p>
+</div>
+
+<!-- Steps -->
+<div class="builder-steps">
+    <div class="builder-step active" id="step1">
+        <div class="builder-step-num">1</div>
+        <div class="builder-step-info">
+            <div class="builder-step-title">Tanımla</div>
+            <div class="builder-step-desc">Ne yapmak istediğini anlat</div>
+        </div>
+    </div>
+    <div class="builder-step" id="step2">
+        <div class="builder-step-num">2</div>
+        <div class="builder-step-info">
+            <div class="builder-step-title">Yapılandır</div>
+            <div class="builder-step-desc">AI yapıyı oluştursun</div>
+        </div>
+    </div>
+    <div class="builder-step" id="step3">
+        <div class="builder-step-num">3</div>
+        <div class="builder-step-info">
+            <div class="builder-step-title">Yayınla</div>
+            <div class="builder-step-desc">Market'e koy, EP kazan</div>
+        </div>
+    </div>
+</div>
+
+<!-- Başlangıç: Şablon Galerisi -->
+<div class="section" id="templateSection">
+    <div class="section-header">
+        <h3><i class="fas fa-th-large"></i> Hızlı Başla — Şablon Seç</h3>
+    </div>
+    <div class="template-grid">
+        <div class="template-card" onclick="loadTemplate('chatbot')">
+            <div class="template-card-emoji">🤖</div>
+            <div class="template-card-title">AI Chatbot</div>
+            <div class="template-card-desc">Müşteri hizmetleri chatbot'u</div>
+            <span class="template-card-tag">AI + Web</span>
+        </div>
+        <div class="template-card" onclick="loadTemplate('api')">
+            <div class="template-card-emoji">⚡</div>
+            <div class="template-card-title">REST API</div>
+            <div class="template-card-desc">LLM destekli API sunucusu</div>
+            <span class="template-card-tag">API + AI</span>
+        </div>
+        <div class="template-card" onclick="loadTemplate('dashboard')">
+            <div class="template-card-emoji">📊</div>
+            <div class="template-card-title">Analytics Dashboard</div>
+            <div class="template-card-desc">Veri görselleştirme paneli</div>
+            <span class="template-card-tag">Dashboard</span>
+        </div>
+        <div class="template-card" onclick="loadTemplate('scraper')">
+            <div class="template-card-emoji">🕷️</div>
+            <div class="template-card-title">Web Scraper</div>
+            <div class="template-card-desc">AI destekli veri toplama</div>
+            <span class="template-card-tag">AI + Veri</span>
+        </div>
+        <div class="template-card" onclick="loadTemplate('bot')">
+            <div class="template-card-emoji">🤝</div>
+            <div class="template-card-title">Discord/Telegram Bot</div>
+            <div class="template-card-desc">AI sohbet botu</div>
+            <span class="template-card-tag">Bot + AI</span>
+        </div>
+        <div class="template-card" onclick="loadTemplate('custom')">
+            <div class="template-card-emoji">✏️</div>
+            <div class="template-card-title">Sıfırdan Oluştur</div>
+            <div class="template-card-desc">AI'ya ne istediğini anlat</div>
+            <span class="template-card-tag">Custom</span>
+        </div>
+    </div>
+</div>
+
+<!-- Builder Grid: Chat + Preview -->
+<div class="builder-grid" id="builderGrid" style="display:none;">
+    <!-- Sol: AI Chat -->
+    <div class="builder-panel">
+        <div class="builder-panel-header">
+            <i class="fas fa-brain"></i> AI Asistan
+        </div>
+        <div class="builder-panel-body">
+            <div class="builder-chat" id="builderChat">
+                <div class="builder-chat-msg ai">
+                    Merhaba! 👋 Hangi tür bir uygulama oluşturmak istediğini anlat. Örneğin:<br>
+                    • "Müşterilerle konuşan bir chatbot istiyorum"<br>
+                    • "Ürün fotoğraflarını analiz eden bir API"<br>
+                    • "CSV dosyasından rapor üreten bir dashboard"
+                </div>
+                <div class="builder-chat-input-area">
+                    <input type="text" class="builder-chat-input" id="builderInput"
+                           placeholder="Uygulamanı tanımla..."
+                           onkeydown="if(event.key==='Enter') builderSend()">
+                    <button class="builder-chat-send" onclick="builderSend()">
+                        <i class="fas fa-paper-plane"></i> Gönder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ: Uygulama Önizleme -->
+    <div class="builder-panel">
+        <div class="builder-panel-header">
+            <i class="fas fa-eye"></i> Uygulama Yapısı
+        </div>
+        <div class="builder-panel-body">
+            <div class="builder-preview-empty" id="previewEmpty">
+                <i class="fas fa-cubes"></i>
+                <p>Uygulamanızın yapısı burada görünecek.</p>
+                <p style="font-size: 0.72rem;">AI ile konuşarak uygulamanızı oluşturun.</p>
+            </div>
+            <div class="app-preview" id="appPreview" style="display:none;"></div>
+            <button class="builder-publish-btn" id="publishBtn" style="display:none;" onclick="publishApp()" disabled>
+                <i class="fas fa-rocket"></i> Market'e Yayınla (+300 EP)
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TEMPLATES = {
+    chatbot: {
+        name: 'AI Chatbot',
+        message: 'Müşterilerimle konuşan bir AI chatbot istiyorum. Web sayfamda çalışsın.',
+        config: {
+            name: 'ai-chatbot-app',
+            type: 'Chatbot',
+            stack: ['Docker', 'Ollama', 'Open WebUI', 'Nginx'],
+            features: ['Doğal dil anlama', 'Çoklu dil desteği', 'Sohbet geçmişi', 'Web widget'],
+            ports: { web: 3000, api: 8080, llm: 11434 },
+        },
+    },
+    api: {
+        name: 'REST API',
+        message: 'LLM destekli bir REST API istiyorum. Metin analizi ve özetleme yapsın.',
+        config: {
+            name: 'ai-api-server',
+            type: 'API Server',
+            stack: ['Docker', 'Ollama', 'LocalAI', 'Nginx', 'Redis'],
+            features: ['OpenAI uyumlu API', 'Rate limiting', 'API key auth', 'Metin özetleme'],
+            ports: { api: 8080, llm: 11434, cache: 6379 },
+        },
+    },
+    dashboard: {
+        name: 'Analytics Dashboard',
+        message: 'Verilerimi görselleştiren bir dashboard istiyorum.',
+        config: {
+            name: 'analytics-dashboard',
+            type: 'Dashboard',
+            stack: ['Docker', 'Grafana', 'PostgreSQL', 'Nginx'],
+            features: ['Gerçek zamanlı grafikler', 'CSV import', 'Alarm kuralları', 'PDF rapor'],
+            ports: { web: 3000, db: 5432 },
+        },
+    },
+    scraper: {
+        name: 'Web Scraper',
+        message: 'Web sitelerinden veri toplayan AI destekli bir scraper istiyorum.',
+        config: {
+            name: 'ai-web-scraper',
+            type: 'Scraper',
+            stack: ['Docker', 'Python3', 'Redis', 'PostgreSQL'],
+            features: ['AI veri çıkarma', 'Zamanlayıcı', 'Proxy desteği', 'JSON/CSV export'],
+            ports: { api: 5000, db: 5432 },
+        },
+    },
+    bot: {
+        name: 'Chat Bot',
+        message: 'Discord veya Telegram için AI sohbet botu istiyorum.',
+        config: {
+            name: 'ai-chat-bot',
+            type: 'Chat Bot',
+            stack: ['Docker', 'Ollama', 'Python3', 'Redis'],
+            features: ['AI yanıtlar', 'Komut sistemi', 'Çoklu kanal', 'Moderasyon'],
+            ports: { api: 5000, llm: 11434 },
+        },
+    },
+    custom: {
+        name: 'Özel Uygulama',
+        message: '',
+        config: null,
+    },
+};
+
+let currentConfig = null;
+
+function loadTemplate(key) {
+    const tpl = TEMPLATES[key];
+    document.getElementById('templateSection').style.display = 'none';
+    document.getElementById('builderGrid').style.display = 'grid';
+
+    // Step güncelle
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step1').classList.add('done');
+    document.getElementById('step2').classList.add('active');
+
+    if (tpl.config) {
+        currentConfig = tpl.config;
+        // AI mesajı ekle
+        addChatMsg('user', tpl.message);
+        setTimeout(function() {
+            addChatMsg('ai', '✅ Anladım! <strong>' + tpl.name + '</strong> için yapıyı oluşturuyorum...');
+            setTimeout(function() {
+                renderPreview(tpl.config);
+                addChatMsg('ai', 'Uygulama yapısı hazır! Sağ paneldeki önizlemeyi inceleyin.<br><br>' +
+                    'Değişiklik isterseniz yazın, yoksa <strong>"Yayınla"</strong> butonuna basın.');
+            }, 800);
+        }, 500);
+    } else {
+        document.getElementById('builderInput').focus();
+    }
+}
+
+function builderSend() {
+    const input = document.getElementById('builderInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    addChatMsg('user', msg);
+
+    // AI yanıtı simüle et
+    setTimeout(function() {
+        if (!currentConfig) {
+            currentConfig = {
+                name: 'custom-app-' + Date.now().toString(36).slice(-4),
+                type: 'Custom AI App',
+                stack: ['Docker', 'Ollama', 'Python3', 'Nginx'],
+                features: extractFeatures(msg),
+                ports: { web: 3000, api: 8080 },
+            };
+            addChatMsg('ai', '✅ İsteğinizi analiz ettim. Özel uygulama yapısı oluşturuldu!<br><br>' +
+                'Sağdaki önizlemeyi inceleyin. Değişiklik isterseniz yazabilirsiniz.');
+            renderPreview(currentConfig);
+        } else {
+            // Config güncelle
+            var features = extractFeatures(msg);
+            currentConfig.features = currentConfig.features.concat(features);
+            addChatMsg('ai', 'Yapıyı güncelledim: <strong>' + features.join(', ') + '</strong> eklendi.');
+            renderPreview(currentConfig);
+        }
+    }, 600);
+}
+
+function extractFeatures(text) {
+    var features = [];
+    var keywords = {
+        'chatbot': 'AI Chatbot', 'chat': 'Sohbet', 'api': 'REST API',
+        'database': 'Veritabanı', 'veritabanı': 'Veritabanı',
+        'auth': 'Kimlik doğrulama', 'login': 'Giriş sistemi',
+        'dashboard': 'Dashboard', 'grafik': 'Grafikler',
+        'dosya': 'Dosya yönetimi', 'upload': 'Dosya yükleme',
+        'bildirim': 'Bildirimler', 'notification': 'Bildirimler',
+        'arama': 'Arama', 'search': 'Arama motoru',
+        'rapor': 'Rapor üretimi', 'report': 'Raporlama',
+        'mail': 'E-posta entegrasyonu', 'email': 'E-posta',
+    };
+    var lower = text.toLowerCase();
+    for (var kw in keywords) {
+        if (lower.indexOf(kw) !== -1) features.push(keywords[kw]);
+    }
+    if (features.length === 0) features.push(text.substring(0, 30));
+    return features;
+}
+
+function addChatMsg(role, html) {
+    var chat = document.getElementById('builderChat');
+    var inputArea = chat.querySelector('.builder-chat-input-area');
+    var msg = document.createElement('div');
+    msg.className = 'builder-chat-msg ' + role;
+    msg.innerHTML = html;
+    chat.insertBefore(msg, inputArea);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function renderPreview(config) {
+    document.getElementById('previewEmpty').style.display = 'none';
+    var preview = document.getElementById('appPreview');
+    preview.style.display = 'block';
+
+    var html = '<span class="comment"># ' + (config.name || 'app') + ' — EmareCloud App</span>\n\n';
+    html += '<span class="key">name:</span> <span class="val">' + config.name + '</span>\n';
+    html += '<span class="key">type:</span> <span class="val">' + config.type + '</span>\n\n';
+    html += '<span class="key">stack:</span>\n';
+    (config.stack || []).forEach(function(s) {
+        html += '  - <span class="val">' + s + '</span>\n';
+    });
+    html += '\n<span class="key">features:</span>\n';
+    (config.features || []).forEach(function(f) {
+        html += '  - <span class="val">' + f + '</span>\n';
+    });
+    html += '\n<span class="key">ports:</span>\n';
+    if (config.ports) {
+        for (var k in config.ports) {
+            html += '  <span class="key">' + k + ':</span> <span class="val">' + config.ports[k] + '</span>\n';
+        }
+    }
+    html += '\n<span class="comment"># Yayınlandığında +300 EP kazanırsınız</span>';
+    preview.innerHTML = html;
+
+    // Publish butonu göster
+    var btn = document.getElementById('publishBtn');
+    btn.style.display = 'flex';
+    btn.disabled = false;
+
+    // Step güncelle
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step2').classList.add('done');
+    document.getElementById('step3').classList.add('active');
+}
+
+function publishApp() {
+    var btn = document.getElementById('publishBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yayınlanıyor...';
+
+    setTimeout(function() {
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Yayınlandı! +300 EP 🎉';
+        btn.style.background = 'linear-gradient(135deg, #059669, #047857)';
+
+        addChatMsg('ai', '🎉 <strong>Tebrikler!</strong> Uygulamanız markete yayınlandı ve <strong>300 EP</strong> kazandınız!<br><br>' +
+            '<a href="/market" style="color:#818cf8;">Market\'te görüntüle →</a>');
+
+        // Step güncelle
+        document.getElementById('step3').classList.remove('active');
+        document.getElementById('step3').classList.add('done');
+    }, 1500);
+}
+</script>
+{% endblock %}
