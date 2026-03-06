@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+python3 ceyiz_hazirla.py \
+  --name "Yeni Proje" \
+  --slug "yeniproje" \
+  --stack python \
+  --path /Users/emre/Desktop/Emare/yeniproje#!/usr/bin/env python3
 """
 ╔═══════════════════════════════════════════════════════════════════╗
 ║  EmareCloud — Yeni Derviş Çeyiz Hazırlama Scripti                ║
@@ -154,7 +158,96 @@ ENV_GENERATORS = {
 }
 
 
-def create_project_files(project_path: Path, slug: str, port: int, stack: str, dry_run: bool):
+def _deploy_json(slug: str, name: str, port: int, stack: str, dc: str, path_str: str) -> str:
+    """Yeni proje için deploy.json içeriğini üretir."""
+    # stack → gunicorn suffix mapping
+    stack_map = {
+        'python': 'python-gunicorn',
+        'node':   'node-pm2',
+        'php':    'php-laravel',
+        'docker': 'docker',
+        'go':     'python-gunicorn',
+        'rust':   'python-gunicorn',
+        'ruby':   'python-gunicorn',
+        'java':   'docker',
+        'other':  'python-gunicorn',
+    }
+    full_stack = stack_map.get(stack, 'python-gunicorn')
+
+    dc_hosts = {
+        'dc1': {'host': '185.189.54.104', 'ssh_port': 22},
+        'dc2': {'host': '77.92.152.3',    'ssh_port': 2222},
+        'dc3': {'host': None,             'ssh_port': 22},
+        'local': {'host': None,           'ssh_port': 22},
+    }
+    dc_info = dc_hosts.get(dc, {'host': None, 'ssh_port': 22})
+
+    remote = f'/var/www/{slug}' if dc in ('dc2', 'dc3') else f'/opt/{slug}'
+
+    # Deploy komutları
+    branch = 'main'
+    if full_stack == 'python-gunicorn':
+        cmds = [
+            f'cd {remote}',
+            f'git pull origin {branch}',
+            'source venv/bin/activate && pip install -r requirements.txt -q',
+            f'sudo systemctl restart {slug}',
+        ]
+        restart = f'systemctl status {slug} --no-pager'
+    elif full_stack == 'php-laravel':
+        cmds = [
+            f'cd {remote}',
+            f'git pull origin {branch}',
+            'composer install --no-dev --optimize-autoloader --no-interaction -q',
+            'php artisan migrate --force',
+            'php artisan config:cache',
+            'php artisan route:cache',
+            'php artisan view:cache',
+            f'chown -R nginx:nginx {remote}/storage {remote}/bootstrap/cache',
+        ]
+        restart = 'systemctl reload nginx'
+    elif full_stack == 'node-pm2':
+        cmds = [
+            f'cd {remote}',
+            f'git pull origin {branch}',
+            'npm ci --silent',
+            f'pm2 restart {slug} || pm2 start ecosystem.config.js',
+        ]
+        restart = f'pm2 status {slug}'
+    elif full_stack == 'docker':
+        cmds = [
+            f'cd {remote}',
+            f'git pull origin {branch}',
+            'docker-compose pull',
+            'docker-compose up -d --remove-orphans',
+        ]
+        restart = 'docker-compose ps'
+    else:
+        cmds = [f'cd {remote}', f'git pull origin {branch}']
+        restart = ''
+
+    manifest = {
+        'slug':               slug,
+        'name':               name,
+        'github_repo':        f'emraresoftware/{slug}',
+        'branch':             branch,
+        'dc':                 dc,
+        'server_host':        dc_info['host'],
+        'server_ssh_port':    dc_info['ssh_port'],
+        'remote_path':        remote,
+        'stack':              full_stack,
+        'port':               port,
+        'domain':             '',
+        'deploy_commands':    cmds,
+        'restart_command':    restart,
+        'auto_deploy_on_push': False,
+        'health_check_url':   None,
+    }
+    return json.dumps(manifest, indent=2, ensure_ascii=False) + '\n'
+
+
+def create_project_files(project_path: Path, slug: str, port: int, stack: str, dry_run: bool,
+                         name: str = None, dc: str = 'dc1'):
     """Proje klasöründe temel dosyaları oluştur."""
     if dry_run:
         print(f"  [dry-run] Dosyalar oluşturulmayacak — sadece port tahsis edildi.")
@@ -188,6 +281,15 @@ def create_project_files(project_path: Path, slug: str, port: int, stack: str, d
         if not gc_file.exists():
             gc_file.write_text(_gunicorn_conf(port), encoding='utf-8')
             print(f"  ✅ gunicorn.conf.py oluşturuldu")
+
+    # deploy.json — merkezi deploy manifesti
+    dj_file = project_path / 'deploy.json'
+    if not dj_file.exists():
+        dj_content = _deploy_json(slug, name or slug, port, stack, dc, str(project_path))
+        dj_file.write_text(dj_content, encoding='utf-8')
+        print(f"  ✅ deploy.json oluşturuldu  (port={port}, dc={dc}, stack={stack})")
+    else:
+        print(f"  ⏭  deploy.json zaten var, atlandı")
 
     # README
     readme = project_path / 'README.md'
@@ -282,7 +384,8 @@ def main():
         project_path = Path(args.path)
         print()
         print(f"📁 Proje dosyaları oluşturuluyor: {project_path}")
-        create_project_files(project_path, args.slug, allocated_port, args.stack, args.dry_run)
+        create_project_files(project_path, args.slug, allocated_port, args.stack, args.dry_run,
+                             name=args.name, dc=args.dc)
 
     # 3. Özet
     print()

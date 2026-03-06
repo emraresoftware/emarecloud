@@ -1222,3 +1222,59 @@ class PortRegistry(db.Model):
             'created_at':   self.created_at.isoformat() if self.created_at else None,
         }
 
+
+# ==================== DEPLOY JOB ====================
+
+class DeployJob(db.Model):
+    """
+    Merkezi Deploy İş Kaydı.
+    Her deploy girişimi buraya loglanır.
+    Kimse manuel SSH ile deploy yapamaz — tüm deploy'lar panel üzerinden tetiklenir.
+    Manuel deploy yasaktır; ceza uygulanır (Anayasa Madde 7).
+    """
+    __tablename__ = 'deploy_jobs'
+
+    STATUS_PENDING  = 'pending'
+    STATUS_RUNNING  = 'running'
+    STATUS_SUCCESS  = 'success'
+    STATUS_FAILED   = 'failed'
+    STATUS_SKIPPED  = 'skipped'
+
+    id              = db.Column(db.Integer, primary_key=True)
+    project_slug    = db.Column(db.String(100), nullable=False, index=True)
+    project_name    = db.Column(db.String(200), nullable=True)
+    triggered_by    = db.Column(db.String(30), default='manual')     # manual/webhook/api/schedule
+    triggered_user  = db.Column(db.String(100), nullable=True)       # username veya "github-webhook"
+    branch          = db.Column(db.String(100), default='main')
+    commit_hash     = db.Column(db.String(40), nullable=True)
+    commit_message  = db.Column(db.String(500), nullable=True)
+    server_host     = db.Column(db.String(100), nullable=True)
+    stack           = db.Column(db.String(50), nullable=True)
+    status          = db.Column(db.String(20), default=STATUS_PENDING, nullable=False, index=True)
+    output_log      = db.Column(db.Text, nullable=True)
+    error_message   = db.Column(db.String(1000), nullable=True)
+    duration_sec    = db.Column(db.Float, nullable=True)
+    started_at      = db.Column(db.DateTime, nullable=True)
+    finished_at     = db.Column(db.DateTime, nullable=True)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            'id':             self.id,
+            'project_slug':   self.project_slug,
+            'project_name':   self.project_name,
+            'triggered_by':   self.triggered_by,
+            'triggered_user': self.triggered_user,
+            'branch':         self.branch,
+            'commit_hash':    self.commit_hash,
+            'commit_message': self.commit_message,
+            'server_host':    self.server_host,
+            'stack':          self.stack,
+            'status':         self.status,
+            'output_log':     (self.output_log or '')[-3000:],
+            'error_message':  self.error_message,
+            'duration_sec':   self.duration_sec,
+            'started_at':     self.started_at.isoformat() if self.started_at else None,
+            'finished_at':    self.finished_at.isoformat() if self.finished_at else None,
+            'created_at':     self.created_at.isoformat() if self.created_at else None,
+        }
