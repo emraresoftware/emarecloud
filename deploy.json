@@ -1,0 +1,22 @@
+{
+  "slug": "emarecloud",
+  "name": "EmareCloud Panel",
+  "github_repo": "emraresoftware/emarecloud",
+  "branch": "main",
+  "dc": "dc1",
+  "server_host": "185.189.54.104",
+  "server_ssh_port": 22,
+  "remote_path": "/opt/emarecloud",
+  "stack": "python-gunicorn",
+  "port": 5555,
+  "domain": "emarecloud.tr",
+  "deploy_commands": [
+    "cd /opt/emarecloud",
+    "git pull origin main",
+    "source venv/bin/activate && pip install -r requirements.txt -q",
+    "sudo systemctl restart emarecloud"
+  ],
+  "restart_command": "systemctl status emarecloud --no-pager",
+  "auto_deploy_on_push": true,
+  "health_check_url": "https://emarecloud.tr/api/health"
+}
