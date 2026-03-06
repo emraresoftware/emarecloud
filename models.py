@@ -1112,3 +1112,113 @@ class WebDizaynClient(db.Model):
             'created_at':  self.created_at.strftime('%d.%m.%Y') if self.created_at else None,
         }
 
+
+# ==================== PORT REGISTRY ====================
+
+class PortRegistry(db.Model):
+    """
+    Merkezi Port Kayıt Defteri.
+    Her Derviş projesi bu tablodan port tahsis alır.
+    Manuel port atama yasaktır; panel üzerinden tahsis zorunludur.
+    """
+    __tablename__ = 'port_registry'
+
+    # Port aralıkları
+    PORT_MIN     = 8000
+    PORT_MAX     = 9999
+    RESERVED_PORTS = {5555, 8000, 3000, 3001, 3002, 3003,
+                      5432, 6379, 7474, 7687, 9378, 11434}
+
+    # Durum seçenekleri
+    STATUS_FREE      = 'free'       # Serbest, tahsis edilmemiş
+    STATUS_ALLOCATED = 'allocated'  # Tahsis edilmiş, aktif kullanımda
+    STATUS_RESERVED  = 'reserved'   # Sistem tarafından ayrılmış
+    STATUS_RELEASED  = 'released'   # Serbest bırakılmış (eski kayıt)
+
+    id            = db.Column(db.Integer, primary_key=True)
+    port          = db.Column(db.Integer,  unique=True, nullable=False, index=True)
+    project_name  = db.Column(db.String(200), nullable=False)
+    project_slug  = db.Column(db.String(100), nullable=False, index=True)
+    project_path  = db.Column(db.String(500), nullable=True)   # Yerel disk yolu
+    dc            = db.Column(db.String(20),  nullable=True)   # dc1 / dc2 / dc3 / local
+    stack         = db.Column(db.String(50),  nullable=True)   # python / node / php / docker
+    description   = db.Column(db.String(500), nullable=True)
+    status        = db.Column(db.String(20),  default=STATUS_ALLOCATED, nullable=False)
+    allocated_by  = db.Column(db.String(200), nullable=True)   # username veya "system"
+    allocated_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    released_at   = db.Column(db.DateTime, nullable=True)
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @classmethod
+    def next_free_port(cls) -> int:
+        """Kullanılmayan en küçük portu döndürür (PORT_MIN–PORT_MAX arasında)."""
+        used = {r.port for r in cls.query.filter(
+            cls.status.in_([cls.STATUS_ALLOCATED, cls.STATUS_RESERVED])
+        ).all()}
+        used |= cls.RESERVED_PORTS
+        for p in range(cls.PORT_MIN, cls.PORT_MAX + 1):
+            if p not in used:
+                return p
+        raise ValueError("Kullanılabilir port kalmadı (8000–9999 dolu)")
+
+    @classmethod
+    def allocate(cls, project_name: str, project_slug: str,
+                 project_path: str = None, dc: str = None,
+                 stack: str = None, description: str = None,
+                 allocated_by: str = 'system',
+                 preferred_port: int = None) -> 'PortRegistry':
+        """
+        Yeni proje için port tahsis et.
+        preferred_port verilirse o port denenır; doluysa hata fırlatır.
+        """
+        if preferred_port:
+            # Tercih edilen port serbest mi?
+            if preferred_port in cls.RESERVED_PORTS:
+                raise ValueError(f"Port {preferred_port} sistem tarafından rezerve edilmiş.")
+            existing = cls.query.filter_by(port=preferred_port).first()
+            if existing and existing.status in (cls.STATUS_ALLOCATED, cls.STATUS_RESERVED):
+                raise ValueError(f"Port {preferred_port} zaten kullanımda: {existing.project_name}")
+            port = preferred_port
+        else:
+            port = cls.next_free_port()
+
+        record = cls(
+            port=port,
+            project_name=project_name,
+            project_slug=project_slug,
+            project_path=project_path,
+            dc=dc or 'dc1',
+            stack=stack or 'python',
+            description=description,
+            status=cls.STATUS_ALLOCATED,
+            allocated_by=allocated_by,
+            allocated_at=datetime.utcnow(),
+        )
+        db.session.add(record)
+        db.session.commit()
+        return record
+
+    def release(self):
+        """Portu serbest bırak."""
+        self.status = self.STATUS_RELEASED
+        self.released_at = datetime.utcnow()
+        db.session.commit()
+
+    def to_dict(self) -> dict:
+        return {
+            'id':           self.id,
+            'port':         self.port,
+            'project_name': self.project_name,
+            'project_slug': self.project_slug,
+            'project_path': self.project_path,
+            'dc':           self.dc,
+            'stack':        self.stack,
+            'description':  self.description,
+            'status':       self.status,
+            'allocated_by': self.allocated_by,
+            'allocated_at': self.allocated_at.isoformat() if self.allocated_at else None,
+            'released_at':  self.released_at.isoformat() if self.released_at else None,
+            'created_at':   self.created_at.isoformat() if self.created_at else None,
+        }
+
