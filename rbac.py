@@ -76,6 +76,8 @@ ALL_PERMISSIONS = [
     'cloudflare.view',
     # Veri Merkezi (DC)
     'dc.view', 'dc.manage',
+    # Geliştirici Panosu
+    'scoreboard.view',
     # Admin Panel
     'admin_panel',
 ]
@@ -229,6 +231,14 @@ PERMISSION_GROUPS = [
         ],
     },
     {
+        'key': 'scoreboard',
+        'label': 'Geliştirici Panosu',
+        'icon': '🏆',
+        'perms': [
+            ('scoreboard.view', 'Panoyu Görüntüle'),
+        ],
+    },
+    {
         'key': 'admin',
         'label': 'Admin Panel',
         'icon': '⚙️',
@@ -260,6 +270,7 @@ PERMISSIONS = {
         'token.manage',
         'cloudflare.view',
         'dc.view', 'dc.manage',
+        'scoreboard.view',
     },
 
     'operator': {
@@ -277,6 +288,7 @@ PERMISSIONS = {
         'org.view',
         'plan.view',
         'token.manage',
+        'scoreboard.view',
     },
 
     'read_only': {
@@ -289,6 +301,7 @@ PERMISSIONS = {
         'monitoring.view',
         'org.view',
         'plan.view',
+        'scoreboard.view',
     },
 }
 

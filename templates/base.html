@@ -234,8 +234,24 @@
                 </a>
             </li>
             {% endif %}
-            {% if current_user.is_authenticated and (current_user.has_permission('cloudflare.view') or current_user.has_permission('dc.view')) %}
+            {% if current_user.is_authenticated and (current_user.has_permission('cloudflare.view') or current_user.has_permission('dc.view') or current_user.has_permission('scoreboard.view') or current_user.has_permission('terminal.access')) %}
             <li class="menu-section">Altyapı</li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('terminal.access') %}
+            <li class="menu-item {% if request.endpoint == 'pages.ide_page' %}active{% endif %}">
+                <a href="{% if servers|default([])|length > 0 %}/ide/{{ servers[0].get('id', '') }}{% else %}#{% endif %}">
+                    <i class="fas fa-laptop-code"></i>
+                    <span>Web IDE</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('scoreboard.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.scoreboard_page' %}active{% endif %}">
+                <a href="/scoreboard">
+                    <i class="fas fa-trophy"></i>
+                    <span>Geliştirici Panosu</span>
+                </a>
+            </li>
             {% endif %}
             {% if current_user.is_authenticated and current_user.has_permission('dc.view') %}
             <li class="menu-item {% if request.endpoint == 'pages.datacenters_page' %}active{% endif %}">
@@ -274,6 +290,12 @@
                 <a href="/admin/audit">
                     <i class="fas fa-clipboard-list"></i>
                     <span>Denetim Günlüğü</span>
+                </a>
+            </li>
+            <li class="menu-item {% if request.endpoint == 'feedback.feedback_admin' %}active{% endif %}">
+                <a href="/feedback">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>Geri Bildirimler</span>
                 </a>
             </li>
             {% if current_user.role == 'super_admin' %}
@@ -461,12 +483,12 @@
             <div class="ai-chat-msg bot">
                 <div class="ai-chat-msg-avatar"><i class="fas fa-robot"></i></div>
                 <div class="ai-chat-msg-bubble">
-                    Merhaba! 👋 Ben Emare AI asistanınız. Size nasıl yardımcı olabilirim?
+                    Merhaba! 👋 Ben Emare AI asistanınız. Sunucu yönetimi, komut açıklama veya EmareCloud hakkında her şeyi sorabilirsiniz.
                 </div>
             </div>
         </div>
         <div class="ai-chat-suggestions" id="aiChatSuggestions">
-            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">EP bakiyem ne kadar?</button>
+            <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">ET bakiyem ne kadar?</button>
             <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Sunucu durumum nasıl?</button>
             <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Hangi AI app'i kurmalıyım?</button>
             <button class="ai-chat-suggest-btn" onclick="aiChatAsk(this.textContent)">Maliyetimi nasıl düşürürüm?</button>
@@ -474,6 +496,153 @@
         <div class="ai-chat-input-area">
             <input type="text" class="ai-chat-input" id="aiChatInput" placeholder="Bir şey sorun..." onkeydown="if(event.key==='Enter')aiChatSend()">
             <button class="ai-chat-send" onclick="aiChatSend()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- ─── Geri Bildirim Floating Widget ─── -->
+    <div id="fbFab" onclick="toggleFeedback()" title="Sorun Bildir / Öneri"
+         style="position:fixed; bottom:90px; right:24px; z-index:9997;
+                width:52px; height:52px; border-radius:50%;
+                background:linear-gradient(135deg,#f59e0b,#ea580c);
+                display:flex; align-items:center; justify-content:center;
+                cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,.35);
+                transition:transform .2s;">
+        <i class="fas fa-comment-dots" style="color:#fff; font-size:20px;"></i>
+        <span id="fbUnreadDot" style="position:absolute; top:-2px; right:-2px;
+              width:14px; height:14px; background:#ef4444; border-radius:50%;
+              border:2px solid var(--bg-primary); display:none;"></span>
+    </div>
+
+    <div id="fbPanel" style="display:none; position:fixed; bottom:155px; right:24px; z-index:9997;
+         width:360px; max-height:calc(100vh - 170px); background:var(--bg-card);
+         border:1px solid var(--border-color); border-radius:18px;
+         box-shadow:0 20px 60px rgba(0,0,0,.4); overflow:hidden; flex-direction:column;">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#f59e0b,#ea580c); padding:14px 16px;
+                    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:34px; height:34px; background:rgba(255,255,255,.2); border-radius:10px;
+                            display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-comment-dots" style="color:#fff;"></i>
+                </div>
+                <div>
+                    <div style="font-weight:700; color:#fff; font-size:14px;">Geri Bildirim</div>
+                    <div style="font-size:11px; color:rgba(255,255,255,.8);">Sorun bildirin, önerin iletin</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:4px; align-items:center;">
+                <button onclick="fbSetTab('new')" id="fbTabNew"
+                        style="padding:4px 10px; border-radius:8px; font-size:12px; font-weight:600;
+                               border:none; cursor:pointer; background:rgba(255,255,255,.3); color:#fff;">
+                    <i class="fas fa-plus"></i> Yeni
+                </button>
+                <button onclick="fbSetTab('list')" id="fbTabList"
+                        style="padding:4px 10px; border-radius:8px; font-size:12px; font-weight:600;
+                               border:none; cursor:pointer; background:transparent; color:rgba(255,255,255,.8);">
+                    <i class="fas fa-list"></i> Geçmiş
+                </button>
+                <button onclick="toggleFeedback()"
+                        style="width:28px; height:28px; border:none; background:rgba(255,255,255,.15);
+                               color:#fff; border-radius:8px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB: Yeni -->
+        <div id="fbTabNewContent" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;">
+            <div style="background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); border-radius:8px; padding:8px 10px; font-size:12px; color:#d97706;">
+                <i class="fas fa-info-circle"></i> Karşılaştığınız sorunları veya önerilerinizi buradan iletin.
+            </div>
+
+            <!-- Kategori -->
+            <div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">Kategori</div>
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
+                    <button onclick="fbSetCat('bug')" id="fbCatBug"
+                            style="padding:8px 4px; border-radius:8px; border:1px solid #fca5a5; background:#fef2f2; color:#b91c1c; font-size:11px; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-bug" style="display:block; margin-bottom:2px;"></i>Hata
+                    </button>
+                    <button onclick="fbSetCat('suggestion')" id="fbCatSuggestion"
+                            style="padding:8px 4px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary); font-size:11px; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-lightbulb" style="display:block; margin-bottom:2px;"></i>Öneri
+                    </button>
+                    <button onclick="fbSetCat('question')" id="fbCatQuestion"
+                            style="padding:8px 4px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary); font-size:11px; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-question-circle" style="display:block; margin-bottom:2px;"></i>Soru
+                    </button>
+                    <button onclick="fbSetCat('other')" id="fbCatOther"
+                            style="padding:8px 4px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary); font-size:11px; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-comment" style="display:block; margin-bottom:2px;"></i>Diğer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Öncelik -->
+            <div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">Öncelik</div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="fbSetPri('low')" id="fbPriLow"
+                            style="flex:1; padding:6px 4px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);">Düşük</button>
+                    <button onclick="fbSetPri('normal')" id="fbPriNormal"
+                            style="flex:1; padding:6px 4px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid #93c5fd; background:#eff6ff; color:#1d4ed8;">Normal</button>
+                    <button onclick="fbSetPri('high')" id="fbPriHigh"
+                            style="flex:1; padding:6px 4px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);">Yüksek</button>
+                    <button onclick="fbSetPri('critical')" id="fbPriCritical"
+                            style="flex:1; padding:6px 4px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);">Kritik</button>
+                </div>
+            </div>
+
+            <!-- Mesaj -->
+            <div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">Açıklama</div>
+                <textarea id="fbMessage" rows="4" placeholder="Sorununuzu veya önerinizi detaylı yazın…"
+                          oninput="document.getElementById('fbCharCount').textContent=this.value.length+'/2000'"
+                          style="width:100%; background:var(--bg-secondary); border:1px solid var(--border-color);
+                                 border-radius:8px; color:var(--text-primary); padding:8px 10px; font-size:12px;
+                                 resize:vertical; min-height:80px; outline:none; box-sizing:border-box;"></textarea>
+                <div style="font-size:10px; color:var(--text-secondary); text-align:right; margin-top:2px;">
+                    <span id="fbCharCount">0/2000</span>
+                </div>
+            </div>
+
+            <!-- Sayfa bilgisi -->
+            <div style="font-size:11px; color:var(--text-secondary); background:var(--bg-secondary);
+                        border-radius:6px; padding:6px 10px; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-link"></i>
+                <span id="fbPageUrl" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+            </div>
+        </div>
+
+        <!-- Gönder -->
+        <div id="fbTabNewFooter" style="padding:12px 16px; border-top:1px solid var(--border-color); background:var(--bg-card); flex-shrink:0;">
+            <div id="fbSuccessMsg" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:8px;
+                                         padding:8px 10px; font-size:12px; color:#16a34a; margin-bottom:8px;">
+                <i class="fas fa-check-circle"></i> <span id="fbSuccessText"></span>
+            </div>
+            <div id="fbErrorMsg" style="display:none; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px;
+                                        padding:8px 10px; font-size:12px; color:#dc2626; margin-bottom:8px;">
+                <i class="fas fa-exclamation-circle"></i> <span id="fbErrorText"></span>
+            </div>
+            <button onclick="fbSubmit()" id="fbSendBtn"
+                    style="width:100%; padding:10px; border-radius:10px; border:none;
+                           background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff;
+                           font-size:13px; font-weight:700; cursor:pointer;">
+                <i class="fas fa-paper-plane"></i> Gönder
+            </button>
+        </div>
+
+        <!-- TAB: Geçmiş -->
+        <div id="fbTabListContent" style="flex:1; overflow-y:auto; padding:12px; display:none;">
+            <div id="fbListLoading" style="display:flex; align-items:center; justify-content:center; height:80px;">
+                <i class="fas fa-spinner fa-spin" style="color:#f59e0b; font-size:22px;"></i>
+            </div>
+            <div id="fbListEmpty" style="display:none; text-align:center; padding:40px 0;">
+                <i class="fas fa-inbox" style="font-size:32px; opacity:.3; display:block; margin-bottom:8px;"></i>
+                <div style="font-size:12px; color:var(--text-secondary);">Henüz geri bildirim göndermediniz.</div>
+            </div>
+            <div id="fbListItems"></div>
         </div>
     </div>
     {% endif %}

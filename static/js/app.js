@@ -458,18 +458,39 @@ function aiChatSend() {
     messages.appendChild(typing);
     messages.scrollTop = messages.scrollHeight;
 
-    // Simulate AI response (local intelligence)
-    setTimeout(() => {
+    // ── Gerçek AI API çağrısı (EmareAPI → Gemini) ──
+    fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+    })
+    .then(r => r.json())
+    .then(data => {
         const t = document.getElementById('aiTyping');
         if (t) t.remove();
-        const response = generateAIResponse(text);
+        const response = data.success
+            ? data.response
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,.1);padding:1px 4px;border-radius:3px;">$1</code>')
+                .replace(/\n/g, '<br>')
+            : (data.message || 'Bir hata oluştu.');
         const botMsg = document.createElement('div');
         botMsg.className = 'ai-chat-msg bot';
         botMsg.innerHTML = '<div class="ai-chat-msg-avatar"><i class="fas fa-robot"></i></div>' +
             '<div class="ai-chat-msg-bubble">' + response + '</div>';
         messages.appendChild(botMsg);
         messages.scrollTop = messages.scrollHeight;
-    }, 800 + Math.random() * 700);
+    })
+    .catch(() => {
+        const t = document.getElementById('aiTyping');
+        if (t) t.remove();
+        const botMsg = document.createElement('div');
+        botMsg.className = 'ai-chat-msg bot';
+        botMsg.innerHTML = '<div class="ai-chat-msg-avatar"><i class="fas fa-robot"></i></div>' +
+            '<div class="ai-chat-msg-bubble">⚠️ Bağlantı hatası. Lütfen tekrar deneyin.</div>';
+        messages.appendChild(botMsg);
+        messages.scrollTop = messages.scrollHeight;
+    });
 }
 
 function escapeHtml(str) {
@@ -569,4 +590,168 @@ function generateAIResponse(query) {
         '• <strong>Maliyet optimizasyonu</strong><br>' +
         '• <strong>Güvenlik</strong> ipuçları<br><br>' +
         'Daha spesifik bir soru sorarsanız daha detaylı yardımcı olabilirim! 😊';
+}
+// ═══════════════════════════════════════════════════════
+//  GERİ BİLDİRİM WIDGET
+// ═══════════════════════════════════════════════════════
+
+let _fbCat = 'bug';
+let _fbPri = 'normal';
+let _fbOpen = false;
+let _fbTab = 'new';
+
+function toggleFeedback() {
+    const panel = document.getElementById('fbPanel');
+    if (!panel) return;
+    _fbOpen = !_fbOpen;
+    panel.style.display = _fbOpen ? 'flex' : 'none';
+    if (_fbOpen) {
+        document.getElementById('fbPageUrl').textContent = window.location.pathname + window.location.search;
+        document.getElementById('fbMessage').focus();
+        // unread dot gizle
+        document.getElementById('fbUnreadDot').style.display = 'none';
+    }
+}
+
+function fbSetTab(tab) {
+    _fbTab = tab;
+    const newContent  = document.getElementById('fbTabNewContent');
+    const listContent = document.getElementById('fbTabListContent');
+    const newFooter   = document.getElementById('fbTabNewFooter');
+    const btnNew  = document.getElementById('fbTabNew');
+    const btnList = document.getElementById('fbTabList');
+
+    const activeStyle = 'background:rgba(255,255,255,.3); color:#fff;';
+    const inactiveStyle = 'background:transparent; color:rgba(255,255,255,.8);';
+
+    if (tab === 'new') {
+        newContent.style.display = 'flex';
+        newFooter.style.display = 'block';
+        listContent.style.display = 'none';
+        btnNew.style.cssText += activeStyle;
+        btnList.style.cssText += inactiveStyle;
+    } else {
+        newContent.style.display = 'none';
+        newFooter.style.display = 'none';
+        listContent.style.display = 'block';
+        btnNew.style.cssText += inactiveStyle;
+        btnList.style.cssText += activeStyle;
+        fbLoadList();
+    }
+}
+
+function fbSetCat(cat) {
+    _fbCat = cat;
+    ['bug','suggestion','question','other'].forEach(c => {
+        const btn = document.getElementById('fbCat' + c.charAt(0).toUpperCase() + c.slice(1));
+        if (!btn) return;
+        const isActive = c === cat;
+        const styles = {
+            bug:        isActive ? 'border:1px solid #fca5a5; background:#fef2f2; color:#b91c1c;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            suggestion: isActive ? 'border:1px solid #93c5fd; background:#eff6ff; color:#1d4ed8;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            question:   isActive ? 'border:1px solid #c4b5fd; background:#f5f3ff; color:#7c3aed;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            other:      isActive ? 'border:1px solid #d1d5db; background:#f9fafb; color:#374151;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+        };
+        btn.setAttribute('style', btn.getAttribute('style').replace(/border:[^;]+;|background:[^;]+;|color:[^;]+;/g,'') + styles[c]);
+    });
+}
+
+function fbSetPri(pri) {
+    _fbPri = pri;
+    ['low','normal','high','critical'].forEach(p => {
+        const btn = document.getElementById('fbPri' + p.charAt(0).toUpperCase() + p.slice(1));
+        if (!btn) return;
+        const isActive = p === pri;
+        const styles = {
+            low:      isActive ? 'border:1px solid #d1d5db; background:#f9fafb; color:#374151;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            normal:   isActive ? 'border:1px solid #93c5fd; background:#eff6ff; color:#1d4ed8;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            high:     isActive ? 'border:1px solid #fdba74; background:#fff7ed; color:#c2410c;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+            critical: isActive ? 'border:1px solid #fca5a5; background:#fef2f2; color:#b91c1c;' : 'border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-secondary);',
+        };
+        btn.setAttribute('style', btn.getAttribute('style').replace(/border:[^;]+;|background:[^;]+;|color:[^;]+;/g,'') + styles[p]);
+    });
+}
+
+async function fbSubmit() {
+    const msg = (document.getElementById('fbMessage').value || '').trim();
+    const successEl = document.getElementById('fbSuccessMsg');
+    const errorEl   = document.getElementById('fbErrorMsg');
+    successEl.style.display = 'none';
+    errorEl.style.display   = 'none';
+    if (!msg || msg.length < 3) {
+        document.getElementById('fbErrorText').textContent = 'Açıklama en az 3 karakter olmalı.';
+        errorEl.style.display = 'block'; return;
+    }
+    const btn = document.getElementById('fbSendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gönderiliyor…';
+    try {
+        const r = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message:  msg,
+                category: _fbCat,
+                priority: _fbPri,
+                page_url: window.location.href,
+            }),
+        });
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('fbSuccessText').textContent = d.message || 'Gönderildi!';
+            successEl.style.display = 'block';
+            document.getElementById('fbMessage').value = '';
+            document.getElementById('fbCharCount').textContent = '0/2000';
+            fbSetCat('bug');
+            fbSetPri('normal');
+        } else {
+            document.getElementById('fbErrorText').textContent = d.message || 'Hata oluştu.';
+            errorEl.style.display = 'block';
+        }
+    } catch(e) {
+        document.getElementById('fbErrorText').textContent = 'Ağ hatası. Lütfen tekrar deneyin.';
+        errorEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gönder';
+    }
+}
+
+async function fbLoadList() {
+    const loadingEl = document.getElementById('fbListLoading');
+    const emptyEl   = document.getElementById('fbListEmpty');
+    const itemsEl   = document.getElementById('fbListItems');
+    if (!loadingEl || !emptyEl || !itemsEl) return;
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display   = 'none';
+    itemsEl.innerHTML       = '';
+    try {
+        const r = await fetch('/api/feedback/my');
+        const d = await r.json();
+        loadingEl.style.display = 'none';
+        if (!d.success || !d.messages.length) {
+            emptyEl.style.display = 'block'; return;
+        }
+        const catColors = {bug:'#b91c1c',suggestion:'#1d4ed8',question:'#7c3aed',other:'#374151'};
+        const statusLabels = {open:'Açık',in_progress:'İnceleniyor',resolved:'Çözüldü',closed:'Kapatıldı'};
+        const statusColors = {open:'#d97706',in_progress:'#2563eb',resolved:'#16a34a',closed:'#6b7280'};
+        itemsEl.innerHTML = d.messages.map(m => `
+            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:11px; font-weight:700; color:${catColors[m.category]||'#374151'}; background:rgba(0,0,0,.05); padding:2px 7px; border-radius:5px;">
+                        <i class="fas ${m.category_icon}"></i> ${m.category_label}
+                    </span>
+                    <span style="font-size:11px; font-weight:600; color:${statusColors[m.status]||'#374151'};">${statusLabels[m.status]||m.status}</span>
+                </div>
+                <div style="font-size:12px; color:var(--text-primary); line-height:1.5; margin-bottom:4px;">${escapeHtml(m.message)}</div>
+                ${m.admin_reply ? `<div style="margin-top:6px; border-left:3px solid var(--accent-primary); padding:5px 8px; background:var(--bg-card); border-radius:0 6px 6px 0; font-size:11px; color:var(--text-secondary);">
+                    <i class="fas fa-reply" style="margin-right:4px;"></i>${escapeHtml(m.admin_reply)}
+                </div>` : ''}
+                <div style="font-size:10px; color:var(--text-secondary); margin-top:6px;">${m.created_at}</div>
+            </div>
+        `).join('');
+    } catch(e) {
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+    }
 }

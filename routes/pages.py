@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 
 from core.helpers import get_app_settings, get_server_by_id, get_servers_for_sidebar, monitor, ssh_mgr
 from license_manager import verify_license
-from market_apps import get_all_apps, get_apps_by_category, get_categories, get_stack_bundles
+from market_apps import get_all_apps, get_apps_by_category, get_categories, get_emare_projects, get_stack_bundles
 from rbac import permission_required, role_required
 
 pages_bp = Blueprint('pages', __name__)
@@ -68,7 +68,8 @@ def market_page():
                            apps=get_all_apps(),
                            categories=get_categories(),
                            apps_by_category=get_apps_by_category(),
-                           stacks=get_stack_bundles())
+                           stacks=get_stack_bundles(),
+                           emare_projects=get_emare_projects())
 
 
 @pages_bp.route('/app-builder')
@@ -210,6 +211,22 @@ def terminal_page(server_id):
         server['host'], server.get('port', 22))
     sv['connected'] = ssh_mgr.is_connected(server_id)
     return render_template('terminal.html', server=sv,
+                           servers=get_servers_for_sidebar())
+
+
+@pages_bp.route('/ide/<server_id>')
+@login_required
+@permission_required('terminal.access')
+def ide_page(server_id):
+    """Web IDE — VS Code benzeri tarayıcı tabanlı editör."""
+    server = get_server_by_id(server_id)
+    if not server:
+        return redirect(url_for('pages.dashboard'))
+    sv = {k: v for k, v in server.items() if k != 'password'}
+    sv['reachable'], sv['latency'] = ssh_mgr.check_server_reachable(
+        server['host'], server.get('port', 22))
+    sv['connected'] = ssh_mgr.is_connected(server_id)
+    return render_template('ide.html', server=sv,
                            servers=get_servers_for_sidebar())
 
 
@@ -389,6 +406,14 @@ def cloudflare_page():
 def datacenters_page():
     """Veri Merkezi (DC) yönetim sayfası."""
     return render_template('datacenters.html', servers=get_servers_for_sidebar())
+
+
+# ── Geliştirici Scoreboard ──────────────────────────────────
+@pages_bp.route('/scoreboard')
+@login_required
+def scoreboard_page():
+    """Geliştirici aktivite panosu."""
+    return render_template('scoreboard.html', servers=get_servers_for_sidebar())
 
 
 # ── Server Map ──────────────────────────────────────────────

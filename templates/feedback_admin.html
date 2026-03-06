@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Geri Bildirimler - EmareCloud{% endblock %}
+{% block page_title %}Geri Bildirim Yönetimi{% endblock %}
+
+{% block head %}
+<style>
+.fb-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+.fb-stat { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:18px 20px; display:flex; align-items:center; gap:14px; }
+.fb-stat-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.fb-stat-icon.orange { background:rgba(251,146,60,.15); color:#fb923c; }
+.fb-stat-icon.yellow { background:rgba(251,191,36,.15); color:#fbbf24; }
+.fb-stat-icon.blue   { background:rgba(96,165,250,.15);  color:#60a5fa; }
+.fb-stat-icon.green  { background:rgba(74,222,128,.15);  color:#4ade80; }
+.fb-stat-icon.red    { background:rgba(248,113,113,.15); color:#f87171; }
+.fb-stat-value { font-size:26px; font-weight:700; color:var(--text-primary); line-height:1; }
+.fb-stat-label { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+
+.fb-filters { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.fb-filters select, .fb-filters input { background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; color:var(--text-primary); padding:7px 12px; font-size:13px; outline:none; }
+.fb-filters select:focus, .fb-filters input:focus { border-color:var(--accent-primary); }
+
+.fb-table-wrap { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; overflow:hidden; }
+.fb-table { width:100%; border-collapse:collapse; }
+.fb-table th { background:var(--bg-secondary); padding:11px 14px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text-secondary); text-align:left; }
+.fb-table td { padding:12px 14px; border-top:1px solid var(--border-color); font-size:13px; color:var(--text-primary); vertical-align:top; }
+.fb-table tr:hover td { background:var(--bg-hover); }
+
+.fb-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; }
+.fb-badge i { font-size:10px; }
+
+.fb-msg { max-width:320px; white-space:pre-wrap; word-break:break-word; line-height:1.5; }
+.fb-reply-block { margin-top:8px; padding:8px 10px; border-left:3px solid var(--accent-primary); background:var(--bg-secondary); border-radius:0 6px 6px 0; font-size:12px; color:var(--text-secondary); }
+
+.fb-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.fb-btn { padding:5px 10px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); transition:all .15s; }
+.fb-btn:hover { background:var(--accent-primary); color:#fff; border-color:var(--accent-primary); }
+.fb-btn.danger:hover { background:#ef4444; border-color:#ef4444; }
+
+/* Modal */
+.fb-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; }
+.fb-modal { background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; width:100%; max-width:540px; padding:28px; }
+.fb-modal h3 { font-size:17px; font-weight:700; margin-bottom:16px; color:var(--text-primary); }
+.fb-modal textarea { width:100%; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; color:var(--text-primary); padding:10px 12px; font-size:13px; resize:vertical; min-height:100px; outline:none; }
+.fb-modal textarea:focus { border-color:var(--accent-primary); }
+.fb-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+.btn-primary { padding:9px 20px; border-radius:8px; font-size:13px; font-weight:600; background:var(--accent-primary); color:#fff; border:none; cursor:pointer; }
+.btn-secondary { padding:9px 20px; border-radius:8px; font-size:13px; font-weight:600; background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border-color); cursor:pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:24px;">
+    <div>
+        <h1 class="page-title">Geri Bildirimler</h1>
+        <p class="page-subtitle">Kullanıcı hata bildirimleri ve öneriler</p>
+    </div>
+</div>
+
+<!-- İstatistikler -->
+<div class="fb-stats">
+    <div class="fb-stat">
+        <div class="fb-stat-icon orange"><i class="fas fa-comment-dots"></i></div>
+        <div>
+            <div class="fb-stat-value">{{ stats.total }}</div>
+            <div class="fb-stat-label">Toplam</div>
+        </div>
+    </div>
+    <div class="fb-stat">
+        <div class="fb-stat-icon yellow"><i class="fas fa-envelope-open"></i></div>
+        <div>
+            <div class="fb-stat-value">{{ stats.open }}</div>
+            <div class="fb-stat-label">Açık</div>
+        </div>
+    </div>
+    <div class="fb-stat">
+        <div class="fb-stat-icon blue"><i class="fas fa-spinner"></i></div>
+        <div>
+            <div class="fb-stat-value">{{ stats.in_progress }}</div>
+            <div class="fb-stat-label">İnceleniyor</div>
+        </div>
+    </div>
+    <div class="fb-stat">
+        <div class="fb-stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div>
+            <div class="fb-stat-value">{{ stats.resolved }}</div>
+            <div class="fb-stat-label">Çözüldü</div>
+        </div>
+    </div>
+    <div class="fb-stat">
+        <div class="fb-stat-icon red"><i class="fas fa-bug"></i></div>
+        <div>
+            <div class="fb-stat-value">{{ stats.bugs }}</div>
+            <div class="fb-stat-label">Açık Hata</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtreler -->
+<form class="fb-filters" method="GET" action="/feedback">
+    <input type="text" name="q" value="{{ search }}" placeholder="Mesajda ara…" style="flex:1; min-width:180px;">
+    <select name="status">
+        <option value="">Tüm Durumlar</option>
+        <option value="open"        {% if status_filter=='open'        %}selected{% endif %}>Açık</option>
+        <option value="in_progress" {% if status_filter=='in_progress' %}selected{% endif %}>İnceleniyor</option>
+        <option value="resolved"    {% if status_filter=='resolved'    %}selected{% endif %}>Çözüldü</option>
+        <option value="closed"      {% if status_filter=='closed'      %}selected{% endif %}>Kapatıldı</option>
+    </select>
+    <select name="category">
+        <option value="">Tüm Kategoriler</option>
+        <option value="bug"        {% if category_filter=='bug'        %}selected{% endif %}>🐛 Hata</option>
+        <option value="suggestion" {% if category_filter=='suggestion' %}selected{% endif %}>💡 Öneri</option>
+        <option value="question"   {% if category_filter=='question'   %}selected{% endif %}>❓ Soru</option>
+        <option value="other"      {% if category_filter=='other'      %}selected{% endif %}>💬 Diğer</option>
+    </select>
+    <select name="priority">
+        <option value="">Tüm Öncelikler</option>
+        <option value="critical" {% if priority_filter=='critical' %}selected{% endif %}>🔴 Kritik</option>
+        <option value="high"     {% if priority_filter=='high'     %}selected{% endif %}>🟠 Yüksek</option>
+        <option value="normal"   {% if priority_filter=='normal'   %}selected{% endif %}>🔵 Normal</option>
+        <option value="low"      {% if priority_filter=='low'      %}selected{% endif %}>⚪ Düşük</option>
+    </select>
+    <button type="submit" class="btn-primary" style="padding:7px 16px;">
+        <i class="fas fa-search"></i> Filtrele
+    </button>
+</form>
+
+<!-- Tablo -->
+<div class="fb-table-wrap">
+    {% if feedbacks %}
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Kullanıcı</th>
+                <th>Kategori</th>
+                <th>Öncelik</th>
+                <th>Mesaj</th>
+                <th>Sayfa</th>
+                <th>Durum</th>
+                <th>Tarih</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for fb in feedbacks %}
+        <tr id="fb-row-{{ fb.id }}">
+            <td style="color:var(--text-secondary); font-size:12px;">#{{ fb.id }}</td>
+            <td>
+                <div style="font-weight:600;">{{ fb.user.username if fb.user else '?' }}</div>
+                <div style="font-size:11px; color:var(--text-secondary);">{{ fb.user.email if fb.user else '' }}</div>
+            </td>
+            <td>
+                <span class="fb-badge {{ fb.category_badge }}">
+                    <i class="fas {{ fb.category_icon }}"></i> {{ fb.category_label }}
+                </span>
+            </td>
+            <td>
+                <span class="fb-badge {{ fb.priority_badge }}">{{ fb.priority_label }}</span>
+            </td>
+            <td>
+                <div class="fb-msg">{{ fb.message }}</div>
+                {% if fb.admin_reply %}
+                <div class="fb-reply-block">
+                    <i class="fas fa-reply" style="margin-right:4px;"></i>
+                    {{ fb.admin_reply }}
+                    <div style="font-size:10px; margin-top:4px;">
+                        {{ fb.replied_at.strftime('%d.%m.%Y %H:%M') if fb.replied_at else '' }}
+                        {% if fb.replied_user %}— {{ fb.replied_user.username }}{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            <td style="font-size:11px; color:var(--text-secondary); max-width:180px; word-break:break-all;">
+                {{ fb.page_url or '—' }}
+            </td>
+            <td>
+                <select class="fb-btn" onchange="updateStatus({{ fb.id }}, this.value)"
+                        style="padding:4px 8px; font-size:12px; cursor:pointer;">
+                    {% for s in ['open','in_progress','resolved','closed'] %}
+                    <option value="{{ s }}" {% if fb.status == s %}selected{% endif %}>
+                        {% if s == 'open' %}Açık
+                        {% elif s == 'in_progress' %}İnceleniyor
+                        {% elif s == 'resolved' %}Çözüldü
+                        {% else %}Kapatıldı{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="font-size:12px; color:var(--text-secondary); white-space:nowrap;">
+                {{ fb.created_at.strftime('%d.%m.%Y') if fb.created_at else '' }}<br>
+                {{ fb.created_at.strftime('%H:%M') if fb.created_at else '' }}
+            </td>
+            <td>
+                <div class="fb-actions">
+                    <button class="fb-btn" onclick="openReplyModal({{ fb.id }}, `{{ fb.message | replace('`','\\`') | truncate(80) }}`)">
+                        <i class="fas fa-reply"></i> Yanıtla
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="padding:60px; text-align:center; color:var(--text-secondary);">
+        <i class="fas fa-inbox" style="font-size:40px; opacity:.3; margin-bottom:12px; display:block;"></i>
+        Geri bildirim bulunamadı.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Yanıt Modal -->
+<div class="fb-modal-bg" id="replyModal" style="display:none;" onclick="if(event.target===this)closeReplyModal()">
+    <div class="fb-modal">
+        <h3><i class="fas fa-reply" style="color:var(--accent-primary);margin-right:8px;"></i>Yanıt Ver</h3>
+        <div id="replyPreview" style="font-size:13px; color:var(--text-secondary); background:var(--bg-secondary); border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.5;"></div>
+        <textarea id="replyText" placeholder="Yanıtınızı buraya yazın…"></textarea>
+        <div id="replyError" style="color:#ef4444; font-size:12px; margin-top:6px; display:none;"></div>
+        <div class="fb-modal-actions">
+            <button class="btn-secondary" onclick="closeReplyModal()">İptal</button>
+            <button class="btn-primary" onclick="submitReply()">
+                <i class="fas fa-paper-plane mr-1"></i> Gönder
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let replyFbId = null;
+
+function openReplyModal(fbId, preview) {
+    replyFbId = fbId;
+    document.getElementById('replyPreview').textContent = preview;
+    document.getElementById('replyText').value = '';
+    document.getElementById('replyError').style.display = 'none';
+    document.getElementById('replyModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('replyText').focus(), 100);
+}
+
+function closeReplyModal() {
+    document.getElementById('replyModal').style.display = 'none';
+    replyFbId = null;
+}
+
+async function submitReply() {
+    const reply = document.getElementById('replyText').value.trim();
+    const errEl = document.getElementById('replyError');
+    if (!reply) {
+        errEl.textContent = 'Yanıt boş olamaz.';
+        errEl.style.display = 'block';
+        return;
+    }
+    errEl.style.display = 'none';
+    try {
+        const r = await fetch(`/api/feedback/${replyFbId}/reply`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({reply}),
+        });
+        const d = await r.json();
+        if (d.success) {
+            closeReplyModal();
+            showToast('Yanıt gönderildi!', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            errEl.textContent = d.message || 'Hata oluştu.';
+            errEl.style.display = 'block';
+        }
+    } catch(e) {
+        errEl.textContent = 'Ağ hatası.';
+        errEl.style.display = 'block';
+    }
+}
+
+async function updateStatus(fbId, status) {
+    try {
+        const r = await fetch(`/api/feedback/${fbId}/status`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status}),
+        });
+        const d = await r.json();
+        if (d.success) {
+            showToast('Durum güncellendi: ' + d.status_label, 'success');
+        }
+    } catch(e) {
+        showToast('Güncelleme başarısız.', 'error');
+    }
+}
+</script>
+{% endblock %}

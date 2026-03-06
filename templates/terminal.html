@@ -666,7 +666,13 @@ Bağlanılıyor...
 {% endblock %}
 <script>
 const serverId = '{{ server.id }}';
-const socket = io();
+const socket = io({
+    transports: ['websocket'],   // polling YOK — Chrome freeze önlenir
+    upgrade: false,
+    reconnectionDelay: 2000,
+    reconnectionDelayMax: 10000,
+    reconnectionAttempts: 10,
+});
 let commandHistory = [];
 let historyIndex = -1;
 let watchActive = false;

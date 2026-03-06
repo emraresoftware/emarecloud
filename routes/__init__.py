@@ -21,6 +21,9 @@ def register_blueprints(app):
     from routes.virtualization import vms_bp
     from routes.cloudflare import cloudflare_bp
     from routes.datacenters import dc_bp
+    from routes.scoreboard import scoreboard_bp
+    from routes.ide import ide_bp
+    from routes.feedback import feedback_bp
 
     blueprints = [
         auth_bp,
@@ -38,6 +41,9 @@ def register_blueprints(app):
         token_bp,
         cloudflare_bp,
         dc_bp,
+        scoreboard_bp,
+        ide_bp,
+        feedback_bp,
     ]
 
     for bp in blueprints:

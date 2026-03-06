@@ -38,7 +38,11 @@ servers_bp = Blueprint('servers', __name__)
 @login_required
 @permission_required('server.view')
 def api_list_servers():
-    raw = [s.to_dict() for s in ServerCredential.query.all()]
+    if current_user.is_admin:
+        query = ServerCredential.query
+    else:
+        query = ServerCredential.query.filter_by(added_by=current_user.id)
+    raw = [s.to_dict() for s in query.all()]
     if not raw:
         return jsonify({'success': True, 'servers': []})
 
@@ -142,6 +146,8 @@ def api_delete_server(server_id):
     srv = db.session.get(ServerCredential, server_id)
     if not srv:
         return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
+    if not current_user.is_admin and srv.added_by != current_user.id:
+        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
     name = srv.name
     db.session.delete(srv)
     db.session.commit()
@@ -161,6 +167,8 @@ def api_update_server(server_id):
     srv = db.session.get(ServerCredential, server_id)
     if not srv:
         return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
+    if not current_user.is_admin and srv.added_by != current_user.id:
+        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
 
     field_map = {
         'name': 'name', 'host': 'host', 'username': 'username',
@@ -211,6 +219,11 @@ def api_connect_server(server_id):
 @login_required
 @permission_required('server.disconnect')
 def api_disconnect_server(server_id):
+    srv = db.session.get(ServerCredential, server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
+    if not current_user.is_admin and srv.added_by != current_user.id:
+        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
     ssh_mgr.disconnect(server_id)
     log_action('server.disconnect', target_type='server', target_id=server_id)
     return jsonify({'success': True, 'message': 'Bağlantı kesildi'})

@@ -1,0 +1,1444 @@
+{% extends "base.html" %}
+{% block title %}IDE - {{ server.name }}{% endblock %}
+{% block page_title %}
+<div style="display:flex;align-items:center;gap:0.5rem;">
+    <i class="fas fa-laptop-code" style="color:#6366f1;"></i>
+    <span>EmareCode IDE</span>
+    <span style="font-size:0.72rem;background:rgba(99,102,241,.15);color:#818cf8;padding:0.15rem 0.5rem;border-radius:6px;font-weight:600;">{{ server.name }}</span>
+    <span class="ide-conn-badge {{ 'online' if server.connected else 'offline' }}" id="connBadge">
+        <span class="ide-conn-dot"></span>
+        {{ 'Bağlı' if server.connected else 'Bağlantı yok' }}
+    </span>
+</div>
+{% endblock %}
+
+{% block head %}
+<!-- Monaco Editor -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">
+<!-- xterm.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css">
+<!-- Socket.IO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+
+<style>
+/* ═══════ IDE LAYOUT ═══════ */
+.ide-wrap {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+    background: #0d1117;
+    border-radius: 12px;
+    border: 1px solid rgba(99,102,241,.15);
+}
+
+/* ─── Top Toolbar ─── */
+.ide-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: #161b22;
+    border-bottom: 1px solid rgba(148,163,184,.08);
+    min-height: 38px;
+    flex-shrink: 0;
+}
+.ide-toolbar-group { display:flex;align-items:center;gap:0.3rem; }
+.ide-toolbar-sep { width:1px;height:20px;background:rgba(148,163,184,.12);margin:0 0.3rem; }
+.ide-btn {
+    padding: 0.28rem 0.55rem;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #8b949e;
+    font-size: 0.78rem;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 0.3rem;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.ide-btn:hover { background: rgba(99,102,241,.12); color: #c9d1d9; }
+.ide-btn.active { background: rgba(99,102,241,.18); color: #818cf8; }
+.ide-btn i { font-size: 0.82rem; }
+.ide-breadcrumb {
+    display: flex; align-items: center; gap: 0.2rem;
+    font-size: 0.75rem; color: #8b949e;
+    margin-left: 0.5rem; flex: 1; overflow: hidden;
+}
+.ide-breadcrumb span { cursor: pointer; }
+.ide-breadcrumb span:hover { color: #c9d1d9; }
+.ide-breadcrumb .sep { color: #484f58; }
+
+/* ─── Main Body ─── */
+.ide-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ─── Sidebar (File Explorer) ─── */
+.ide-sidebar {
+    width: 260px;
+    min-width: 180px;
+    max-width: 400px;
+    background: #0d1117;
+    border-right: 1px solid rgba(148,163,184,.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width 0.2s;
+}
+.ide-sidebar.collapsed { width: 0; min-width: 0; border: none; overflow: hidden; }
+
+.ide-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(148,163,184,.06);
+}
+.ide-sidebar-actions { display:flex;gap:0.25rem; }
+.ide-sidebar-actions button {
+    padding: 2px 5px; background:transparent; border:none;
+    color:#6e7681; cursor:pointer; border-radius:4px; font-size:0.8rem;
+}
+.ide-sidebar-actions button:hover { color:#c9d1d9; background:rgba(255,255,255,.06); }
+
+.ide-file-tree {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.25rem 0;
+    font-size: 0.8rem;
+}
+.ide-file-tree::-webkit-scrollbar { width:6px; }
+.ide-file-tree::-webkit-scrollbar-thumb { background:rgba(148,163,184,.15);border-radius:3px; }
+
+/* Tree Items */
+.ide-tree-item {
+    display: flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem 0.2rem calc(var(--depth, 0) * 16px + 8px);
+    cursor: pointer;
+    color: #c9d1d9;
+    user-select: none;
+    transition: background 0.1s;
+    white-space: nowrap;
+    gap: 0.35rem;
+}
+.ide-tree-item:hover { background: rgba(99,102,241,.08); }
+.ide-tree-item.active { background: rgba(99,102,241,.15); color: #fff; }
+.ide-tree-item .icon { width: 16px; text-align: center; font-size: 0.78rem; flex-shrink:0; }
+.ide-tree-item .icon.dir { color: #6cb6ff; }
+.ide-tree-item .icon.file { color: #8b949e; }
+.ide-tree-item .icon.py { color: #3572a5; }
+.ide-tree-item .icon.js { color: #f1e05a; }
+.ide-tree-item .icon.ts { color: #3178c6; }
+.ide-tree-item .icon.html { color: #e34c26; }
+.ide-tree-item .icon.css { color: #563d7c; }
+.ide-tree-item .icon.json { color: #f1e05a; }
+.ide-tree-item .icon.md { color: #083fa1; }
+.ide-tree-item .icon.sh { color: #89e051; }
+.ide-tree-item .icon.yml { color: #cb171e; }
+.ide-tree-item .icon.php { color: #4F5D95; }
+.ide-tree-item .icon.go { color: #00ADD8; }
+.ide-tree-item .icon.rs { color: #dea584; }
+.ide-tree-item .icon.rb { color: #701516; }
+.ide-tree-item .icon.c, .ide-tree-item .icon.cpp { color: #555555; }
+.ide-tree-item .icon.java { color: #b07219; }
+.ide-tree-item .icon.sql { color: #e38c00; }
+.ide-tree-item .name { flex:1; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem; }
+.ide-tree-item .arrow { width:14px; text-align:center; font-size:0.6rem; color:#6e7681; flex-shrink:0; transition:transform 0.15s; }
+.ide-tree-item .arrow.open { transform:rotate(90deg); }
+
+/* ─── Resize Handle ─── */
+.ide-resize-h {
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    z-index: 5;
+}
+.ide-resize-h:hover, .ide-resize-h.active { background: #6366f1; }
+.ide-resize-v {
+    height: 4px;
+    cursor: row-resize;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    z-index: 5;
+}
+.ide-resize-v:hover, .ide-resize-v.active { background: #6366f1; }
+
+/* ─── Center (Editor + Terminal Area) ─── */
+.ide-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Editor Tabs */
+.ide-tab-bar {
+    display: flex;
+    align-items: center;
+    background: #161b22;
+    border-bottom: 1px solid rgba(148,163,184,.08);
+    min-height: 35px;
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+.ide-tab-bar::-webkit-scrollbar { height:0; }
+.ide-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    color: #8b949e;
+    border-right: 1px solid rgba(148,163,184,.06);
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 0;
+    transition: all 0.1s;
+    position: relative;
+}
+.ide-tab:hover { background: rgba(255,255,255,.04); color: #c9d1d9; }
+.ide-tab.active { background: #0d1117; color: #e6edf3; border-bottom: 2px solid #6366f1; }
+.ide-tab.modified::after {
+    content: ''; width:6px; height:6px; border-radius:50%;
+    background:#f59e0b; position:absolute; top:6px; right:6px;
+}
+.ide-tab .close-btn {
+    padding:1px 3px; border-radius:3px; background:transparent; border:none;
+    color:#6e7681; cursor:pointer; font-size:0.7rem; margin-left:0.2rem;
+    display:flex;align-items:center;
+}
+.ide-tab .close-btn:hover { background:rgba(248,81,73,.2);color:#f85149; }
+.ide-tab-icon { font-size:0.75rem; }
+
+/* Welcome Tab */
+.ide-welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #484f58;
+    padding: 2rem;
+}
+.ide-welcome-logo { font-size: 4rem; color: #6366f1; opacity: 0.3; }
+.ide-welcome h2 { font-size: 1.3rem; color: #8b949e; font-weight: 300; }
+.ide-welcome p { font-size: 0.85rem; color: #484f58; }
+.ide-welcome .shortcuts { display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:1rem; }
+.ide-welcome .shortcut {
+    display:flex;align-items:center;gap:0.5rem;
+    padding:0.5rem 1rem;background:rgba(255,255,255,.03);border-radius:8px;
+    color:#8b949e;font-size:0.8rem;
+}
+.ide-welcome .shortcut kbd {
+    padding:0.15rem 0.4rem;border-radius:4px;background:rgba(255,255,255,.08);
+    font-size:0.72rem;font-family:monospace;color:#c9d1d9;
+}
+
+/* ─── Editor Area ─── */
+.ide-editor-area {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+}
+#monacoEditor { width: 100%; height: 100%; }
+
+/* ─── Bottom Panel (Terminal / Output) ─── */
+.ide-bottom-panel {
+    height: 250px;
+    min-height: 100px;
+    max-height: 60vh;
+    background: #0d1117;
+    border-top: 1px solid rgba(148,163,184,.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.ide-bottom-panel.collapsed { height: 0; min-height: 0; border: none; }
+
+.ide-bottom-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #161b22;
+    border-bottom: 1px solid rgba(148,163,184,.06);
+    min-height: 30px;
+    flex-shrink: 0;
+    padding: 0 0.25rem;
+}
+.ide-bottom-tab {
+    padding: 0.25rem 0.65rem;
+    font-size: 0.72rem;
+    color: #8b949e;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    display: flex; align-items: center; gap: 0.3rem;
+    position: relative;
+    transition: color 0.1s;
+}
+.ide-bottom-tab:hover { color: #c9d1d9; }
+.ide-bottom-tab.active { color: #e6edf3; }
+.ide-bottom-tab.active::after {
+    content: ''; position:absolute; bottom:0; left:0.5rem; right:0.5rem;
+    height: 2px; background: #6366f1; border-radius: 1px;
+}
+.ide-bottom-close {
+    margin-left: auto;
+    padding: 2px 6px; border:none; background:transparent;
+    color:#6e7681; cursor:pointer; font-size:0.8rem; border-radius:4px;
+}
+.ide-bottom-close:hover { color:#c9d1d9; background:rgba(255,255,255,.06); }
+
+.ide-terminal-wrap {
+    flex: 1;
+    overflow: hidden;
+    padding: 0.25rem;
+}
+#ideTerminal { width: 100%; height: 100%; }
+
+/* ─── Right Panel (AI Chat) ─── */
+.ide-right-panel {
+    width: 320px;
+    min-width: 220px;
+    max-width: 500px;
+    background: #0d1117;
+    border-left: 1px solid rgba(148,163,184,.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width 0.2s;
+}
+.ide-right-panel.collapsed { width: 0; min-width: 0; border: none; overflow: hidden; }
+
+.ide-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #c9d1d9;
+    border-bottom: 1px solid rgba(148,163,184,.06);
+    background: #161b22;
+}
+.ide-chat-header i { color: #6366f1; }
+
+.ide-chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.ide-chat-body::-webkit-scrollbar { width:5px; }
+.ide-chat-body::-webkit-scrollbar-thumb { background:rgba(148,163,184,.15);border-radius:3px; }
+
+.ide-chat-msg {
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    max-width: 95%;
+    word-wrap: break-word;
+}
+.ide-chat-msg.user {
+    background: rgba(99,102,241,.15);
+    color: #c9d1d9;
+    align-self: flex-end;
+    border-bottom-right-radius: 3px;
+}
+.ide-chat-msg.ai {
+    background: rgba(255,255,255,.04);
+    color: #c9d1d9;
+    align-self: flex-start;
+    border-bottom-left-radius: 3px;
+}
+.ide-chat-msg.ai pre {
+    background: rgba(0,0,0,.3);
+    padding: 0.5rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.75rem;
+    margin: 0.4rem 0;
+}
+.ide-chat-msg.ai code {
+    background: rgba(0,0,0,.3);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.ide-chat-input-area {
+    padding: 0.5rem;
+    border-top: 1px solid rgba(148,163,184,.06);
+    display: flex;
+    gap: 0.35rem;
+}
+.ide-chat-input {
+    flex: 1;
+    background: #161b22;
+    border: 1px solid rgba(148,163,184,.15);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    color: #e6edf3;
+    font-size: 0.8rem;
+    outline: none;
+    resize: none;
+    min-height: 36px;
+    max-height: 120px;
+    font-family: inherit;
+}
+.ide-chat-input:focus { border-color: #6366f1; }
+.ide-chat-send {
+    padding: 0 0.65rem;
+    background: #6366f1;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex; align-items: center;
+    transition: background 0.15s;
+}
+.ide-chat-send:hover { background: #4f46e5; }
+
+/* Quick Tags */
+.ide-chat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid rgba(148,163,184,.04);
+}
+.ide-chat-tag {
+    font-size: 0.68rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: 5px;
+    border: 1px solid rgba(148,163,184,.12);
+    background: transparent;
+    color: #8b949e;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.ide-chat-tag:hover { border-color:#6366f1;color:#818cf8;background:rgba(99,102,241,.08); }
+
+/* ─── Connection Badge ─── */
+.ide-conn-badge {
+    display:inline-flex;align-items:center;gap:0.3rem;
+    font-size:0.68rem;padding:0.15rem 0.5rem;border-radius:12px;font-weight:600;
+}
+.ide-conn-badge.online { background:rgba(34,197,94,.12);color:#22c55e; }
+.ide-conn-badge.offline { background:rgba(248,113,113,.12);color:#f87171; }
+.ide-conn-dot { width:6px;height:6px;border-radius:50%;background:currentColor; }
+.ide-conn-badge.online .ide-conn-dot { animation:ide-pulse 2s infinite; }
+@keyframes ide-pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+/* ─── Status Bar ─── */
+.ide-statusbar {
+    display: flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    background: #161b22;
+    border-top: 1px solid rgba(148,163,184,.06);
+    min-height: 24px;
+    font-size: 0.68rem;
+    color: #8b949e;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+.ide-statusbar-item { display:flex;align-items:center;gap:0.3rem; }
+.ide-statusbar-right { margin-left:auto;display:flex;gap:1rem; }
+
+/* ─── Context Menu ─── */
+.ide-ctx-menu {
+    position: fixed;
+    background: #1c2128;
+    border: 1px solid rgba(148,163,184,.15);
+    border-radius: 8px;
+    padding: 0.3rem 0;
+    min-width: 180px;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    display: none;
+}
+.ide-ctx-item {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    color: #c9d1d9;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.ide-ctx-item:hover { background:rgba(99,102,241,.12); }
+.ide-ctx-item i { width:16px;text-align:center;color:#8b949e;font-size:0.75rem; }
+.ide-ctx-sep { height:1px;background:rgba(148,163,184,.1);margin:0.2rem 0.5rem; }
+
+/* ─── Search Panel ─── */
+.ide-search-panel {
+    display: none;
+    padding: 0.5rem 0.75rem;
+    background: #161b22;
+    border-bottom: 1px solid rgba(148,163,184,.06);
+}
+.ide-search-panel.open { display: flex; gap:0.4rem; align-items:center; }
+.ide-search-input {
+    flex:1; padding:0.35rem 0.65rem; background:#0d1117;
+    border:1px solid rgba(148,163,184,.15); border-radius:6px;
+    color:#e6edf3; font-size:0.8rem; outline:none;
+}
+.ide-search-input:focus { border-color:#6366f1; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+    .ide-sidebar { width: 200px; }
+    .ide-right-panel { display: none; }
+    .ide-bottom-panel { height: 180px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ide-wrap">
+    <!-- Toolbar -->
+    <div class="ide-toolbar">
+        <div class="ide-toolbar-group">
+            <button class="ide-btn" onclick="toggleSidebar()" title="Dosya Gezgini (Ctrl+B)">
+                <i class="fas fa-bars"></i>
+            </button>
+            <button class="ide-btn" onclick="toggleSearch()" title="Ara (Ctrl+Shift+F)">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        <div class="ide-toolbar-sep"></div>
+        <div class="ide-toolbar-group">
+            <button class="ide-btn" id="btnSave" onclick="saveCurrentFile()" title="Kaydet (Ctrl+S)">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+            <button class="ide-btn" onclick="createNewFile()" title="Yeni Dosya">
+                <i class="fas fa-file-plus"></i>
+            </button>
+        </div>
+        <div class="ide-breadcrumb" id="breadcrumb">
+            <span onclick="loadDir('/')"><i class="fas fa-server"></i></span>
+        </div>
+        <div class="ide-toolbar-group" style="margin-left:auto;">
+            <button class="ide-btn" onclick="toggleTerminal()" title="Terminal (Ctrl+`)">
+                <i class="fas fa-terminal"></i>
+            </button>
+            <button class="ide-btn" onclick="toggleChat()" title="AI Asistan (Ctrl+Shift+I)">
+                <i class="fas fa-robot"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="ide-search-panel" id="searchPanel">
+        <i class="fas fa-search" style="color:#6e7681;"></i>
+        <input type="text" class="ide-search-input" id="searchInput" placeholder="Dosya içeriklerinde ara..." onkeydown="if(event.key==='Enter')runSearch()">
+        <button class="ide-btn" onclick="runSearch()"><i class="fas fa-arrow-right"></i></button>
+        <button class="ide-btn" onclick="toggleSearch()"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Main Body -->
+    <div class="ide-body">
+        <!-- File Explorer -->
+        <div class="ide-sidebar" id="sidebar">
+            <div class="ide-sidebar-header">
+                <span>DOSYALAR</span>
+                <div class="ide-sidebar-actions">
+                    <button onclick="createNewFile()" title="Yeni Dosya"><i class="fas fa-file-plus"></i></button>
+                    <button onclick="createNewFolder()" title="Yeni Klasör"><i class="fas fa-folder-plus"></i></button>
+                    <button onclick="loadDir(currentDir)" title="Yenile"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <div class="ide-file-tree" id="fileTree">
+                <div style="padding:2rem;text-align:center;color:#484f58;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i>
+                    <p style="margin-top:0.5rem;font-size:0.78rem;">Dosyalar yükleniyor...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Resize Handle -->
+        <div class="ide-resize-h" id="sidebarResize"></div>
+
+        <!-- Center Area -->
+        <div class="ide-center">
+            <!-- Editor Tabs -->
+            <div class="ide-tab-bar" id="tabBar"></div>
+
+            <!-- Editor Area -->
+            <div class="ide-editor-area" id="editorArea">
+                <div class="ide-welcome" id="welcomePanel">
+                    <div class="ide-welcome-logo"><i class="fas fa-laptop-code"></i></div>
+                    <h2>EmareCode IDE</h2>
+                    <p>{{ server.name }} sunucusuna bağlı — bir dosya seçerek başlayın</p>
+                    <div class="shortcuts">
+                        <div class="shortcut"><kbd>Ctrl+S</kbd> Kaydet</div>
+                        <div class="shortcut"><kbd>Ctrl+B</kbd> Dosyalar</div>
+                        <div class="shortcut"><kbd>Ctrl+`</kbd> Terminal</div>
+                        <div class="shortcut"><kbd>Ctrl+Shift+I</kbd> AI Chat</div>
+                        <div class="shortcut"><kbd>Ctrl+Shift+F</kbd> Ara</div>
+                        <div class="shortcut"><kbd>Ctrl+W</kbd> Tab Kapat</div>
+                    </div>
+                </div>
+                <div id="monacoEditor" style="display:none;"></div>
+            </div>
+
+            <!-- Terminal Resize Handle -->
+            <div class="ide-resize-v" id="terminalResize"></div>
+
+            <!-- Bottom Panel (Terminal) -->
+            <div class="ide-bottom-panel" id="bottomPanel">
+                <div class="ide-bottom-tabs">
+                    <button class="ide-bottom-tab active" onclick="switchBottomTab('terminal')">
+                        <i class="fas fa-terminal"></i> Terminal
+                    </button>
+                    <button class="ide-bottom-tab" onclick="switchBottomTab('output')">
+                        <i class="fas fa-scroll"></i> Çıktı
+                    </button>
+                    <button class="ide-bottom-close" onclick="toggleTerminal()" title="Paneli Kapat">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="ide-terminal-wrap" id="terminalWrap">
+                    <div id="ideTerminal"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel Resize Handle -->
+        <div class="ide-resize-h" id="chatResize"></div>
+
+        <!-- AI Chat Panel -->
+        <div class="ide-right-panel" id="chatPanel">
+            <div class="ide-chat-header">
+                <span><i class="fas fa-robot"></i> AI Asistan</span>
+                <button class="ide-btn" onclick="toggleChat()" style="padding:2px 6px;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="ide-chat-tags">
+                <button class="ide-chat-tag" onclick="askAI('Bu kodu açıkla')">Kodu Açıkla</button>
+                <button class="ide-chat-tag" onclick="askAI('Bug var mı?')">Bug Bul</button>
+                <button class="ide-chat-tag" onclick="askAI('Optimize et')">Optimize</button>
+                <button class="ide-chat-tag" onclick="askAI('Yorum ekle')">Yorum Ekle</button>
+                <button class="ide-chat-tag" onclick="askAI('Test yaz')">Test Yaz</button>
+                <button class="ide-chat-tag" onclick="askAI('Refactor et')">Refactor</button>
+            </div>
+            <div class="ide-chat-body" id="chatBody">
+                <div class="ide-chat-msg ai">
+                    Merhaba! 👋 Ben EmareCode AI asistanınızım. Kod hakkında sorular sorabilir, hata analizi isteyebilir veya optimizasyon önerileri alabilirsiniz.
+                </div>
+            </div>
+            <div class="ide-chat-input-area">
+                <textarea class="ide-chat-input" id="chatInput" placeholder="Bir soru sorun..." rows="1"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+                <button class="ide-chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="ide-statusbar">
+        <div class="ide-statusbar-item" id="sbConn">
+            <i class="fas fa-circle" style="font-size:0.5rem;color:{{ '#22c55e' if server.connected else '#f87171' }};"></i>
+            {{ server.name }}
+        </div>
+        <div class="ide-statusbar-item" id="sbLang">Plaintext</div>
+        <div class="ide-statusbar-right">
+            <div class="ide-statusbar-item" id="sbPos">Ln 1, Col 1</div>
+            <div class="ide-statusbar-item" id="sbEncoding">UTF-8</div>
+            <div class="ide-statusbar-item" id="sbIndent">Spaces: 4</div>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div class="ide-ctx-menu" id="ctxMenu">
+    <div class="ide-ctx-item" onclick="ctxAction('open')"><i class="fas fa-folder-open"></i> Aç</div>
+    <div class="ide-ctx-item" onclick="ctxAction('rename')"><i class="fas fa-pencil-alt"></i> Yeniden Adlandır</div>
+    <div class="ide-ctx-sep"></div>
+    <div class="ide-ctx-item" onclick="ctxAction('newFile')"><i class="fas fa-file-plus"></i> Yeni Dosya</div>
+    <div class="ide-ctx-item" onclick="ctxAction('newFolder')"><i class="fas fa-folder-plus"></i> Yeni Klasör</div>
+    <div class="ide-ctx-sep"></div>
+    <div class="ide-ctx-item" onclick="ctxAction('delete')" style="color:#f85149;"><i class="fas fa-trash-alt"></i> Sil</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Monaco Editor Loader -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+<!-- xterm.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit.min.js"></script>
+
+<script>
+// ═══════ STATE ═══════
+const SERVER_ID = '{{ server.id }}';
+let editor = null;
+let term = null;
+let socket = null;
+let currentDir = '/';
+let openTabs = [];      // [{path, name, content, language, modified, model}]
+let activeTabIdx = -1;
+let ctxTarget = null;    // sağ tık hedefi
+let dirCache = {};       // path → items cache
+
+// ═══════ FİLE İCON MAP ═══════
+const ICON_MAP = {
+    'py': 'fab fa-python', 'js': 'fab fa-js', 'ts': 'fab fa-js',
+    'html': 'fab fa-html5', 'css': 'fab fa-css3-alt', 'json': 'fas fa-brackets-curly',
+    'md': 'fab fa-markdown', 'sh': 'fas fa-terminal', 'bash': 'fas fa-terminal',
+    'yml': 'fas fa-file-code', 'yaml': 'fas fa-file-code', 'xml': 'fas fa-file-code',
+    'php': 'fab fa-php', 'go': 'fab fa-golang', 'rs': 'fas fa-cog',
+    'rb': 'fas fa-gem', 'java': 'fab fa-java', 'c': 'fas fa-copyright',
+    'cpp': 'fas fa-copyright', 'sql': 'fas fa-database', 'vue': 'fab fa-vuejs',
+    'dockerfile': 'fab fa-docker', 'toml': 'fas fa-file-alt',
+    'conf': 'fas fa-cog', 'ini': 'fas fa-cog', 'env': 'fas fa-cog',
+    'gitignore': 'fab fa-git-alt', 'log': 'fas fa-file-alt', 'txt': 'fas fa-file-alt',
+};
+function getFileIcon(name) {
+    const lower = name.toLowerCase();
+    if (lower === 'dockerfile') return ICON_MAP['dockerfile'] || 'fas fa-file';
+    const ext = lower.split('.').pop();
+    return ICON_MAP[ext] || 'fas fa-file';
+}
+function getExtClass(name) {
+    const ext = name.toLowerCase().split('.').pop();
+    return ext;
+}
+
+// ═══════ INIT ═══════
+document.addEventListener('DOMContentLoaded', () => {
+    initMonaco();
+    initTerminal();
+    initSocket();
+    initResizers();
+    loadDir('/root');
+    initKeyboard();
+});
+
+// ═══════ MONACO EDITOR ═══════
+function initMonaco() {
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function() {
+        monaco.editor.defineTheme('emarecloud-dark', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'editor.background': '#0d1117',
+                'editor.foreground': '#c9d1d9',
+                'editorLineNumber.foreground': '#484f58',
+                'editorLineNumber.activeForeground': '#8b949e',
+                'editor.selectionBackground': '#264f78',
+                'editor.lineHighlightBackground': '#161b22',
+                'editorCursor.foreground': '#6366f1',
+                'editorIndentGuide.background': '#21262d',
+                'editorIndentGuide.activeBackground': '#30363d',
+            }
+        });
+
+        editor = monaco.editor.create(document.getElementById('monacoEditor'), {
+            value: '',
+            language: 'plaintext',
+            theme: 'emarecloud-dark',
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+            fontLigatures: true,
+            minimap: { enabled: true, maxColumn: 80 },
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 4,
+            wordWrap: 'off',
+            renderWhitespace: 'selection',
+            bracketPairColorization: { enabled: true },
+            guides: { bracketPairs: true, indentation: true },
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            smoothScrolling: true,
+            padding: { top: 8 },
+        });
+
+        // Cursor position tracking
+        editor.onDidChangeCursorPosition(e => {
+            document.getElementById('sbPos').textContent =
+                `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+        });
+
+        // Content change → mark modified
+        editor.onDidChangeModelContent(() => {
+            if (activeTabIdx >= 0 && openTabs[activeTabIdx]) {
+                openTabs[activeTabIdx].modified = true;
+                renderTabs();
+            }
+        });
+    });
+}
+
+// ═══════ FILE TREE ═══════
+async function loadDir(path) {
+    path = path || '/';
+    currentDir = path;
+    updateBreadcrumb(path);
+
+    try {
+        const res = await fetch(`/api/ide/${SERVER_ID}/ls?path=${encodeURIComponent(path)}`);
+        const data = await res.json();
+        if (!data.success) {
+            showToast(data.message || 'Dizin okunamadı', 'error');
+            return;
+        }
+        dirCache[path] = data.items;
+        renderTree(path, data.items);
+    } catch (e) {
+        showToast('Dosya ağacı yüklenemedi: ' + e.message, 'error');
+    }
+}
+
+function renderTree(basePath, items, container, depth) {
+    depth = depth || 0;
+    const tree = container || document.getElementById('fileTree');
+    if (!container) tree.innerHTML = '';
+
+    items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'ide-tree-item';
+        el.style.setProperty('--depth', depth);
+        el.dataset.path = item.path;
+        el.dataset.isDir = item.is_dir ? '1' : '0';
+
+        let iconCls = item.is_dir ? 'fas fa-folder dir' : getFileIcon(item.name) + ' ' + getExtClass(item.name);
+
+        el.innerHTML = `
+            ${item.is_dir ? '<span class="arrow"><i class="fas fa-chevron-right"></i></span>' : '<span class="arrow"></span>'}
+            <span class="icon ${iconCls.includes('dir') ? 'dir' : 'file ' + getExtClass(item.name)}"><i class="${item.is_dir ? 'fas fa-folder' : getFileIcon(item.name)}"></i></span>
+            <span class="name">${escHtml(item.name)}</span>
+        `;
+
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (item.is_dir) {
+                toggleDir(el, item.path, depth);
+            } else {
+                openFile(item.path, item.name, item.language);
+            }
+        });
+
+        el.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(e, item);
+        });
+
+        tree.appendChild(el);
+    });
+}
+
+function toggleDir(el, path, depth) {
+    const arrow = el.querySelector('.arrow i');
+    const isOpen = arrow && arrow.classList.contains('fa-chevron-down');
+
+    if (isOpen) {
+        // Collapse: remove children
+        arrow.classList.replace('fa-chevron-down', 'fa-chevron-right');
+        el.querySelector('.icon i').className = 'fas fa-folder';
+        let next = el.nextSibling;
+        while (next && next.style && parseInt(next.style.getPropertyValue('--depth')) > depth) {
+            const toRemove = next;
+            next = next.nextSibling;
+            toRemove.remove();
+        }
+    } else {
+        // Expand
+        if (arrow) {
+            arrow.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        }
+        el.querySelector('.icon i').className = 'fas fa-folder-open';
+
+        // Load children
+        fetch(`/api/ide/${SERVER_ID}/ls?path=${encodeURIComponent(path)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Insert after current el
+                    const frag = document.createDocumentFragment();
+                    const tempDiv = document.createElement('div');
+                    data.items.forEach(item => {
+                        const child = document.createElement('div');
+                        child.className = 'ide-tree-item';
+                        child.style.setProperty('--depth', depth + 1);
+                        child.dataset.path = item.path;
+                        child.dataset.isDir = item.is_dir ? '1' : '0';
+
+                        child.innerHTML = `
+                            ${item.is_dir ? '<span class="arrow"><i class="fas fa-chevron-right"></i></span>' : '<span class="arrow"></span>'}
+                            <span class="icon ${item.is_dir ? 'dir' : 'file ' + getExtClass(item.name)}"><i class="${item.is_dir ? 'fas fa-folder' : getFileIcon(item.name)}"></i></span>
+                            <span class="name">${escHtml(item.name)}</span>
+                        `;
+
+                        child.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            if (item.is_dir) toggleDir(child, item.path, depth + 1);
+                            else openFile(item.path, item.name, item.language);
+                        });
+                        child.addEventListener('contextmenu', (ev) => {
+                            ev.preventDefault(); ev.stopPropagation();
+                            showContextMenu(ev, item);
+                        });
+
+                        frag.appendChild(child);
+                    });
+                    el.after(frag);
+                }
+            });
+    }
+}
+
+// ═══════ FILE OPEN / TABS ═══════
+async function openFile(path, name, language) {
+    // Already open?
+    const existIdx = openTabs.findIndex(t => t.path === path);
+    if (existIdx >= 0) {
+        switchToTab(existIdx);
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/ide/${SERVER_ID}/read?path=${encodeURIComponent(path)}`);
+        const data = await res.json();
+        if (!data.success) {
+            showToast(data.message || 'Dosya açılamadı', 'error');
+            return;
+        }
+
+        const lang = data.language || language || 'plaintext';
+        const model = monaco.editor.createModel(data.content, lang);
+
+        openTabs.push({
+            path: data.path,
+            name: data.filename,
+            content: data.content,
+            language: lang,
+            modified: false,
+            model: model,
+        });
+
+        activeTabIdx = openTabs.length - 1;
+        renderTabs();
+        switchToTab(activeTabIdx);
+
+        // Highlight in tree
+        document.querySelectorAll('.ide-tree-item').forEach(i => i.classList.remove('active'));
+        const treeItem = document.querySelector(`.ide-tree-item[data-path="${CSS.escape(path)}"]`);
+        if (treeItem) treeItem.classList.add('active');
+
+    } catch (e) {
+        showToast('Dosya yüklenemedi: ' + e.message, 'error');
+    }
+}
+
+function renderTabs() {
+    const bar = document.getElementById('tabBar');
+    bar.innerHTML = openTabs.map((tab, i) => {
+        const ext = getExtClass(tab.name);
+        const iconCls = getFileIcon(tab.name);
+        return `<div class="ide-tab ${i === activeTabIdx ? 'active' : ''} ${tab.modified ? 'modified' : ''}" onclick="switchToTab(${i})" title="${escHtml(tab.path)}">
+            <span class="ide-tab-icon"><i class="${iconCls}" style="font-size:0.72rem;"></i></span>
+            <span>${escHtml(tab.name)}</span>
+            <button class="close-btn" onclick="event.stopPropagation();closeTab(${i})" title="Kapat">&times;</button>
+        </div>`;
+    }).join('');
+}
+
+function switchToTab(idx) {
+    if (idx < 0 || idx >= openTabs.length) return;
+    activeTabIdx = idx;
+    const tab = openTabs[idx];
+
+    // Show editor, hide welcome
+    document.getElementById('welcomePanel').style.display = 'none';
+    document.getElementById('monacoEditor').style.display = 'block';
+
+    editor.setModel(tab.model);
+    editor.focus();
+
+    // Update status bar
+    document.getElementById('sbLang').textContent = tab.language;
+    updateBreadcrumb(tab.path);
+    renderTabs();
+}
+
+function closeTab(idx) {
+    const tab = openTabs[idx];
+    if (tab.modified) {
+        if (!confirm(`"${tab.name}" kaydedilmemiş değişiklikler içeriyor. Yine de kapatmak istiyor musunuz?`)) return;
+    }
+    tab.model.dispose();
+    openTabs.splice(idx, 1);
+
+    if (openTabs.length === 0) {
+        activeTabIdx = -1;
+        document.getElementById('welcomePanel').style.display = 'flex';
+        document.getElementById('monacoEditor').style.display = 'none';
+        document.getElementById('sbLang').textContent = 'Plaintext';
+    } else {
+        activeTabIdx = Math.min(idx, openTabs.length - 1);
+        switchToTab(activeTabIdx);
+    }
+    renderTabs();
+}
+
+// ═══════ SAVE ═══════
+async function saveCurrentFile() {
+    if (activeTabIdx < 0) return;
+    const tab = openTabs[activeTabIdx];
+    const content = tab.model.getValue();
+
+    try {
+        const res = await fetch(`/api/ide/${SERVER_ID}/write`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ path: tab.path, content }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            tab.modified = false;
+            tab.content = content;
+            renderTabs();
+            showToast('Kaydedildi ✓', 'success');
+        } else {
+            showToast(data.message || 'Kayıt hatası', 'error');
+        }
+    } catch (e) {
+        showToast('Kayıt hatası: ' + e.message, 'error');
+    }
+}
+
+// ═══════ TERMINAL (xterm.js + SocketIO) ═══════
+function initTerminal() {
+    const fitAddon = new FitAddon.FitAddon();
+    term = new Terminal({
+        fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
+        fontSize: 13,
+        theme: {
+            background: '#0d1117',
+            foreground: '#c9d1d9',
+            cursor: '#6366f1',
+            cursorAccent: '#0d1117',
+            selectionBackground: '#264f78',
+        },
+        cursorBlink: true,
+        scrollback: 5000,
+        allowProposedApi: true,
+    });
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('ideTerminal'));
+    fitAddon.fit();
+
+    // Resize observer
+    const ro = new ResizeObserver(() => { try { fitAddon.fit(); } catch(e){} });
+    ro.observe(document.getElementById('terminalWrap'));
+
+    term.write('\x1b[38;5;99m╭─ EmareCode Terminal ─────────────────╮\x1b[0m\r\n');
+    term.write('\x1b[38;5;99m│\x1b[0m  {{ server.name }} ({{ server.host }})     \x1b[38;5;99m│\x1b[0m\r\n');
+    term.write('\x1b[38;5;99m╰──────────────────────────────────────╯\x1b[0m\r\n\r\n');
+}
+
+function initSocket() {
+    socket = io({
+        transports: ['websocket'],   // polling YOK — Chrome freeze önlenir
+        upgrade: false,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
+        reconnectionAttempts: 10,
+    });
+
+    socket.on('connect', () => {
+        socket.emit('terminal_connect', { server_id: SERVER_ID });
+        document.getElementById('connBadge').className = 'ide-conn-badge online';
+        document.getElementById('connBadge').innerHTML = '<span class="ide-conn-dot"></span> Bağlı';
+    });
+
+    socket.on('terminal_output', data => {
+        if (term && data.output) {
+            term.write(data.output);
+        }
+    });
+
+    socket.on('terminal_error', data => {
+        if (term) term.write(`\r\n\x1b[31m${data.message || 'Hata'}\x1b[0m\r\n`);
+    });
+
+    socket.on('disconnect', () => {
+        document.getElementById('connBadge').className = 'ide-conn-badge offline';
+        document.getElementById('connBadge').innerHTML = '<span class="ide-conn-dot"></span> Bağlantı kesildi';
+    });
+
+    // Terminal input → server
+    if (term) {
+        term.onData(data => {
+            socket.emit('terminal_input', { input: data, server_id: SERVER_ID });
+        });
+    }
+
+    // AI chat
+    socket.on('ai_response', data => {
+        addChatMessage(data.response || data.message || 'Yanıt alınamadı', 'ai');
+    });
+}
+
+// ═══════ AI CHAT ═══════
+function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    addChatMessage(msg, 'user');
+
+    // Send via socket
+    if (socket) {
+        let context = '';
+        if (activeTabIdx >= 0) {
+            const tab = openTabs[activeTabIdx];
+            const sel = editor.getModel().getValueInRange(editor.getSelection());
+            context = sel || tab.model.getValue().substring(0, 2000);
+        }
+        socket.emit('ai_assist', {
+            server_id: SERVER_ID,
+            question: msg,
+            context: context,
+        });
+    }
+}
+
+function askAI(prompt) {
+    let context = '';
+    if (activeTabIdx >= 0) {
+        const sel = editor.getModel().getValueInRange(editor.getSelection());
+        context = sel || openTabs[activeTabIdx].model.getValue().substring(0, 2000);
+    }
+    document.getElementById('chatInput').value = '';
+    addChatMessage(prompt, 'user');
+    if (socket) {
+        socket.emit('ai_assist', {
+            server_id: SERVER_ID,
+            question: prompt,
+            context: context,
+        });
+    }
+}
+
+function addChatMessage(text, type) {
+    const body = document.getElementById('chatBody');
+    const msg = document.createElement('div');
+    msg.className = `ide-chat-msg ${type}`;
+    msg.innerHTML = type === 'ai' ? formatAIResponse(text) : escHtml(text);
+    body.appendChild(msg);
+    body.scrollTop = body.scrollHeight;
+}
+
+function formatAIResponse(text) {
+    // Basic md → html
+    return text
+        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+}
+
+// ═══════ SEARCH ═══════
+async function runSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    try {
+        const res = await fetch(`/api/ide/${SERVER_ID}/search?q=${encodeURIComponent(q)}&path=${encodeURIComponent(currentDir)}`);
+        const data = await res.json();
+        if (data.success && data.results.length > 0) {
+            showToast(`${data.results.length} dosyada bulundu`, 'success');
+            // Show results in file tree
+            const tree = document.getElementById('fileTree');
+            tree.innerHTML = `<div style="padding:0.5rem 0.75rem;font-size:0.72rem;color:#8b949e;border-bottom:1px solid rgba(148,163,184,.06);">
+                <i class="fas fa-search"></i> "${escHtml(q)}" — ${data.results.length} sonuç
+                <button class="ide-btn" onclick="loadDir(currentDir)" style="float:right;font-size:0.68rem;"><i class="fas fa-times"></i></button>
+            </div>`;
+            data.results.forEach(r => {
+                const el = document.createElement('div');
+                el.className = 'ide-tree-item';
+                el.style.setProperty('--depth', 0);
+                el.innerHTML = `<span class="arrow"></span><span class="icon file"><i class="${getFileIcon(r.name)}"></i></span><span class="name">${escHtml(r.path)}</span>`;
+                el.addEventListener('click', () => openFile(r.path, r.name));
+                tree.appendChild(el);
+            });
+        } else {
+            showToast('Sonuç bulunamadı', 'info');
+        }
+    } catch (e) {
+        showToast('Arama hatası: ' + e.message, 'error');
+    }
+}
+
+// ═══════ CONTEXT MENU ═══════
+function showContextMenu(e, item) {
+    ctxTarget = item;
+    const menu = document.getElementById('ctxMenu');
+    menu.style.display = 'block';
+    menu.style.left = e.clientX + 'px';
+    menu.style.top = e.clientY + 'px';
+}
+document.addEventListener('click', () => {
+    document.getElementById('ctxMenu').style.display = 'none';
+});
+
+async function ctxAction(action) {
+    if (!ctxTarget) return;
+    const path = ctxTarget.path;
+    const parentDir = path.substring(0, path.lastIndexOf('/')) || '/';
+
+    if (action === 'open') {
+        if (ctxTarget.is_dir) loadDir(path);
+        else openFile(path, ctxTarget.name, ctxTarget.language);
+    }
+    else if (action === 'rename') {
+        const newName = prompt('Yeni isim:', ctxTarget.name);
+        if (!newName) return;
+        const newPath = parentDir + '/' + newName;
+        const res = await fetch(`/api/ide/${SERVER_ID}/rename`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ old_path: path, new_path: newPath }),
+        });
+        const d = await res.json();
+        if (d.success) { loadDir(parentDir); showToast('Yeniden adlandırıldı', 'success'); }
+        else showToast(d.message, 'error');
+    }
+    else if (action === 'newFile') {
+        const dir = ctxTarget.is_dir ? path : parentDir;
+        const name = prompt('Dosya adı:');
+        if (!name) return;
+        const res = await fetch(`/api/ide/${SERVER_ID}/create`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ path: dir + '/' + name, type: 'file' }),
+        });
+        const d = await res.json();
+        if (d.success) { loadDir(dir); showToast('Dosya oluşturuldu', 'success'); }
+        else showToast(d.message, 'error');
+    }
+    else if (action === 'newFolder') {
+        const dir = ctxTarget.is_dir ? path : parentDir;
+        const name = prompt('Klasör adı:');
+        if (!name) return;
+        const res = await fetch(`/api/ide/${SERVER_ID}/create`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ path: dir + '/' + name, type: 'dir' }),
+        });
+        const d = await res.json();
+        if (d.success) { loadDir(dir); showToast('Klasör oluşturuldu', 'success'); }
+        else showToast(d.message, 'error');
+    }
+    else if (action === 'delete') {
+        if (!confirm(`"${ctxTarget.name}" silinecek. Emin misiniz?`)) return;
+        const res = await fetch(`/api/ide/${SERVER_ID}/delete`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ path: path }),
+        });
+        const d = await res.json();
+        if (d.success) { loadDir(parentDir); showToast('Silindi', 'success'); }
+        else showToast(d.message, 'error');
+    }
+}
+
+// ═══════ PANEL TOGGLES ═══════
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+}
+function toggleTerminal() {
+    const p = document.getElementById('bottomPanel');
+    p.classList.toggle('collapsed');
+    if (!p.classList.contains('collapsed') && term) {
+        setTimeout(() => term.focus(), 100);
+    }
+}
+function toggleChat() {
+    document.getElementById('chatPanel').classList.toggle('collapsed');
+}
+function toggleSearch() {
+    const p = document.getElementById('searchPanel');
+    p.classList.toggle('open');
+    if (p.classList.contains('open')) document.getElementById('searchInput').focus();
+}
+function switchBottomTab(tab) {
+    // For future: multi bottom tabs
+}
+
+// ═══════ BREADCRUMB ═══════
+function updateBreadcrumb(path) {
+    const bc = document.getElementById('breadcrumb');
+    const parts = path.split('/').filter(Boolean);
+    let html = `<span onclick="loadDir('/')"><i class="fas fa-server"></i></span>`;
+    let cumPath = '';
+    parts.forEach(p => {
+        cumPath += '/' + p;
+        const cp = cumPath;
+        html += `<span class="sep">/</span><span onclick="loadDir('${cp}')">${escHtml(p)}</span>`;
+    });
+    bc.innerHTML = html;
+}
+
+// ═══════ RESIZERS ═══════
+function initResizers() {
+    // Sidebar resize
+    makeResizer(document.getElementById('sidebarResize'), 'h', (dx) => {
+        const sb = document.getElementById('sidebar');
+        const newW = Math.max(180, Math.min(400, sb.offsetWidth + dx));
+        sb.style.width = newW + 'px';
+    });
+
+    // Chat panel resize
+    makeResizer(document.getElementById('chatResize'), 'h', (dx) => {
+        const cp = document.getElementById('chatPanel');
+        const newW = Math.max(220, Math.min(500, cp.offsetWidth - dx));
+        cp.style.width = newW + 'px';
+    });
+
+    // Terminal resize
+    makeResizer(document.getElementById('terminalResize'), 'v', (dy) => {
+        const bp = document.getElementById('bottomPanel');
+        const newH = Math.max(100, Math.min(window.innerHeight * 0.6, bp.offsetHeight - dy));
+        bp.style.height = newH + 'px';
+    });
+}
+
+function makeResizer(el, dir, onResize) {
+    if (!el) return;
+    let startX, startY;
+    el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startX = e.clientX;
+        startY = e.clientY;
+        el.classList.add('active');
+        document.body.style.cursor = dir === 'h' ? 'col-resize' : 'row-resize';
+        document.body.style.userSelect = 'none';
+
+        const onMove = (ev) => {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            startX = ev.clientX;
+            startY = ev.clientY;
+            if (dir === 'h') onResize(dx);
+            else onResize(dy);
+        };
+        const onUp = () => {
+            el.classList.remove('active');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            if (editor) editor.layout();
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+// ═══════ KEYBOARD SHORTCUTS ═══════
+function initKeyboard() {
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveCurrentFile();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+            e.preventDefault();
+            toggleSidebar();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+            e.preventDefault();
+            toggleTerminal();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+            e.preventDefault();
+            toggleChat();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+            e.preventDefault();
+            toggleSearch();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+            e.preventDefault();
+            if (activeTabIdx >= 0) closeTab(activeTabIdx);
+        }
+    });
+}
+
+// ═══════ HELPERS ═══════
+function createNewFile() {
+    const name = prompt('Yeni dosya adı:', 'untitled.py');
+    if (!name) return;
+    const dir = currentDir || '/root';
+    fetch(`/api/ide/${SERVER_ID}/create`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ path: dir + '/' + name, type: 'file' }),
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            loadDir(dir);
+            openFile(dir + '/' + name, name);
+            showToast('Dosya oluşturuldu', 'success');
+        } else showToast(d.message, 'error');
+    });
+}
+
+function createNewFolder() {
+    const name = prompt('Yeni klasör adı:');
+    if (!name) return;
+    const dir = currentDir || '/root';
+    fetch(`/api/ide/${SERVER_ID}/create`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ path: dir + '/' + name, type: 'dir' }),
+    }).then(r => r.json()).then(d => {
+        if (d.success) { loadDir(dir); showToast('Klasör oluşturuldu', 'success'); }
+        else showToast(d.message, 'error');
+    });
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(s || ''));
+    return d.innerHTML;
+}
+
+// ═══════ TOAST ═══════
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    const colors = { success:'#22c55e', error:'#f85149', info:'#6366f1', warning:'#f59e0b' };
+    const bgColors = { success:'rgba(34,197,94,.12)', error:'rgba(248,81,73,.12)', info:'rgba(99,102,241,.12)', warning:'rgba(245,158,11,.12)' };
+    const icons = { success:'fa-check-circle', error:'fa-times-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle' };
+    t.style.cssText = `position:fixed;top:16px;right:16px;z-index:10000;padding:0.65rem 1rem;
+        border-radius:10px;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;
+        background:${bgColors[type]||bgColors.info};color:${colors[type]||colors.info};
+        border:1px solid ${colors[type]||colors.info}30;backdrop-filter:blur(12px);
+        box-shadow:0 4px 16px rgba(0,0,0,.3);animation:toastIn .3s ease;max-width:400px;`;
+    t.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i><span>${msg}</span>`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+</script>
+<style>@keyframes toastIn { from { transform:translateX(100%);opacity:0; } to { transform:translateX(0);opacity:1; } }</style>
+{% endblock %}

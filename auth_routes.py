@@ -113,6 +113,60 @@ def login():
     return render_template('auth/login.html')
 
 
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """Üye ol sayfası."""
+    if current_user.is_authenticated:
+        return redirect(url_for('pages.dashboard'))
+
+    if request.method == 'POST':
+        _validate_csrf()
+        username  = (request.form.get('username') or '').strip()
+        email     = (request.form.get('email') or '').strip() or None
+        password  = request.form.get('password', '')
+        password2 = request.form.get('password2', '')
+
+        # Validasyon
+        if not username or len(username) < 3:
+            flash('Kullanıcı adı en az 3 karakter olmalı.', 'error')
+            return render_template('auth/register.html')
+
+        if User.query.filter_by(username=username).first():
+            flash('Bu kullanıcı adı zaten alınmış.', 'error')
+            return render_template('auth/register.html')
+
+        if email and User.query.filter_by(email=email).first():
+            flash('Bu e-posta adresi zaten kayıtlı.', 'error')
+            return render_template('auth/register.html')
+
+        if password != password2:
+            flash('Şifreler eşleşmiyor.', 'error')
+            return render_template('auth/register.html')
+
+        for pattern, msg in _PASSWORD_RULES:
+            if not re.search(pattern, password):
+                flash(msg, 'error')
+                return render_template('auth/register.html')
+
+        user = User(
+            username=username,
+            email=email,
+            role='read_only',
+            is_active_user=True,
+            et_balance=100000.0,   # 🎁 Hoş geldin hediyesi — 100.000 ET
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        log_action('auth.register', target_type='user', target_id=user.id,
+                   details={'username': username, 'et_welcome_gift': 100000})
+        flash('Hesabınız oluşturuldu! 🎁 100.000 ET hoş geldin hediyeniz hesabınıza eklendi.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/register.html')
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
@@ -237,19 +291,26 @@ def api_create_user():
         return jsonify({'success': False, 'message': 'Kullanıcı adı en az 3 karakter olmalı'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'success': False, 'message': 'Bu kullanıcı adı zaten mevcut'}), 409
-    if role not in ('super_admin', 'admin', 'operator', 'read_only'):
+    if role not in ('super_admin', 'admin', 'operator', 'read_only', 'custom'):
         return jsonify({'success': False, 'message': 'Geçersiz rol'}), 400
+
+    # Custom rol için en az bir izin zorunlu
+    permissions = data.get('permissions')
+    if role == 'custom' and (not permissions or not isinstance(permissions, list) or len(permissions) == 0):
+        return jsonify({'success': False, 'message': 'Custom rol için en az bir modül seçmelisiniz'}), 400
+
+    # Custom rol → read_only base + custom_permissions override
+    stored_role = 'read_only' if role == 'custom' else role
 
     user = User(
         username=username,
         email=email or None,
-        role=role,
+        role=stored_role,
         created_by=current_user.id,
     )
     user.set_password(password)
 
-    # Özel modül izinleri (opsiyonel)
-    permissions = data.get('permissions')
+    # Özel modül izinleri (custom rol için zorunlu, diğerleri opsiyonel)
     if permissions and isinstance(permissions, list) and len(permissions) > 0:
         user.custom_permissions_json = json.dumps(sorted(set(permissions)))
 
@@ -258,6 +319,7 @@ def api_create_user():
 
     log_action('user.create', target_type='user', target_id=user.id,
               details={'username': username, 'role': role,
+                       'stored_role': stored_role,
                        'custom_perms': bool(permissions)})
     return jsonify({'success': True, 'message': 'Kullanıcı oluşturuldu', 'user': user.to_dict()})
 

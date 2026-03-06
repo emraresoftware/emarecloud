@@ -1,15 +1,61 @@
 """
 EmareCloud — Güvenlik Middleware
-Gzip sıkıştırma + güvenlik header'ları.
+Gzip sıkıştırma + güvenlik header'ları + aktivite takibi.
 """
 
 import gzip
+from datetime import datetime
 
 from flask import request
+from flask_login import current_user
 
 
 def register_middleware(app):
     """after_request middleware'lerini uygulamaya kaydeder."""
+
+    @app.before_request
+    def track_user_activity():
+        """Giriş yapmış kullanıcının son görülme zamanını günceller."""
+        if current_user.is_authenticated:
+            now = datetime.utcnow()
+            # Veritabanı yükünü azaltmak için sadece 60 saniyede bir güncelle
+            if not current_user.last_seen or (now - current_user.last_seen).total_seconds() > 60:
+                current_user.last_seen = now
+                # Hangi sayfadaysa activity olarak kaydet
+                path = request.path
+                activity_map = {
+                    '/dashboard': 'Dashboard',
+                    '/market': 'Uygulama Pazarı',
+                    '/datacenters': 'Veri Merkezi Yönetimi',
+                    '/virtualization': 'Sanal Makine',
+                    '/storage': 'Depolama',
+                    '/monitoring': 'İzleme',
+                    '/cloudflare': 'Cloudflare DNS',
+                    '/terminal': 'Terminal',
+                    '/server-map': 'Sunucu Haritası',
+                    '/scoreboard': 'Geliştirici Panosu',
+                    '/admin/users': 'Kullanıcı Yönetimi',
+                    '/admin/panel': 'Admin Paneli',
+                    '/admin/audit': 'Denetim Günlüğü',
+                }
+                activity = None
+                for prefix, label in activity_map.items():
+                    if path.startswith(prefix):
+                        activity = label
+                        break
+                if path.startswith('/server/') and not activity:
+                    activity = 'Sunucu Yönetimi'
+                elif path.startswith('/ai-'):
+                    activity = 'AI Araçları'
+                elif path.startswith('/api/'):
+                    activity = 'API Çağrısı'
+                if activity:
+                    current_user.current_activity = activity
+                try:
+                    from extensions import db
+                    db.session.commit()
+                except Exception:
+                    pass
 
     @app.after_request
     def compress_response(response):

@@ -1,13 +1,127 @@
 """
 EmareCloud — AI Terminal Asistanı
-Kural tabanlı akıllı asistan: log açıklama, komut önerisi, optimizasyon tavsiyeleri.
-İleride OpenAI / Ollama API entegrasyonu için hazır altyapı.
+Gemini AI destekli akıllı asistan: terminal çıkıntısı analizi, log açıklama,
+komut önerisi, optimizasyon tavsiyeleri.
+Gemini erişilemezse kural tabanlı sistemle yanıt verir.
 """
 
 import re
 import logging
 
 logger = logging.getLogger('emarecloud.ai_assistant')
+
+# ============================================================
+# GEMINI ENTEGRASYONU — anahtarlar.py üzerinden
+# ============================================================
+
+_GEMINI_MODEL = "gemini-2.0-flash"    # Hızlı, ücretsiz kota yüksek
+
+_SYSTEM_PROMPT = """Sen EmareCloud platformunun yerleşik AI asistanısın. Adın "Emare AI".
+
+EmareCloud; Linux/AlmaLinux/Ubuntu sunucuları SSH ile yöneten, Docker, Nginx, PHP,
+LXD sanal makine, firewall, RBAC, market uygulamaları ve blockchain/token özelliklerine
+sahip bir cloud panel platformudur.
+
+Görevin:
+- Terminal çıktılarındaki hataları Türkçe açıklamak ve çözmek
+- Linux komutlarını açıklamak, optimizasyon önerileri sunmak
+- SSH/nginx/php/docker/systemd konularında rehberlik etmek
+- Yanıtları kısa, net, actionable tutmak (liste + komut blokları kullan)
+- Şüphe duyduğunda `journalctl -xe`, `systemctl status`, `tail -f` gibi teşhis komutları öner
+
+Yanıt formatı:
+- Markdown kullan (başlık, kod bloğu, liste)
+- Kod örneklerini ```bash ... ``` içinde ver
+- Maksimum 400 kelime
+- Türkçe yanıt ver
+"""
+
+
+def _gemini_analyze(question: str, context: str = '') -> dict | None:
+    """Gemini API ile analiz. Başarısız olursa None döner."""
+    try:
+        from anahtarlar import gemini_key
+        api_key = str(gemini_key)
+        if not api_key or api_key.startswith('<') or len(api_key) < 10:
+            return None
+    except Exception:
+        return None
+
+    prompt_parts = []
+    if context and context.strip():
+        prompt_parts.append(f"**Terminal Çıktısı (son bölüm):**\n```\n{context[-2000:]}\n```\n")
+    if question and question.strip():
+        prompt_parts.append(f"**Soru:** {question}")
+
+    if not prompt_parts:
+        return None
+
+    full_prompt = "\n\n".join(prompt_parts)
+
+    # SDK denemesi — yeni google-genai paketi (>= 0.8)
+    try:
+        from google import genai as _genai
+        from google.genai import types as _gtypes
+        client = _genai.Client(api_key=api_key)
+        resp = client.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=full_prompt,
+            config=_gtypes.GenerateContentConfig(
+                system_instruction=_SYSTEM_PROMPT,
+                max_output_tokens=800,
+                temperature=0.4,
+            ),
+        )
+        text = resp.text.strip()
+        return {
+            'response': text,
+            'suggestions': _extract_commands(text),
+            'model': _GEMINI_MODEL,
+        }
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("Gemini SDK hatası: %s", e)
+
+    # Fallback: doğrudan REST
+    try:
+        import json as _json
+        import urllib.request as _req
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{_GEMINI_MODEL}:generateContent?key={api_key}"
+        )
+        payload = _json.dumps({
+            "system_instruction": {"parts": [{"text": _SYSTEM_PROMPT}]},
+            "contents": [{"parts": [{"text": full_prompt}]}],
+            "generationConfig": {"maxOutputTokens": 800, "temperature": 0.4},
+        }).encode()
+        request = _req.Request(url, data=payload,
+                               headers={"Content-Type": "application/json"},
+                               method="POST")
+        with _req.urlopen(request, timeout=15) as resp:
+            data = _json.loads(resp.read())
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return {
+            'response': text,
+            'suggestions': _extract_commands(text),
+            'model': _GEMINI_MODEL,
+        }
+    except Exception as e:
+        logger.debug("Gemini REST hatası: %s", e)
+        return None
+
+
+def _extract_commands(text: str) -> list:
+    """Markdown kod bloklarından bash komutlarını çıkarır."""
+    cmds = re.findall(r'```(?:bash|shell|sh)?\s*\n?(.*?)```', text, re.DOTALL)
+    result = []
+    for block in cmds:
+        for line in block.strip().splitlines():
+            line = line.strip().lstrip('$').strip()
+            if line and not line.startswith('#') and len(line) < 120:
+                result.append(line)
+    return result[:5]
 
 
 # ============================================================
@@ -243,14 +357,24 @@ def _match_optimization(question):
 def ai_analyze(question, context=''):
     """
     Ana AI analiz fonksiyonu.
+    1) Gemini API ile analiz dener (anahtarlar.py üzerinden)
+    2) Başarısız olursa kural tabanlı sisteme düşer
 
     Args:
         question: Kullanıcının sorusu
         context: Terminal çıktısının son kısmı (opsiyonel)
 
     Returns:
-        dict: {'response': str, 'suggestions': list[str]}
+        dict: {'response': str, 'suggestions': list[str], 'model': str}
     """
+    # ── Gemini ile dene ─────────────────────────────────────
+    gemini_result = _gemini_analyze(question, context)
+    if gemini_result:
+        logger.debug("Gemini yanıtı alındı (%d karakter)", len(gemini_result['response']))
+        return gemini_result
+
+    # ── Kural tabanlı fallback ──────────────────────────────
+    logger.debug("Kural tabanlı sisteme düşüldü")
     response_parts = []
     suggestions = []
 
@@ -357,6 +481,7 @@ def ai_analyze(question, context=''):
     return {
         'response': '\n\n---\n\n'.join(response_parts),
         'suggestions': suggestions[:5],
+        'model': 'rule-based',
     }
 
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EmareCloud</title>
+    <title>Üye Ol — EmareCloud</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -25,20 +25,19 @@
         }
         .bg-glow {
             position: fixed; width: 600px; height: 600px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
-            top: -200px; left: -100px; z-index: 0; pointer-events: none;
-            animation: slowdrift 20s ease-in-out infinite alternate;
+            background: radial-gradient(circle, rgba(34,197,94,0.07) 0%, transparent 70%);
+            top: -200px; right: -100px; z-index: 0; pointer-events: none;
+            animation: slowdrift 22s ease-in-out infinite alternate;
         }
         .bg-glow-2 {
             position: fixed; width: 400px; height: 400px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(147,51,234,0.06) 0%, transparent 70%);
-            bottom: -100px; right: -100px; z-index: 0; pointer-events: none;
-            animation: slowdrift 25s ease-in-out infinite alternate-reverse;
+            background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+            bottom: -120px; left: -80px; z-index: 0; pointer-events: none;
+            animation: slowdrift 28s ease-in-out infinite alternate-reverse;
         }
         @keyframes slowdrift {
             from { transform: translate(0,0); } to { transform: translate(40px,30px); }
         }
-        /* Header */
         .chat-header {
             position: relative; z-index: 10;
             display: flex; align-items: center; gap: 0.75rem;
@@ -64,11 +63,27 @@
             margin-left: auto; font-size: 0.78rem;
             color: rgba(148,163,184,0.45); font-weight: 500; letter-spacing: 0.04em;
         }
-        /* Messages */
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 2rem 1rem;
+        .step-bar {
             position: relative; z-index: 10;
-            display: flex; flex-direction: column; gap: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.4rem; padding: 0.6rem 1rem;
+            background: rgba(10,10,20,0.7); flex-shrink: 0;
+        }
+        .step-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(99,102,241,0.25);
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background: #6366f1;
+            box-shadow: 0 0 8px rgba(99,102,241,0.6);
+            width: 22px; border-radius: 4px;
+        }
+        .step-dot.done { background: #22c55e; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 1.5rem 1rem;
+            position: relative; z-index: 10;
+            display: flex; flex-direction: column; gap: 1.1rem;
             max-width: 720px; width: 100%; margin: 0 auto;
             scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.3) transparent;
         }
@@ -92,7 +107,6 @@
         .msg.ai    .msg-bubble { background: rgba(20,20,40,0.85); border: 1px solid rgba(99,102,241,0.15); border-bottom-left-radius: 4px; color: #e2e8f0; }
         .msg.user  .msg-bubble { background: linear-gradient(135deg, #4f46e5, #7c3aed); border-bottom-right-radius: 4px; color: #fff; }
         .msg.error .msg-bubble { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-bottom-left-radius: 4px; color: #f87171; }
-        /* Typing dots */
         .typing-indicator { display: flex; gap: 0.7rem; align-items: flex-end; animation: msgIn 0.2s ease both; }
         .typing-avatar {
             width: 32px; height: 32px; border-radius: 50%;
@@ -114,7 +128,30 @@
             0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
             30%            { transform: translateY(-5px); opacity: 1; }
         }
-        /* Input */
+        /* Quick-action chips */
+        .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; }
+        .chip {
+            padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem;
+            background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+            color: #818cf8; cursor: pointer; transition: all 0.2s;
+        }
+        .chip:hover { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+        /* Password strength */
+        .pwd-strength { margin-top: 0.5rem; }
+        .pwd-bar {
+            height: 4px; border-radius: 2px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden; margin-bottom: 0.3rem;
+        }
+        .pwd-fill {
+            height: 100%; border-radius: 2px;
+            width: 0%; transition: width 0.4s ease, background 0.4s ease;
+        }
+        .pwd-rules { display: flex; flex-direction: column; gap: 0.2rem; }
+        .pwd-rule { font-size: 0.72rem; display: flex; align-items: center; gap: 0.3rem; color: rgba(148,163,184,0.5); transition: color 0.2s; }
+        .pwd-rule.ok { color: #22c55e; }
+        .pwd-rule i { font-size: 0.65rem; }
+        /* Input area */
         .chat-input-area {
             position: relative; z-index: 10; padding: 1rem;
             background: rgba(10,10,20,0.92);
@@ -132,7 +169,7 @@
         }
         .chat-input-box:focus { border-color: rgba(99,102,241,0.5); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
         .chat-input-box::placeholder { color: rgba(148,163,184,0.35); }
-        .chat-input-box[type="password"] { letter-spacing: 0.15em; }
+        .chat-input-box[type="password"] { letter-spacing: 0.12em; }
         .chat-send-btn {
             width: 42px; height: 42px; border: none; border-radius: 10px;
             background: linear-gradient(135deg, #6366f1, #9333ea);
@@ -144,13 +181,6 @@
         .chat-send-btn:active { transform: scale(0.95); }
         .chat-send-btn:disabled { opacity: 0.35; cursor: default; transform: none; }
         #actual-form { display: none; }
-        .register-link {
-            text-align: center; font-size: 0.78rem;
-            color: rgba(148,163,184,0.45); margin-top: 0.5rem;
-        }
-        .register-link a { color: #818cf8; text-decoration: none; }
-        .register-link a:hover { text-decoration: underline; }
-        /* Overlay */
         .submit-overlay {
             display: none; position: fixed; inset: 0;
             background: rgba(10,10,20,0.75); z-index: 100;
@@ -161,6 +191,12 @@
         .spin-ring { width: 48px; height: 48px; border: 3px solid rgba(99,102,241,0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.9s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .submit-overlay p { font-size: 0.88rem; color: rgba(148,163,184,0.7); }
+        .login-link {
+            text-align: center; font-size: 0.78rem;
+            color: rgba(148,163,184,0.45); margin-top: 0.5rem;
+        }
+        .login-link a { color: #818cf8; text-decoration: none; }
+        .login-link a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -168,7 +204,6 @@
     <div class="bg-glow"></div>
     <div class="bg-glow-2"></div>
 
-    <!-- Header -->
     <div class="chat-header">
         <div class="header-avatar"><i class="fas fa-robot"></i></div>
         <div class="header-info">
@@ -178,10 +213,16 @@
         <div class="header-brand">EmareCloud</div>
     </div>
 
-    <!-- Chat -->
+    <!-- Step indicator: 4 adım: kullanıcı adı, e-posta, şifre, onay -->
+    <div class="step-bar" id="step-bar">
+        <div class="step-dot active" id="dot-0"></div>
+        <div class="step-dot"        id="dot-1"></div>
+        <div class="step-dot"        id="dot-2"></div>
+        <div class="step-dot"        id="dot-3"></div>
+    </div>
+
     <div class="chat-messages" id="chat-messages"></div>
 
-    <!-- Input -->
     <div class="chat-input-area">
         <div class="input-label" id="input-label">Hazırlanıyor…</div>
         <div class="chat-input-wrap">
@@ -193,24 +234,22 @@
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <div class="register-link">Henüz hesabın yok mu? <a href="{{ url_for('auth.register') }}">Üye Ol</a></div>
+        <div class="login-link">Zaten hesabın var mı? <a href="{{ url_for('auth.login') }}">Giriş Yap</a></div>
     </div>
 
-    <!-- Real POST form (hidden) -->
-    <form id="actual-form" method="POST" action="{{ url_for('auth.login') }}">
+    <form id="actual-form" method="POST" action="{{ url_for('auth.register') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="username" id="form-username">
-        <input type="hidden" name="password" id="form-password">
-        <input type="hidden" name="remember" value="">
+        <input type="hidden" name="username"  id="form-username">
+        <input type="hidden" name="email"     id="form-email">
+        <input type="hidden" name="password"  id="form-password">
+        <input type="hidden" name="password2" id="form-password2">
     </form>
 
-    <!-- Loading overlay -->
     <div class="submit-overlay" id="submit-overlay">
         <div class="spin-ring"></div>
-        <p>Kimlik doğrulanıyor…</p>
+        <p>Hesabnz oluturuluyor…</p>
     </div>
 
-    <!-- Server flash errors (injected by Jinja2) -->
     <div id="server-errors" style="display:none;"
          data-errors="{{ get_flashed_messages(with_categories=true)|tojson }}"></div>
 
@@ -221,17 +260,38 @@
         var sendBtn = document.getElementById('send-btn');
         var labelEl = document.getElementById('input-label');
         var overlay = document.getElementById('submit-overlay');
+        var dots    = [
+            document.getElementById('dot-0'),
+            document.getElementById('dot-1'),
+            document.getElementById('dot-2'),
+            document.getElementById('dot-3'),
+        ];
 
-        var state            = 'greeting';
-        var capturedUsername = '';
+        // Steps: 0=username, 1=email, 2=password, 3=password2
+        var step = 0;
+        var data = { username: '', email: '', password: '', password2: '' };
+
+        var PWD_RULES = [
+            { re: /.{8,}/,                  label: 'En az 8 karakter' },
+            { re: /[A-Z]/,                  label: 'En az 1 büyük harf' },
+            { re: /[a-z]/,                  label: 'En az 1 küçük harf' },
+            { re: /[0-9]/,                  label: 'En az 1 rakam' },
+            { re: /[!@#$%^&*()\_+\-=\[\]{}|;:,.<>?\/~`]/, label: 'En az 1 özel karakter' },
+        ];
 
         function esc(s) {
             return String(s)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
         function scroll() { msgsEl.scrollTop = msgsEl.scrollHeight; }
+
+        function setDot(idx) {
+            for (var i = 0; i < dots.length; i++) {
+                dots[i].className = 'step-dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+            }
+        }
 
         function addMsg(role, html) {
             var wrap = document.createElement('div');
@@ -250,6 +310,7 @@
             else                 { wrap.appendChild(av);  wrap.appendChild(bub); }
             msgsEl.appendChild(wrap);
             scroll();
+            return { wrap: wrap, bubble: bub };
         }
 
         function showTyping() {
@@ -261,17 +322,14 @@
             msgsEl.appendChild(wrap); scroll();
         }
 
-        function hideTyping() {
-            var t = document.getElementById('typing-el');
-            if (t) t.remove();
-        }
+        function hideTyping() { var t = document.getElementById('typing-el'); if (t) t.remove(); }
 
         function aiSay(html, preDelay) {
             preDelay = (preDelay === undefined) ? 500 : preDelay;
             return new Promise(function (resolve) {
                 setTimeout(function () {
                     showTyping();
-                    var readTime = Math.min(1400, 350 + html.replace(/<[^>]*>/g, '').length * 22);
+                    var readTime = Math.min(1300, 300 + html.replace(/<[^>]*>/g,'').length * 20);
                     setTimeout(function () { hideTyping(); addMsg('ai', html); resolve(); }, readTime);
                 }, preDelay);
             });
@@ -290,53 +348,160 @@
         function setWaiting() { inputEl.disabled = true; sendBtn.disabled = true; }
 
         function getFlashErrors() {
-            try {
-                return JSON.parse(document.getElementById('server-errors').dataset.errors) || [];
-            } catch (e) { return []; }
+            try { return JSON.parse(document.getElementById('server-errors').dataset.errors) || []; }
+            catch (e) { return []; }
+        }
+
+        /* ── Password strength widget appended into a bubble ── */
+        function addPwdStrength(parentBubble) {
+            var div = document.createElement('div');
+            div.className = 'pwd-strength'; div.id = 'pwd-strength';
+            div.innerHTML =
+                '<div class="pwd-bar"><div class="pwd-fill" id="pwd-fill"></div></div>' +
+                '<div class="pwd-rules" id="pwd-rules"></div>';
+            parentBubble.appendChild(div);
+            redrawRules('');
+        }
+
+        function redrawRules(pwd) {
+            var rulesEl = document.getElementById('pwd-rules');
+            if (!rulesEl) return;
+            var ok = 0;
+            var html = '';
+            for (var i = 0; i < PWD_RULES.length; i++) {
+                var pass = PWD_RULES[i].re.test(pwd);
+                if (pass) ok++;
+                html += '<div class="pwd-rule' + (pass ? ' ok' : '') + '">' +
+                    '<i class="fas fa-' + (pass ? 'check' : 'times') + '"></i>' +
+                    esc(PWD_RULES[i].label) + '</div>';
+            }
+            rulesEl.innerHTML = html;
+            var pct = (ok / PWD_RULES.length) * 100;
+            var fill = document.getElementById('pwd-fill');
+            if (fill) {
+                fill.style.width = pct + '%';
+                fill.style.background = ok <= 1 ? '#ef4444' : ok <= 3 ? '#f59e0b' : '#22c55e';
+            }
+        }
+
+        function pwdAllOk(pwd) {
+            for (var i = 0; i < PWD_RULES.length; i++) {
+                if (!PWD_RULES[i].re.test(pwd)) return false;
+            }
+            return true;
         }
 
         /* ── Greeting ── */
         async function greet() {
             setWaiting();
             labelEl.textContent = 'Lütfen bekleyin…';
-            await aiSay('Merhaba! 👋 Ben <strong>Emare</strong> — EmareCloud altyapı asistanınız.', 500);
-            await aiSay('Sisteme giriş yapmanıza yardımcı olmaktan memnuniyet duyarım.', 100);
+            await aiSay('Merhaba! 🎉 Aramıza katıldığınız için mutluyuz.', 500);
+            await aiSay('Size bir hesap oluşturalım. Birkaç basit soru soralım.', 100);
+
             var errors = getFlashErrors();
             if (errors.length) {
                 for (var i = 0; i < errors.length; i++) { addMsg('error', esc(errors[i][1])); scroll(); }
-                await aiSay('Bir sorun oluştu. Tekrar denemek ister misiniz?<br>Kullanıcı adınızı girin.', 300);
-            } else {
-                await aiSay('Başlamak için lütfen <strong>kullanıcı adınızı</strong> girin.', 100);
+                await aiSay('Bir sorun oluştu. Tekrar başlamak ister misiniz?', 200);
             }
-            state = 'username';
-            setReady('Kullanıcı adı…', 'Enter ile gönder', 'text');
+
+            await askUsername();
+        }
+
+        async function askUsername() {
+            step = 0; setDot(0);
+            await aiSay('Kullanmak istediğiniz <strong>kullanıcı adını</strong> nedir?<br><small style="opacity:.5">En az 3 karakter, boşluk olmadan.</small>', 200);
+            setReady('kullanici_adi', 'Kullanıcı adınızı yazın', 'text');
+        }
+
+        async function askEmail() {
+            step = 1; setDot(1);
+            var res = addMsg('ai', '<strong>E-posta adresiniz</strong> nedir? (isteğe bağlı)');
+            var chips = document.createElement('div');
+            chips.className = 'chips';
+            chips.innerHTML = '<div class="chip" id="skip-email"><i class="fas fa-forward" style="margin-right:.3rem"></i>Atla</div>';
+            res.bubble.appendChild(chips);
+            scroll();
+            document.getElementById('skip-email').addEventListener('click', function () {
+                data.email = '';
+                addMsg('user', '<span style="opacity:.6"><em>Atlandı</em></span>');
+                askPassword();
+            });
+            setReady('ornek@eposta.com', 'E-posta veya Enter ile atla', 'text');
+        }
+
+        async function askPassword() {
+            step = 2; setDot(2);
+            var res = addMsg('ai', '<strong>Şifrenizi</strong> belirleyin:');
+            addPwdStrength(res.bubble);
+            scroll();
+            setReady('••••••••', 'Şifrenizi yazın', 'password');
+        }
+
+        async function askConfirm() {
+            step = 3; setDot(3);
+            await aiSay('Şifrenizi bir kez daha girin:', 200);
+            setReady('••••••••', 'Şifrenizi tekrar yazın', 'password');
         }
 
         /* ── Handle send ── */
         async function handleSend() {
             var val = inputEl.value.trim();
-            if (!val) return;
 
-            if (state === 'username') {
-                capturedUsername = val;
+            if (step === 0) {
+                if (!val || val.length < 3) { inputEl.classList.add('error'); setTimeout(function(){inputEl.classList.remove('error');},600); return; }
+                data.username = val;
                 addMsg('user', esc(val));
                 setWaiting();
-                await aiSay('Merhaba <strong>' + esc(capturedUsername) + '</strong>! 🙂<br>Şimdi <strong>şifrenizi</strong> girin.', 300);
-                state = 'password';
-                setReady('••••••••', 'Şifrenizi girin ve Enter’a basın', 'password');
+                await askEmail();
 
-            } else if (state === 'password') {
-                var pwd = val;
-                addMsg('user', '&bull;'.repeat(Math.min(pwd.length, 10)));
+            } else if (step === 1) {
+                data.email = val; // boş olabilir
+                if (val) {
+                    addMsg('user', esc(val));
+                } else {
+                    addMsg('user', '<span style="opacity:.6"><em>Atlandı</em></span>');
+                }
                 setWaiting();
-                state = 'submitting';
-                await aiSay('Kimliğiniz doğrulanıyor… 🔐', 200);
-                document.getElementById('form-username').value = capturedUsername;
-                document.getElementById('form-password').value = pwd;
+                await askPassword();
+
+            } else if (step === 2) {
+                if (!val) return;
+                if (!pwdAllOk(val)) {
+                    redrawRules(val);
+                    inputEl.value = '';
+                    inputEl.focus();
+                    return;
+                }
+                data.password = val;
+                addMsg('user', '&bull;'.repeat(Math.min(val.length, 10)));
+                setWaiting();
+                await askConfirm();
+
+            } else if (step === 3) {
+                if (!val) return;
+                if (val !== data.password) {
+                    addMsg('error', 'Şifreler eşleşmiyor. Tekrar dene:');
+                    inputEl.value = ''; inputEl.focus();
+                    return;
+                }
+                data.password2 = val;
+                addMsg('user', '&bull;'.repeat(Math.min(val.length, 10)));
+                setWaiting();
+                dots.forEach(function(d) { d.className = 'step-dot done'; });
+                await aiSay('Harika! Her şey hazır. Hesabınız oluşturuluyor… 🎉', 200);
+                document.getElementById('form-username').value  = data.username;
+                document.getElementById('form-email').value     = data.email;
+                document.getElementById('form-password').value  = data.password;
+                document.getElementById('form-password2').value = data.password2;
                 overlay.classList.add('active');
-                setTimeout(function () { document.getElementById('actual-form').submit(); }, 600);
+                setTimeout(function () { document.getElementById('actual-form').submit(); }, 700);
             }
         }
+
+        /* ── Live password strength while typing ── */
+        inputEl.addEventListener('input', function () {
+            if (step === 2) redrawRules(inputEl.value);
+        });
 
         sendBtn.addEventListener('click', handleSend);
         inputEl.addEventListener('keydown', function (e) {

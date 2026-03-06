@@ -16,6 +16,9 @@
     <button class="mkt-tab active" onclick="switchTab('catalog')" id="tabCatalog">
         <i class="fas fa-th-large"></i> Katalog <span class="mkt-tab-badge">{{ apps|length }}</span>
     </button>
+    <button class="mkt-tab" onclick="switchTab('emarecode')" id="tabEmarecode">
+        <i class="fas fa-laptop-code"></i> EmareCode Projeleri <span class="mkt-tab-badge" style="background:rgba(99,102,241,0.15);color:#6366f1;">{{ emare_projects.stats.total }}</span>
+    </button>
     <button class="mkt-tab" onclick="switchTab('stacks')" id="tabStacks">
         <i class="fas fa-layer-group"></i> Stack Builder <span class="mkt-tab-badge">{{ stacks|length }}</span>
     </button>
@@ -114,6 +117,131 @@
 
 <!-- ==================== STACK BUILDER SEKMESİ ==================== -->
 <div class="mkt-panel" id="panelStacks" style="display:none;">
+
+<!-- ==================== EMARECODE PROJELERİ SEKMESİ ==================== -->
+<div class="mkt-panel" id="panelEmarecode" style="display:none;">
+    <!-- EmareCode Hero -->
+    <div class="emc-hero">
+        <div class="emc-hero-glow"></div>
+        <div class="emc-hero-content">
+            <div class="emc-hero-icon">
+                <i class="fas fa-laptop-code"></i>
+            </div>
+            <div class="emc-hero-text">
+                <h2>EmareCode ile Yazılan Projeler</h2>
+                <p>Emare ekosisteminin tüm yazılım projeleri — tamamen EmareCode ile geliştiriliyor.</p>
+            </div>
+        </div>
+        <div class="emc-stats-row">
+            <div class="emc-stat">
+                <span class="emc-stat-num">{{ emare_projects.stats.total }}</span>
+                <span class="emc-stat-lbl">Toplam Proje</span>
+            </div>
+            <div class="emc-stat">
+                <span class="emc-stat-num" style="color:#22c55e;">{{ emare_projects.stats.production }}</span>
+                <span class="emc-stat-lbl">Yayında</span>
+            </div>
+            <div class="emc-stat">
+                <span class="emc-stat-num" style="color:#3b82f6;">{{ emare_projects.stats.ready }}</span>
+                <span class="emc-stat-lbl">Hazır</span>
+            </div>
+            <div class="emc-stat">
+                <span class="emc-stat-num" style="color:#f59e0b;">{{ emare_projects.stats.development }}</span>
+                <span class="emc-stat-lbl">Geliştirmede</span>
+            </div>
+            <div class="emc-stat">
+                <span class="emc-stat-num" style="color:#8b5cf6;">{{ emare_projects.stats.planning }}</span>
+                <span class="emc-stat-lbl">Planlanan</span>
+            </div>
+            <div class="emc-stat">
+                <span class="emc-stat-num" style="color:#06b6d4;">%{{ emare_projects.stats.avg_progress }}</span>
+                <span class="emc-stat-lbl">Ort. İlerleme</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="mkt-toolbar" style="margin-top:1rem;">
+        <div class="mkt-filter-pills" id="emcStatusPills">
+            <button class="mkt-pill active" onclick="filterEmcStatus('')">
+                <i class="fas fa-th-large"></i> Tümü <span class="mkt-pill-count">{{ emare_projects.stats.total }}</span>
+            </button>
+            <button class="mkt-pill" onclick="filterEmcStatus('production')">
+                <i class="fas fa-check-circle"></i> Yayında <span class="mkt-pill-count">{{ emare_projects.stats.production }}</span>
+            </button>
+            <button class="mkt-pill" onclick="filterEmcStatus('ready')">
+                <i class="fas fa-clipboard-check"></i> Hazır <span class="mkt-pill-count">{{ emare_projects.stats.ready }}</span>
+            </button>
+            <button class="mkt-pill" onclick="filterEmcStatus('development')">
+                <i class="fas fa-hammer"></i> Geliştirmede <span class="mkt-pill-count">{{ emare_projects.stats.development }}</span>
+            </button>
+            <button class="mkt-pill" onclick="filterEmcStatus('planning')">
+                <i class="fas fa-lightbulb"></i> Planlanan <span class="mkt-pill-count">{{ emare_projects.stats.planning }}</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Proje Kartları -->
+    <div class="emc-grid" id="emcGrid">
+        {% for proj in emare_projects.projects %}
+        <div class="emc-card" data-status="{{ proj.status }}" data-name="{{ proj.name|lower }}">
+            <!-- Üst kısım: İkon + Badge -->
+            <div class="emc-card-top">
+                <div class="emc-card-icon" style="background: {{ proj.color }}18; color: {{ proj.color }};">
+                    <i class="{{ proj.icon }}"></i>
+                </div>
+                <div class="emc-card-badges">
+                    {% if proj.status == 'production' %}
+                    <span class="emc-badge emc-badge-live"><i class="fas fa-circle"></i> Yayında</span>
+                    {% elif proj.status == 'ready' %}
+                    <span class="emc-badge emc-badge-ready"><i class="fas fa-check"></i> Hazır</span>
+                    {% elif proj.status == 'development' %}
+                    <span class="emc-badge emc-badge-dev">
+                        <span class="emc-typing-dot"></span>
+                        EmareCode ile yazılıyor
+                    </span>
+                    {% elif proj.status == 'planning' %}
+                    <span class="emc-badge emc-badge-plan">
+                        <span class="emc-typing-dot"></span>
+                        EmareCode ile yazılıyor
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- İsim + Kategori -->
+            <h3 class="emc-card-title">{{ proj.name }}</h3>
+            <span class="emc-card-cat">{{ proj.category }}</span>
+            <!-- Açıklama -->
+            <p class="emc-card-desc">{{ proj.description }}</p>
+            <!-- Tech Stack -->
+            {% if proj.tech %}
+            <div class="emc-card-tech">
+                {% for t in proj.tech %}
+                <span class="emc-tech-chip">{{ t }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <!-- İlerleme Çubuğu -->
+            <div class="emc-progress-wrapper">
+                <div class="emc-progress-header">
+                    <span class="emc-progress-label">Geliştirme İlerlemesi</span>
+                    <span class="emc-progress-pct" style="color: {{ proj.color }};">%{{ proj.progress }}</span>
+                </div>
+                <div class="emc-progress-bar">
+                    <div class="emc-progress-fill {% if proj.progress == 100 %}emc-progress-complete{% elif proj.progress >= 80 %}emc-progress-high{% elif proj.progress >= 40 %}emc-progress-mid{% else %}emc-progress-low{% endif %}"
+                         style="width: {{ proj.progress }}%; background: {{ proj.color }};">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mkt-empty" id="emcEmpty" style="display:none;">
+        <i class="fas fa-search"></i>
+        <p>Filtrelerinizle eşleşen proje bulunamadı.</p>
+    </div>
+</div>
     <!-- Stack Builder Hero -->
     <div class="stack-hero">
         <div class="stack-hero-icon"><i class="fas fa-magic"></i></div>
@@ -416,6 +544,9 @@ function switchTab(tab) {
     if (tab === 'catalog') {
         document.getElementById('tabCatalog').classList.add('active');
         document.getElementById('panelCatalog').style.display = 'block';
+    } else if (tab === 'emarecode') {
+        document.getElementById('tabEmarecode').classList.add('active');
+        document.getElementById('panelEmarecode').style.display = 'block';
     } else if (tab === 'stacks') {
         document.getElementById('tabStacks').classList.add('active');
         document.getElementById('panelStacks').style.display = 'block';
@@ -946,6 +1077,20 @@ async function runStackInstall(requiredOnly) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket"></i> Tümünü Kur';
     }
+}
+
+// ==================== EMARECODE FİLTRE ====================
+function filterEmcStatus(status) {
+    document.querySelectorAll('#emcStatusPills .mkt-pill').forEach(p => p.classList.remove('active'));
+    event.target.closest('.mkt-pill').classList.add('active');
+    const cards = document.querySelectorAll('.emc-card');
+    let visible = 0;
+    cards.forEach(card => {
+        const match = !status || card.dataset.status === status;
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('emcEmpty').style.display = visible === 0 ? 'flex' : 'none';
 }
 
 // ==================== YARDIMCI ====================

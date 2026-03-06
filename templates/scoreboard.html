@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Geliştirici Panosu - EmareCloud{% endblock %}
+{% block page_title %}Geliştirici Panosu{% endblock %}
+
+{% block head %}
+<style>
+.sb-container{max-width:1200px;margin:0 auto}
+
+/* Hero */
+.sb-hero{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(236,72,153,.08));border:1px solid var(--border-color);border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.sb-hero-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#ec4899);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0}
+.sb-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.sb-hero p{margin:0;color:var(--text-secondary);font-size:14px}
+.sb-hero-live{margin-left:auto;display:flex;align-items:center;gap:10px}
+.sb-live-dot{width:12px;height:12px;border-radius:50%;background:#22c55e;animation:sb-pulse 2s infinite}
+@keyframes sb-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.sb-live-text{font-size:13px;font-weight:700;color:#22c55e}
+
+/* Stats */
+.sb-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.sb-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;text-align:center;position:relative;overflow:hidden}
+.sb-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sb-stat.online::before{background:linear-gradient(90deg,#22c55e,#4ade80)}
+.sb-stat.total::before{background:linear-gradient(90deg,#6366f1,#818cf8)}
+.sb-stat.offline::before{background:linear-gradient(90deg,#8b8fa3,#a1a5b7)}
+.sb-stat.today::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.sb-stat-icon{font-size:24px;margin-bottom:8px}
+.sb-stat.online .sb-stat-icon{color:#22c55e}
+.sb-stat.total .sb-stat-icon{color:#6366f1}
+.sb-stat.offline .sb-stat-icon{color:#8b8fa3}
+.sb-stat.today .sb-stat-icon{color:#f59e0b}
+.sb-stat-value{font-size:36px;font-weight:900;color:var(--text-primary);line-height:1}
+.sb-stat-label{font-size:12px;color:var(--text-secondary);margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+/* Developer list */
+.sb-dev-section{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:24px}
+.sb-dev-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.sb-dev-header h3{margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:10px}
+.sb-dev-header .sb-refresh{padding:8px 16px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.sb-dev-header .sb-refresh:hover{border-color:#6366f1;color:#6366f1}
+.sb-dev-header .sb-refresh.loading i{animation:spin .8s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
+
+/* Dev grid */
+.sb-dev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.sb-dev-card{background:var(--bg-input);border:1px solid var(--border-color);border-radius:14px;padding:18px;display:flex;align-items:center;gap:16px;transition:all .25s;position:relative}
+.sb-dev-card:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(0,0,0,.06)}
+.sb-dev-card.online{border-left:3px solid #22c55e}
+.sb-dev-card.offline{border-left:3px solid #8b8fa3}
+
+.sb-avatar{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0;text-transform:uppercase}
+.sb-avatar.online{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.sb-avatar.offline{background:linear-gradient(135deg,#6b7280,#9ca3af)}
+
+.sb-dev-info{flex:1;min-width:0}
+.sb-dev-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sb-dev-name .sb-role{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase}
+.sb-role.super_admin{background:rgba(248,113,113,.12);color:#f87171}
+.sb-role.admin{background:rgba(251,191,36,.12);color:#f59e0b}
+.sb-role.operator{background:rgba(76,141,255,.12);color:#4c8dff}
+.sb-role.read_only{background:rgba(139,143,163,.12);color:#8b8fa3}
+.sb-dev-activity{font-size:12px;color:var(--text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px}
+.sb-dev-activity i{font-size:10px}
+.sb-dev-seen{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+.sb-status-dot{position:absolute;top:12px;right:14px;width:10px;height:10px;border-radius:50%}
+.sb-status-dot.online{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.5)}
+.sb-status-dot.offline{background:#8b8fa3}
+
+/* Empty */
+.sb-empty{text-align:center;padding:60px 20px;color:var(--text-secondary)}
+.sb-empty i{font-size:48px;margin-bottom:12px;opacity:.3}
+
+/* Timer */
+.sb-auto-refresh{font-size:11px;color:var(--text-secondary);text-align:right;margin-top:8px}
+
+@media(max-width:768px){
+    .sb-stats{grid-template-columns:repeat(2,1fr)}
+    .sb-dev-grid{grid-template-columns:1fr}
+    .sb-hero{flex-direction:column;text-align:center}
+    .sb-hero-live{margin-left:0}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sb-container">
+    <!-- Hero -->
+    <div class="sb-hero">
+        <div class="sb-hero-icon"><i class="fas fa-trophy"></i></div>
+        <div>
+            <h2>Geliştirici Panosu</h2>
+            <p>EmareCloud ekosisteminde aktif geliştirici durumları ve üye istatistikleri</p>
+        </div>
+        <div class="sb-hero-live">
+            <div class="sb-live-dot"></div>
+            <span class="sb-live-text">CANLI</span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="sb-stats">
+        <div class="sb-stat online">
+            <div class="sb-stat-icon"><i class="fas fa-signal"></i></div>
+            <div class="sb-stat-value" id="statOnline">-</div>
+            <div class="sb-stat-label">Şu An Çevrimiçi</div>
+        </div>
+        <div class="sb-stat total">
+            <div class="sb-stat-icon"><i class="fas fa-users"></i></div>
+            <div class="sb-stat-value" id="statTotal">-</div>
+            <div class="sb-stat-label">Toplam Üye</div>
+        </div>
+        <div class="sb-stat today">
+            <div class="sb-stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="sb-stat-value" id="statToday">-</div>
+            <div class="sb-stat-label">Son 24 Saat Aktif</div>
+        </div>
+        <div class="sb-stat offline">
+            <div class="sb-stat-icon"><i class="fas fa-moon"></i></div>
+            <div class="sb-stat-value" id="statOffline">-</div>
+            <div class="sb-stat-label">Çevrimdışı</div>
+        </div>
+    </div>
+
+    <!-- Developer List -->
+    <div class="sb-dev-section">
+        <div class="sb-dev-header">
+            <h3><i class="fas fa-code"></i> Geliştiriciler</h3>
+            <button class="sb-refresh" onclick="loadScoreboard()" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Yenile
+            </button>
+        </div>
+        <div class="sb-dev-grid" id="devGrid">
+            <div class="sb-empty">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Yükleniyor…</p>
+            </div>
+        </div>
+        <div class="sb-auto-refresh" id="autoRefreshInfo">Her 30 saniyede otomatik yenilenir</div>
+    </div>
+</div>
+
+<script>
+const ROLE_LABELS = {
+    super_admin: 'Süper Admin',
+    admin: 'Admin',
+    operator: 'Operatör',
+    read_only: 'Okuyucu'
+};
+
+function getInitials(username) {
+    return username ? username.substring(0, 2).toUpperCase() : '??';
+}
+
+function renderDeveloper(dev) {
+    const onlineClass = dev.is_online ? 'online' : 'offline';
+    const roleLabel = ROLE_LABELS[dev.role] || dev.role;
+    return `
+        <div class="sb-dev-card ${onlineClass}">
+            <div class="sb-avatar ${onlineClass}">${getInitials(dev.username)}</div>
+            <div class="sb-dev-info">
+                <div class="sb-dev-name">
+                    ${dev.username}
+                    <span class="sb-role ${dev.role}">${roleLabel}</span>
+                </div>
+                <div class="sb-dev-activity">
+                    <i class="fas ${dev.is_online ? 'fa-laptop-code' : 'fa-bed'}"></i>
+                    ${dev.is_online ? dev.current_activity : 'Çevrimdışı'}
+                </div>
+                <div class="sb-dev-seen">
+                    <i class="far fa-clock"></i> ${dev.last_seen_text}
+                </div>
+            </div>
+            <div class="sb-status-dot ${onlineClass}"></div>
+        </div>
+    `;
+}
+
+let refreshTimer = null;
+
+async function loadScoreboard() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('loading');
+    try {
+        const resp = await fetch('/api/scoreboard');
+        const data = await resp.json();
+        if (!data.success) throw new Error('API error');
+
+        // Stats
+        document.getElementById('statOnline').textContent = data.stats.online_now;
+        document.getElementById('statTotal').textContent = data.stats.total_members;
+        document.getElementById('statToday').textContent = data.stats.today_active;
+        document.getElementById('statOffline').textContent = data.stats.offline;
+
+        // Developers
+        const grid = document.getElementById('devGrid');
+        if (data.developers.length === 0) {
+            grid.innerHTML = `<div class="sb-empty"><i class="fas fa-users-slash"></i><h3>Henüz üye yok</h3><p>Sisteme kayıtlı aktif geliştirici bulunamadı.</p></div>`;
+        } else {
+            // Online olanlar önce
+            const sorted = data.developers.sort((a, b) => {
+                if (a.is_online && !b.is_online) return -1;
+                if (!a.is_online && b.is_online) return 1;
+                return 0;
+            });
+            grid.innerHTML = sorted.map(renderDeveloper).join('');
+        }
+    } catch (err) {
+        console.error('Scoreboard yüklenemedi:', err);
+        document.getElementById('devGrid').innerHTML = `
+            <div class="sb-empty">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Yüklenemedi</h3>
+                <p>Geliştirici bilgileri alınırken hata oluştu.</p>
+            </div>`;
+    } finally {
+        btn.classList.remove('loading');
+    }
+}
+
+// Heartbeat: her 60s bir kullanıcının hâlâ aktif olduğunu sunucuya bildir
+function sendHeartbeat() {
+    fetch('/api/scoreboard/heartbeat', {method: 'POST', headers: {'Content-Type': 'application/json'}}).catch(() => {});
+}
+
+// İlk yükleme
+loadScoreboard();
+sendHeartbeat();
+
+// Otomatik yenileme: 30 saniye
+refreshTimer = setInterval(loadScoreboard, 30000);
+setInterval(sendHeartbeat, 60000);
+</script>
+{% endblock %}

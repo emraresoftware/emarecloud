@@ -3363,3 +3363,257 @@ button:disabled .fa-spinner {
     .ai-chat-panel { width: calc(100vw - 32px); right: 16px; bottom: 80px; max-height: 70vh; }
     .ai-chat-fab { bottom: 16px; right: 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   EmareCode Projeleri — Market Sekmesi
+   ═══════════════════════════════════════════════════════════ */
+
+/* Hero */
+.emc-hero {
+    position: relative;
+    background: linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(59,130,246,.08) 50%, rgba(6,182,212,.06) 100%);
+    border: 1px solid rgba(99,102,241,.2);
+    border-radius: 16px;
+    padding: 2rem;
+    overflow: hidden;
+}
+.emc-hero-glow {
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(99,102,241,.25), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.emc-hero-content {
+    display: flex; align-items: center; gap: 1.25rem;
+    position: relative; z-index: 1;
+}
+.emc-hero-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #6366f1, #3b82f6);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 8px 24px rgba(99,102,241,.3);
+}
+.emc-hero-text h2 {
+    font-size: 1.35rem; font-weight: 700;
+    color: var(--text-primary); margin: 0;
+}
+.emc-hero-text p {
+    color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0 0;
+}
+
+/* Stats Row */
+.emc-stats-row {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-top: 1.5rem; position: relative; z-index: 1;
+}
+.emc-stat {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    min-width: 100px;
+    flex: 1;
+}
+.emc-stat-num {
+    font-size: 1.5rem; font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.emc-stat-lbl {
+    font-size: 0.72rem; color: var(--text-secondary);
+    margin-top: 0.3rem; text-transform: uppercase;
+    letter-spacing: 0.5px; font-weight: 600;
+}
+
+/* Grid */
+.emc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+/* Card */
+.emc-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1.35rem;
+    transition: all 0.25s ease;
+    display: flex; flex-direction: column;
+    animation: emcFadeIn 0.4s ease both;
+}
+.emc-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,.15);
+    border-color: rgba(99,102,241,.35);
+}
+@keyframes emcFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.emc-card:nth-child(1)  { animation-delay:.02s; }
+.emc-card:nth-child(2)  { animation-delay:.04s; }
+.emc-card:nth-child(3)  { animation-delay:.06s; }
+.emc-card:nth-child(4)  { animation-delay:.08s; }
+.emc-card:nth-child(5)  { animation-delay:.10s; }
+.emc-card:nth-child(6)  { animation-delay:.12s; }
+.emc-card:nth-child(7)  { animation-delay:.14s; }
+.emc-card:nth-child(8)  { animation-delay:.16s; }
+.emc-card:nth-child(9)  { animation-delay:.18s; }
+.emc-card:nth-child(10) { animation-delay:.20s; }
+.emc-card:nth-child(11) { animation-delay:.22s; }
+.emc-card:nth-child(12) { animation-delay:.24s; }
+
+/* Card Top */
+.emc-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+.emc-card-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+.emc-card-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+/* Badges */
+.emc-badge {
+    font-size: 0.68rem; font-weight: 700;
+    padding: 0.22rem 0.6rem;
+    border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+.emc-badge-live {
+    background: rgba(34,197,94,.15); color: #22c55e;
+    border: 1px solid rgba(34,197,94,.3);
+}
+.emc-badge-live i { font-size: 0.45rem; animation: emcPulse 2s infinite; }
+@keyframes emcPulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+.emc-badge-ready {
+    background: rgba(59,130,246,.12); color: #3b82f6;
+    border: 1px solid rgba(59,130,246,.3);
+}
+.emc-badge-dev {
+    background: rgba(245,158,11,.12); color: #f59e0b;
+    border: 1px solid rgba(245,158,11,.3);
+}
+.emc-badge-plan {
+    background: rgba(139,92,246,.12); color: #8b5cf6;
+    border: 1px solid rgba(139,92,246,.3);
+}
+
+/* Typing dots animation for "EmareCode ile yazılıyor" */
+.emc-typing-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: emcTypingBounce 1.4s infinite;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+@keyframes emcTypingBounce {
+    0%,100% { opacity:.3; transform:translateY(0); }
+    50%     { opacity:1;  transform:translateY(-3px); }
+}
+
+/* Card Text */
+.emc-card-title {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.2rem;
+}
+.emc-card-cat {
+    font-size: 0.75rem; color: var(--text-secondary);
+    font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.emc-card-desc {
+    color: var(--text-secondary);
+    font-size: 0.82rem; line-height: 1.5;
+    margin: 0.5rem 0;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Tech Chips */
+.emc-card-tech {
+    display: flex; gap: 0.35rem; flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+.emc-tech-chip {
+    font-size: 0.68rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 6px;
+    background: var(--bg-input, rgba(255,255,255,.06));
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* Progress Bar */
+.emc-progress-wrapper {
+    margin-top: auto;
+    padding-top: 0.5rem;
+}
+.emc-progress-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.4rem;
+}
+.emc-progress-label {
+    font-size: 0.72rem; color: var(--text-secondary);
+    font-weight: 600;
+}
+.emc-progress-pct {
+    font-size: 0.82rem; font-weight: 800;
+}
+.emc-progress-bar {
+    width: 100%; height: 8px;
+    background: var(--bg-input, rgba(255,255,255,.08));
+    border-radius: 10px;
+    overflow: hidden;
+}
+.emc-progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+    position: relative;
+}
+.emc-progress-fill::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.2) 50%, rgba(255,255,255,0) 100%);
+    animation: emcShimmer 2s infinite;
+}
+@keyframes emcShimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.emc-progress-complete::after { animation: none; }
+.emc-progress-complete { opacity: 1; }
+.emc-progress-high { opacity: 0.95; }
+.emc-progress-mid  { opacity: 0.85; }
+.emc-progress-low  { opacity: 0.75; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .emc-hero-content { flex-direction: column; text-align: center; }
+    .emc-stats-row { justify-content: center; }
+    .emc-stat { min-width: 80px; }
+    .emc-grid { grid-template-columns: 1fr; }
+}

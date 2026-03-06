@@ -44,17 +44,43 @@ def _check_single_server(server_dict: dict) -> dict:
     return rec
 
 
+def _user_can_see_server(srv) -> bool:
+    """Admin herkesi görür; normal kullanıcı sadece kendi eklediği sunucuyu görür."""
+    try:
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return False
+        if current_user.is_admin:
+            return True
+        return srv.added_by == current_user.id
+    except Exception:
+        # Background thread / uygulama context olmayan durumlar — erişim açık bırak
+        return True
+
+
 def get_server_by_id(server_id: str) -> dict | None:
-    """ID ile sunucu bilgisi (şifre dahil — sadece backend)."""
+    """ID ile sunucu bilgisi (şifre dahil — sadece backend).
+    Kullanıcı izolasyonu: admin olmayan sadece kendi sunucusunu alabilir."""
     srv = db.session.get(ServerCredential, server_id)
     if not srv:
+        return None
+    if not _user_can_see_server(srv):
         return None
     return srv.to_dict(include_password=True)
 
 
 def get_servers_for_sidebar() -> list:
-    """Sidebar + template için sunucu listesi — paralel reachability kontrolü."""
-    raw = [s.to_dict() for s in ServerCredential.query.order_by(ServerCredential.added_at).all()]
+    """Sidebar + template için sunucu listesi — paralel reachability kontrolü.
+    Kullanıcı izolasyonu: admin olmayan sadece kendi sunucularını görür."""
+    try:
+        from flask_login import current_user
+        if current_user.is_authenticated and not current_user.is_admin:
+            query = ServerCredential.query.filter_by(added_by=current_user.id)
+        else:
+            query = ServerCredential.query
+    except Exception:
+        query = ServerCredential.query
+    raw = [s.to_dict() for s in query.order_by(ServerCredential.added_at).all()]
     if not raw:
         return []
 

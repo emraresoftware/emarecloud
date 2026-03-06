@@ -245,9 +245,13 @@ class User(UserMixin, db.Model):
     # Özelleştirilmiş modül yetkileri (super_admin tarafından atanır)
     # None → rol bazlı varsayılan kullanılır  |  JSON array → bu liste geçerli olur
     custom_permissions_json = db.Column(db.Text, default=None, nullable=True)
+    # Emare Token (ET) bakiyesi — yeni kullanıcılara 100.000 ET hediye edilir
+    et_balance = db.Column(db.Float, default=0.0, nullable=False)
     # Zaman damgaları
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
+    last_seen = db.Column(db.DateTime, nullable=True)
+    current_activity = db.Column(db.String(200), nullable=True)   # Şu an ne yapıyor
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # İlişkiler
@@ -263,6 +267,13 @@ class User(UserMixin, db.Model):
     @property
     def is_active(self):
         return self.is_active_user
+
+    @property
+    def is_online(self):
+        """Son 5 dakikada aktiflik varsa çevrimiçi kabul et."""
+        if not self.last_seen:
+            return False
+        return (datetime.utcnow() - self.last_seen).total_seconds() < 300
 
     @property
     def is_super_admin(self):
@@ -333,12 +344,16 @@ class User(UserMixin, db.Model):
             'email': self.email,
             'role': self.role,
             'is_active': self.is_active_user,
+            'is_online': self.is_online,
             'org_id': self.org_id,
             'totp_enabled': self.totp_enabled,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'last_seen': self.last_seen.isoformat() if self.last_seen else None,
+            'current_activity': self.current_activity,
             'custom_permissions': self.custom_permissions,
             'has_custom_perms': self.custom_permissions_json is not None,
+            'et_balance': self.et_balance,
         }
 
 
@@ -960,4 +975,89 @@ class TokenTransaction(db.Model):
             'status': self.status,
             'block_number': self.block_number,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+        }
+
+
+# ==================== FEEDBACK ====================
+
+class Feedback(db.Model):
+    """Kullanıcı geri bildirim / destek bildirimi modeli."""
+    __tablename__ = 'feedback'
+
+    CATEGORIES = ('bug', 'suggestion', 'question', 'other')
+    PRIORITIES = ('low', 'normal', 'high', 'critical')
+    STATUSES = ('open', 'in_progress', 'resolved', 'closed')
+
+    id          = db.Column(db.Integer, primary_key=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    message     = db.Column(db.Text, nullable=False)
+    category    = db.Column(db.String(20), default='bug', index=True)
+    priority    = db.Column(db.String(20), default='normal', index=True)
+    page_url    = db.Column(db.String(500), nullable=True)
+    status      = db.Column(db.String(20), default='open', index=True)
+    admin_reply = db.Column(db.Text, nullable=True)
+    replied_by  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    replied_at  = db.Column(db.DateTime, nullable=True)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # ilişkiler
+    user        = db.relationship('User', foreign_keys=[user_id], backref=db.backref('feedbacks', lazy='dynamic'))
+    replied_user= db.relationship('User', foreign_keys=[replied_by])
+
+    # ── yardımcı etiketler ───────────────────────────────────────
+    CATEGORY_META = {
+        'bug':        ('Hata',  'fa-bug',           'red',    'bg-red-100 text-red-700'),
+        'suggestion': ('Öneri', 'fa-lightbulb',     'blue',   'bg-blue-100 text-blue-700'),
+        'question':   ('Soru',  'fa-question-circle','purple', 'bg-purple-100 text-purple-700'),
+        'other':      ('Diğer', 'fa-comment',       'gray',   'bg-gray-100 text-gray-700'),
+    }
+    STATUS_META = {
+        'open':        ('Açık',         'bg-yellow-100 text-yellow-700'),
+        'in_progress': ('İnceleniyor',  'bg-blue-100 text-blue-700'),
+        'resolved':    ('Çözüldü',      'bg-green-100 text-green-700'),
+        'closed':      ('Kapatıldı',    'bg-gray-100 text-gray-500'),
+    }
+    PRIORITY_META = {
+        'low':      ('Düşük',  'bg-gray-100 text-gray-500'),
+        'normal':   ('Normal', 'bg-blue-100 text-blue-600'),
+        'high':     ('Yüksek', 'bg-orange-100 text-orange-700'),
+        'critical': ('Kritik', 'bg-red-100 text-red-700'),
+    }
+
+    @property
+    def category_label(self): return self.CATEGORY_META.get(self.category, ('Diğer','fa-comment','gray',''))[0]
+    @property
+    def category_icon(self):  return self.CATEGORY_META.get(self.category, ('','fa-comment','',''))[1]
+    @property
+    def category_color(self): return self.CATEGORY_META.get(self.category, ('','','gray',''))[2]
+    @property
+    def category_badge(self): return self.CATEGORY_META.get(self.category, ('','','','bg-gray-100 text-gray-700'))[3]
+    @property
+    def status_label(self):   return self.STATUS_META.get(self.status, ('Bilinmiyor',''))[0]
+    @property
+    def status_badge(self):   return self.STATUS_META.get(self.status, ('','bg-gray-100 text-gray-500'))[1]
+    @property
+    def priority_label(self): return self.PRIORITY_META.get(self.priority, ('Normal',''))[0]
+    @property
+    def priority_badge(self): return self.PRIORITY_META.get(self.priority, ('','bg-blue-100 text-blue-600'))[1]
+
+    def to_dict(self) -> dict:
+        return {
+            'id':             self.id,
+            'message':        self.message,
+            'category':       self.category,
+            'category_label': self.category_label,
+            'category_icon':  self.category_icon,
+            'category_color': self.category_color,
+            'category_badge': self.category_badge,
+            'priority':       self.priority,
+            'priority_label': self.priority_label,
+            'priority_badge': self.priority_badge,
+            'page_url':       self.page_url,
+            'status':         self.status,
+            'status_label':   self.status_label,
+            'status_badge':   self.status_badge,
+            'admin_reply':    self.admin_reply,
+            'replied_at':     self.replied_at.strftime('%d.%m.%Y %H:%M') if self.replied_at else None,
+            'created_at':     self.created_at.strftime('%d.%m.%Y %H:%M') if self.created_at else None,
         }

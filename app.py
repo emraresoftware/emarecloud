@@ -50,7 +50,16 @@ def create_app(config_overrides=None):
         _async_mode = 'gevent'
     except ImportError:
         _async_mode = 'threading'
-    socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode=_async_mode)
+    socketio = SocketIO(
+        app,
+        cors_allowed_origins=allowed_origins,
+        async_mode=_async_mode,
+        ping_interval=25,          # 25s'de bir ping
+        ping_timeout=60,           # 60s cevap gelmezse kes (Chrome freeze önlenir)
+        max_http_buffer_size=10 * 1024 * 1024,  # 10MB
+        logger=False,
+        engineio_logger=False,
+    )
 
     # User loader
     @login_manager.user_loader
