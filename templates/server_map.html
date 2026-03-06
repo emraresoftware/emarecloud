@@ -448,8 +448,13 @@
             <i class="fas fa-network-wired"></i>
         </div>
         <div class="smap-header-info">
+            {% if is_admin %}
             <h2>185.189.54.104 — Sunucu Mimarisi</h2>
             <p>AlmaLinux 9.6 &bull; Tüm servislerin canlı durumu ve mimari yapı</p>
+            {% else %}
+            <h2>Sunucu Haritam</h2>
+            <p>Sisteme eklediğiniz sunucuların durumu</p>
+            {% endif %}
         </div>
         <div class="smap-header-stats">
             <div class="smap-hstat">
@@ -467,7 +472,8 @@
         </div>
     </div>
 
-    <!-- ── Architecture Diagram ──────────────── -->
+{% if is_admin %}
+    <!-- ── Architecture Diagram (Admin Only) ──────────────── -->
     <div class="smap-diagram" id="smapDiagram">
 
         <!-- LAYER 0: Internet -->
@@ -736,11 +742,55 @@
             <i class="fas fa-wallet"></i> Token DApp
         </a>
     </div>
+{% else %}
+    <!-- ── User Server Cards ──────────────────── -->
+    {% if servers %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;margin-top:0.5rem;">
+        {% for srv in servers %}
+        <div style="background:var(--bg-card);border:1px solid {% if srv.reachable %}rgba(34,197,94,.3){% else %}rgba(239,68,68,.2){% endif %};border-radius:14px;padding:1.25rem 1.5rem;position:relative;">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                <div style="width:38px;height:38px;border-radius:10px;background:{% if srv.reachable %}rgba(34,197,94,.15){% else %}rgba(239,68,68,.12){% endif %};display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-server" style="color:{% if srv.reachable %}#22c55e{% else %}#ef4444{% endif %};"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:.95rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ srv.name }}</div>
+                    <div style="font-size:.78rem;color:var(--text-secondary);">{{ srv.host }}:{{ srv.port }}</div>
+                </div>
+                <span style="font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:{% if srv.reachable %}rgba(34,197,94,.15){% else %}rgba(239,68,68,.12){% endif %};color:{% if srv.reachable %}#22c55e{% else %}#ef4444{% endif %};">{% if srv.reachable %}● Çevrimiçi{% else %}● Çevrimdışı{% endif %}</span>
+            </div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                {% if srv.group_name %}
+                <span style="font-size:.75rem;color:var(--text-secondary);"><i class="fas fa-layer-group" style="margin-right:.3rem;"></i>{{ srv.group_name }}</span>
+                {% endif %}
+                {% if srv.location %}
+                <span style="font-size:.75rem;color:var(--text-secondary);"><i class="fas fa-map-marker-alt" style="margin-right:.3rem;"></i>{{ srv.location }}</span>
+                {% endif %}
+                {% if srv.latency %}
+                <span style="font-size:.75rem;color:var(--text-secondary);"><i class="fas fa-tachometer-alt" style="margin-right:.3rem;"></i>{{ '%.0f'|format(srv.latency * 1000) }}ms</span>
+                {% endif %}
+            </div>
+            {% if srv.description %}
+            <div style="margin-top:.6rem;font-size:.8rem;color:var(--text-secondary);border-top:1px solid var(--border-color);padding-top:.6rem;">{{ srv.description }}</div>
+            {% endif %}
+            <a href="/servers/{{ srv.id }}" style="display:block;margin-top:.9rem;text-align:center;padding:.4rem;background:rgba(99,102,241,.12);color:#818cf8;border-radius:8px;font-size:.82rem;font-weight:600;text-decoration:none;">Detay &amp; Bağlan →</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:4rem 2rem;background:var(--bg-card);border-radius:16px;border:1px dashed var(--border-color);">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🖥️</div>
+        <div style="font-size:1.1rem;font-weight:600;color:var(--text-primary);margin-bottom:.5rem;">Henüz sunucu eklemediniz</div>
+        <div style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.5rem;">Sol menüden Sunucular → Sunucu Ekle ile başlayabilirsiniz.</div>
+        <a href="/servers" style="padding:.6rem 1.5rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Sunucu Ekle</a>
+    </div>
+    {% endif %}
+{% endif %}
 </div>
 
 {% endblock %}
 
 {% block scripts %}
+{% if is_admin %}
 <script>
 function toggleDetails(el) {
     el.classList.toggle('expanded');
@@ -825,4 +875,5 @@ document.addEventListener('DOMContentLoaded', loadServerMap);
 // Auto refresh every 30s
 setInterval(loadServerMap, 30000);
 </script>
+{% endif %}
 {% endblock %}

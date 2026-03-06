@@ -421,7 +421,11 @@ def scoreboard_page():
 @login_required
 def server_map_page():
     """Sunucu mimarisi görsel haritası."""
-    return render_template('server_map.html', servers=get_servers_for_sidebar())
+    return render_template(
+        'server_map.html',
+        servers=get_servers_for_sidebar(),
+        is_admin=current_user.is_admin,
+    )
 
 
 def _run(cmd: str, timeout: int = 5) -> str:
@@ -436,6 +440,8 @@ def _run(cmd: str, timeout: int = 5) -> str:
 @pages_bp.route('/api/server-map', methods=['GET'])
 @login_required
 def api_server_map():
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Yetkisiz erişim'}), 403
     """Sunucu servis durumlarını JSON olarak döndürür."""
     # --- systemd services ---
     svc_names = ['nginx', 'emarecloud', 'firewalld', 'sshd']
