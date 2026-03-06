@@ -24,6 +24,7 @@ def register_blueprints(app):
     from routes.scoreboard import scoreboard_bp
     from routes.ide import ide_bp
     from routes.feedback import feedback_bp
+    from routes.webdizayn import webdizayn_bp
 
     blueprints = [
         auth_bp,
@@ -44,6 +45,7 @@ def register_blueprints(app):
         scoreboard_bp,
         ide_bp,
         feedback_bp,
+        webdizayn_bp,
     ]
 
     for bp in blueprints:

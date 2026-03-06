@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% block title %}Web Dizayn Müşterileri - EmareCloud{% endblock %}
+{% block page_title %}Web Dizayn Müşterileri{% endblock %}
+
+{% block content %}
+<style>
+.wd-container { max-width: 1200px; margin: 0 auto; padding: 0.5rem; }
+.wd-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+.wd-header-left { display:flex; align-items:center; gap:1rem; }
+.wd-header-icon { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:#fff; flex-shrink:0; }
+.wd-title { font-size:1.2rem; font-weight:700; color:var(--text-primary); }
+.wd-subtitle { font-size:.82rem; color:var(--text-secondary); }
+.wd-stats { display:flex; gap:1rem; flex-wrap:wrap; }
+.wd-stat { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:.75rem 1.25rem; text-align:center; min-width:90px; }
+.wd-stat-val { font-size:1.5rem; font-weight:800; color:#6366f1; }
+.wd-stat-lbl { font-size:.72rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.5px; }
+.wd-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1.25rem; }
+.wd-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:1.25rem; transition:.2s; }
+.wd-card:hover { border-color:rgba(99,102,241,.4); transform:translateY(-1px); }
+.wd-card-header { display:flex; align-items:center; gap:.75rem; margin-bottom:.9rem; }
+.wd-card-icon { width:42px; height:42px; border-radius:11px; background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2)); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+.wd-card-name { font-weight:700; font-size:.95rem; color:var(--text-primary); }
+.wd-card-slug { font-size:.75rem; color:var(--text-secondary); margin-top:.1rem; }
+.wd-badge { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:20px; font-size:.72rem; font-weight:600; }
+.wd-badge.active { background:rgba(34,197,94,.12); color:#22c55e; }
+.wd-badge.inactive { background:rgba(239,68,68,.12); color:#ef4444; }
+.wd-badge.has-files { background:rgba(99,102,241,.12); color:#818cf8; }
+.wd-card-meta { font-size:.8rem; color:var(--text-secondary); margin:.5rem 0 .9rem; }
+.wd-card-url { display:block; padding:.35rem .75rem; background:rgba(99,102,241,.08); color:#818cf8; border-radius:8px; font-size:.78rem; font-weight:600; text-decoration:none; margin-bottom:.75rem; word-break:break-all; }
+.wd-card-url:hover { background:rgba(99,102,241,.18); }
+.wd-card-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.wd-btn { padding:.35rem .75rem; border-radius:8px; font-size:.78rem; font-weight:600; border:none; cursor:pointer; transition:.15s; }
+.wd-btn-upload { background:rgba(34,197,94,.12); color:#22c55e; }
+.wd-btn-upload:hover { background:rgba(34,197,94,.22); }
+.wd-btn-edit { background:rgba(99,102,241,.12); color:#818cf8; }
+.wd-btn-edit:hover { background:rgba(99,102,241,.22); }
+.wd-btn-delete { background:rgba(239,68,68,.1); color:#ef4444; }
+.wd-btn-delete:hover { background:rgba(239,68,68,.2); }
+.wd-btn-view { background:rgba(16,185,129,.1); color:#10b981; }
+.wd-btn-view:hover { background:rgba(16,185,129,.2); }
+/* Modal */
+.wd-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000; align-items:center; justify-content:center; }
+.wd-overlay.show { display:flex; }
+.wd-modal { background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:1.5rem; width:100%; max-width:480px; margin:1rem; }
+.wd-modal h3 { font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:1.25rem; }
+.wd-field { margin-bottom:.9rem; }
+.wd-field label { display:block; font-size:.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:.35rem; }
+.wd-field input, .wd-field textarea { width:100%; background:var(--bg-input); border:1px solid var(--border-color); border-radius:8px; padding:.55rem .8rem; color:var(--text-primary); font-size:.88rem; outline:none; }
+.wd-field input:focus, .wd-field textarea:focus { border-color:#6366f1; }
+.wd-field textarea { resize:vertical; min-height:70px; }
+.wd-modal-btns { display:flex; gap:.6rem; justify-content:flex-end; margin-top:1.25rem; }
+.wd-drop-zone { border:2px dashed var(--border-color); border-radius:12px; padding:2rem; text-align:center; cursor:pointer; transition:.2s; }
+.wd-drop-zone:hover, .wd-drop-zone.drag { border-color:#6366f1; background:rgba(99,102,241,.05); }
+.wd-drop-zone p { color:var(--text-secondary); font-size:.88rem; margin:.25rem 0; }
+.wd-drop-zone .icon { font-size:2rem; margin-bottom:.5rem; }
+.wd-progress { height:6px; background:rgba(99,102,241,.12); border-radius:3px; overflow:hidden; margin-top:1rem; display:none; }
+.wd-progress-bar { height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); transition:width .3s; }
+</style>
+
+<div class="wd-container">
+  <!-- Header -->
+  <div class="wd-header">
+    <div class="wd-header-left">
+      <div class="wd-header-icon">🎨</div>
+      <div>
+        <div class="wd-title">Web Dizayn Müşterileri</div>
+        <div class="wd-subtitle">webdizayn.emarecloud.tr/[slug] → müşterinin sitesi</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+      <div class="wd-stats">
+        <div class="wd-stat">
+          <div class="wd-stat-val" id="wdTotal">{{ clients|length }}</div>
+          <div class="wd-stat-lbl">Toplam</div>
+        </div>
+        <div class="wd-stat">
+          <div class="wd-stat-val" style="color:#22c55e" id="wdActive">{{ clients|selectattr('is_active')|list|length }}</div>
+          <div class="wd-stat-lbl">Aktif</div>
+        </div>
+      </div>
+      <button class="wd-btn wd-btn-edit" style="font-size:.85rem;padding:.5rem 1.1rem;" onclick="openAddModal()">
+        <i class="fas fa-plus" style="margin-right:.3rem;"></i> Yeni Müşteri
+      </button>
+      <a href="https://webdizayn.emarecloud.tr" target="_blank" class="wd-btn wd-btn-view" style="font-size:.85rem;padding:.5rem 1rem;text-decoration:none;">
+        <i class="fas fa-external-link-alt" style="margin-right:.3rem;"></i> Siteye Git
+      </a>
+    </div>
+  </div>
+
+  <!-- Kart Grid -->
+  {% if clients %}
+  <div class="wd-grid" id="wdGrid">
+    {% for c in clients %}
+    <div class="wd-card" id="card-{{ c.slug }}">
+      <div class="wd-card-header">
+        <div class="wd-card-icon">🌐</div>
+        <div style="flex:1;min-width:0;">
+          <div class="wd-card-name">{{ c.name }}</div>
+          <div class="wd-card-slug">/{{ c.slug }}</div>
+        </div>
+        <span class="wd-badge {% if c.is_active %}active{% else %}inactive{% endif %}">
+          {% if c.is_active %}● Aktif{% else %}● Pasif{% endif %}
+        </span>
+      </div>
+      {% if c.description %}
+      <div class="wd-card-meta">{{ c.description }}</div>
+      {% endif %}
+      {% if c.contact %}
+      <div class="wd-card-meta"><i class="fas fa-phone" style="margin-right:.3rem;opacity:.6;"></i>{{ c.contact }}</div>
+      {% endif %}
+      <span class="wd-badge {% if c.has_files %}has-files{% else %}inactive{% endif %}" style="margin-bottom:.6rem;">
+        {% if c.has_files %}📁 Dosyalar Yüklü{% else %}📭 Dosya Yok{% endif %}
+      </span>
+      <a href="{{ c.public_url }}" target="_blank" class="wd-card-url">
+        <i class="fas fa-link" style="margin-right:.3rem;"></i>{{ c.public_url }}
+      </a>
+      <div class="wd-card-actions">
+        <button class="wd-btn wd-btn-upload" onclick="openUploadModal('{{ c.slug }}','{{ c.name }}')">
+          <i class="fas fa-upload" style="margin-right:.3rem;"></i>ZIP Yükle
+        </button>
+        <button class="wd-btn wd-btn-edit" onclick="openEditModal('{{ c.slug }}','{{ c.name }}','{{ c.description|replace("'","") }}','{{ c.contact }}',{{ 'true' if c.is_active else 'false' }})">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="wd-btn wd-btn-delete" onclick="deleteClient('{{ c.slug }}','{{ c.name }}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:4rem 2rem;background:var(--bg-card);border-radius:16px;border:1px dashed var(--border-color);">
+    <div style="font-size:3rem;margin-bottom:1rem;">🎨</div>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-bottom:.5rem;">Henüz müşteri eklenmedi</div>
+    <div style="color:var(--text-secondary);margin-bottom:1.5rem;">İlk müşteriyi eklemek için "Yeni Müşteri" butonuna tıklayın.</div>
+    <button class="wd-btn wd-btn-edit" style="font-size:.9rem;padding:.6rem 1.5rem;" onclick="openAddModal()">
+      <i class="fas fa-plus" style="margin-right:.3rem;"></i>Yeni Müşteri Ekle
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Müşteri Ekle/Düzenle Modal ─── -->
+<div class="wd-overlay" id="clientModal">
+  <div class="wd-modal">
+    <h3 id="clientModalTitle">Yeni Müşteri Ekle</h3>
+    <input type="hidden" id="editSlug">
+    <div class="wd-field">
+      <label>Müşteri Adı *</label>
+      <input type="text" id="clientName" placeholder="Piramit Bilgisayar">
+    </div>
+    <div class="wd-field">
+      <label>Slug (URL'de görünür) — boş bırakırsan otomatik üretilir</label>
+      <input type="text" id="clientSlug" placeholder="piramitbilgisayar" style="font-family:monospace;">
+    </div>
+    <div class="wd-field">
+      <label>Açıklama</label>
+      <textarea id="clientDesc" placeholder="Kısa açıklama..."></textarea>
+    </div>
+    <div class="wd-field">
+      <label>İletişim (tel / email)</label>
+      <input type="text" id="clientContact" placeholder="0555 000 00 00">
+    </div>
+    <div class="wd-field" id="clientActiveField" style="display:none;">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="clientActive" style="width:auto;"> Aktif (site yayında)
+      </label>
+    </div>
+    <div class="wd-modal-btns">
+      <button class="wd-btn" style="background:var(--bg-input);color:var(--text-secondary);" onclick="closeModals()">İptal</button>
+      <button class="wd-btn wd-btn-edit" id="clientSaveBtn" onclick="saveClient()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ZIP Yükle Modal ─── -->
+<div class="wd-overlay" id="uploadModal">
+  <div class="wd-modal">
+    <h3>ZIP Dosyası Yükle — <span id="uploadClientName" style="color:#818cf8;"></span></h3>
+    <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem;">
+      Web sitenizi ZIP olarak sıkıştırın. İçinde en az bir <code>index.html</code> olsun. Mevcut dosyalar silinip yenileri yüklenir.
+    </p>
+    <div class="wd-drop-zone" id="dropZone" onclick="document.getElementById('zipInput').click()">
+      <div class="icon">📦</div>
+      <p><strong>ZIP dosyasını buraya bırakın</strong></p>
+      <p>veya tıklayın</p>
+      <input type="file" id="zipInput" accept=".zip" style="display:none;" onchange="handleFileSelect(this)">
+    </div>
+    <div id="selectedFile" style="display:none;margin-top:.75rem;padding:.5rem .75rem;background:rgba(99,102,241,.08);border-radius:8px;font-size:.83rem;color:#818cf8;"></div>
+    <div class="wd-progress" id="uploadProgress">
+      <div class="wd-progress-bar" id="uploadProgressBar" style="width:0%"></div>
+    </div>
+    <div class="wd-modal-btns">
+      <button class="wd-btn" style="background:var(--bg-input);color:var(--text-secondary);" onclick="closeModals()">İptal</button>
+      <button class="wd-btn wd-btn-upload" id="uploadBtn" onclick="uploadZip()" disabled>
+        <i class="fas fa-upload" style="margin-right:.3rem;"></i>Yükle
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _uploadSlug = null;
+let _selectedFile = null;
+let _isEdit = false;
+
+function closeModals() {
+  document.getElementById('clientModal').classList.remove('show');
+  document.getElementById('uploadModal').classList.remove('show');
+  _selectedFile = null;
+  document.getElementById('zipInput').value = '';
+  document.getElementById('selectedFile').style.display = 'none';
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('uploadProgress').style.display = 'none';
+  document.getElementById('uploadProgressBar').style.width = '0%';
+}
+
+function openAddModal() {
+  _isEdit = false;
+  document.getElementById('clientModalTitle').textContent = 'Yeni Müşteri Ekle';
+  document.getElementById('editSlug').value = '';
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientSlug').value = '';
+  document.getElementById('clientDesc').value = '';
+  document.getElementById('clientContact').value = '';
+  document.getElementById('clientSlug').disabled = false;
+  document.getElementById('clientActiveField').style.display = 'none';
+  document.getElementById('clientModal').classList.add('show');
+}
+
+function openEditModal(slug, name, desc, contact, isActive) {
+  _isEdit = true;
+  document.getElementById('clientModalTitle').textContent = 'Müşteri Düzenle';
+  document.getElementById('editSlug').value = slug;
+  document.getElementById('clientName').value = name;
+  document.getElementById('clientSlug').value = slug;
+  document.getElementById('clientSlug').disabled = true;
+  document.getElementById('clientDesc').value = desc;
+  document.getElementById('clientContact').value = contact;
+  document.getElementById('clientActive').checked = isActive;
+  document.getElementById('clientActiveField').style.display = 'block';
+  document.getElementById('clientModal').classList.add('show');
+}
+
+async function saveClient() {
+  const name = document.getElementById('clientName').value.trim();
+  if (!name) { showToast('Müşteri adı zorunludur', 'error'); return; }
+
+  const btn = document.getElementById('clientSaveBtn');
+  btn.disabled = true; btn.textContent = 'Kaydediliyor…';
+
+  let url, method, body;
+  if (_isEdit) {
+    const slug = document.getElementById('editSlug').value;
+    url = `/api/webdizayn/clients/${slug}`;
+    method = 'PUT';
+    body = {
+      name,
+      description: document.getElementById('clientDesc').value,
+      contact: document.getElementById('clientContact').value,
+      is_active: document.getElementById('clientActive').checked,
+    };
+  } else {
+    url = '/api/webdizayn/clients';
+    method = 'POST';
+    body = {
+      name,
+      slug: document.getElementById('clientSlug').value.trim() || null,
+      description: document.getElementById('clientDesc').value,
+      contact: document.getElementById('clientContact').value,
+    };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method, headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const d = await res.json();
+    if (d.success) {
+      showToast(d.message, 'success');
+      closeModals();
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(d.message || 'Hata', 'error');
+    }
+  } catch { showToast('Bağlantı hatası', 'error'); }
+  btn.disabled = false; btn.textContent = 'Kaydet';
+}
+
+async function deleteClient(slug, name) {
+  if (!confirm(`"${name}" müşterisini ve tüm dosyalarını silmek istediğinizden emin misiniz?`)) return;
+  const res = await fetch(`/api/webdizayn/clients/${slug}`, { method: 'DELETE' });
+  const d = await res.json();
+  if (d.success) {
+    showToast(d.message, 'success');
+    const card = document.getElementById(`card-${slug}`);
+    if (card) card.remove();
+  } else {
+    showToast(d.message || 'Hata', 'error');
+  }
+}
+
+function openUploadModal(slug, name) {
+  _uploadSlug = slug;
+  document.getElementById('uploadClientName').textContent = name;
+  document.getElementById('uploadModal').classList.add('show');
+}
+
+function handleFileSelect(input) {
+  if (input.files.length) {
+    _selectedFile = input.files[0];
+    document.getElementById('selectedFile').textContent = `📦 ${_selectedFile.name} (${(_selectedFile.size/1024).toFixed(0)} KB)`;
+    document.getElementById('selectedFile').style.display = 'block';
+    document.getElementById('uploadBtn').disabled = false;
+  }
+}
+
+// Drag & Drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.zip')) {
+    _selectedFile = file;
+    document.getElementById('selectedFile').textContent = `📦 ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
+    document.getElementById('selectedFile').style.display = 'block';
+    document.getElementById('uploadBtn').disabled = false;
+  } else {
+    showToast('Sadece .zip dosyası kabul edilir', 'error');
+  }
+});
+
+async function uploadZip() {
+  if (!_selectedFile || !_uploadSlug) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  const progress = document.getElementById('uploadProgress');
+  const bar = document.getElementById('uploadProgressBar');
+  progress.style.display = 'block';
+
+  const formData = new FormData();
+  formData.append('file', _selectedFile);
+
+  // Simulate progress while uploading
+  let pct = 0;
+  const ticker = setInterval(() => { pct = Math.min(pct + 10, 85); bar.style.width = pct + '%'; }, 200);
+
+  try {
+    const res = await fetch(`/api/webdizayn/clients/${_uploadSlug}/upload`, {
+      method: 'POST', body: formData,
+    });
+    clearInterval(ticker); bar.style.width = '100%';
+    const d = await res.json();
+    if (d.success) {
+      showToast(d.message + ' — ' + d.url, 'success');
+      closeModals();
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(d.message || 'Yükleme başarısız', 'error');
+      btn.disabled = false;
+    }
+  } catch {
+    clearInterval(ticker);
+    showToast('Bağlantı hatası', 'error');
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

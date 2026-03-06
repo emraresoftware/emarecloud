@@ -1061,3 +1061,54 @@ class Feedback(db.Model):
             'replied_at':     self.replied_at.strftime('%d.%m.%Y %H:%M') if self.replied_at else None,
             'created_at':     self.created_at.strftime('%d.%m.%Y %H:%M') if self.created_at else None,
         }
+
+
+# ==================== WEB DİZAYN MÜŞTERİLERİ ====================
+
+class WebDizaynClient(db.Model):
+    """Emare Web Dizayn — Müşteri web sitesi kaydı."""
+    __tablename__ = 'webdizayn_clients'
+
+    id         = db.Column(db.Integer, primary_key=True)
+    slug       = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    name       = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, default='')
+    contact    = db.Column(db.String(200), default='')   # tel/email/adres
+    is_active  = db.Column(db.Boolean, default=True)
+    added_by   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    WEB_ROOT = '/var/www/webdizayn'
+
+    @property
+    def public_url(self):
+        return f'https://webdizayn.emarecloud.tr/{self.slug}'
+
+    @property
+    def site_path(self):
+        import pathlib
+        return pathlib.Path(self.WEB_ROOT) / self.slug
+
+    @property
+    def has_files(self):
+        try:
+            p = self.site_path
+            return p.exists() and any(p.iterdir())
+        except Exception:
+            return False
+
+    def to_dict(self) -> dict:
+        return {
+            'id':          self.id,
+            'slug':        self.slug,
+            'name':        self.name,
+            'description': self.description,
+            'contact':     self.contact,
+            'is_active':   self.is_active,
+            'has_files':   self.has_files,
+            'public_url':  self.public_url,
+            'added_by':    self.added_by,
+            'created_at':  self.created_at.strftime('%d.%m.%Y') if self.created_at else None,
+        }
+

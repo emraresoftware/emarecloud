@@ -298,6 +298,12 @@
                     <span>Geri Bildirimler</span>
                 </a>
             </li>
+            <li class="menu-item {% if request.endpoint == 'webdizayn.webdizayn_panel' %}active{% endif %}">
+                <a href="/webdizayn">
+                    <i class="fas fa-paint-brush"></i>
+                    <span>Web Dizayn</span>
+                </a>
+            </li>
             {% if current_user.role == 'super_admin' %}
             <li class="menu-item {% if request.endpoint == 'auth.admin_panel' %}active{% endif %}">
                 <a href="/admin/panel">
