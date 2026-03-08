@@ -350,7 +350,7 @@ class SSHManager:
                     return True, elapsed
                 # Banner geldi ama SSH değil
                 return False, 0.0
-            except (socket.timeout, OSError):
+            except (TimeoutError, OSError):
                 # Banner okuma timeout — port açık ama yanıt yok, güvenilmez
                 return False, 0.0
 

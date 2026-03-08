@@ -11,7 +11,6 @@ EP Kazanım Modelleri:
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger('emarecloud.blockchain.rewards')
 
@@ -80,7 +79,7 @@ class RewardEngine:
         """Flask uygulamasıyla entegre eder."""
         self._db = db
 
-    def award_ep(self, user_id: int, action: str, metadata: dict = None) -> Optional[dict]:
+    def award_ep(self, user_id: int, action: str, metadata: dict = None) -> dict | None:
         """
         Kullanıcıya EP ödülü verir.
 
@@ -150,12 +149,11 @@ class RewardEngine:
 
         if action in cashback_actions:
             return 'cashback'
-        elif action in marketplace_actions:
+        if action in marketplace_actions:
             return 'marketplace'
-        elif action in ai_actions:
+        if action in ai_actions:
             return 'ai_work'
-        else:
-            return 'work'
+        return 'work'
 
     def process_pending_claims(self) -> int:
         """
@@ -165,8 +163,8 @@ class RewardEngine:
         Returns:
             İşlenen claim sayısı
         """
-        from models import EmarePoint, UserWallet
         from blockchain.service import blockchain_service
+        from models import EmarePoint, UserWallet
 
         if not blockchain_service.is_available:
             return 0

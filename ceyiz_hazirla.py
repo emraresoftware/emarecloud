@@ -246,7 +246,7 @@ def create_project_files(project_path: Path, slug: str, port: int, stack: str, d
                          name: str = None, dc: str = 'dc1'):
     """Proje klasöründe temel dosyaları oluştur."""
     if dry_run:
-        print(f"  [dry-run] Dosyalar oluşturulmayacak — sadece port tahsis edildi.")
+        print("  [dry-run] Dosyalar oluşturulmayacak — sadece port tahsis edildi.")
         return
 
     project_path.mkdir(parents=True, exist_ok=True)
@@ -258,25 +258,25 @@ def create_project_files(project_path: Path, slug: str, port: int, stack: str, d
         env_file.write_text(env_content, encoding='utf-8')
         print(f"  ✅ .env oluşturuldu  ({env_file})")
     else:
-        print(f"  ⏭  .env zaten var, atlandı")
+        print("  ⏭  .env zaten var, atlandı")
 
     # .env.example
     example_file = project_path / '.env.example'
     if not example_file.exists():
         example_file.write_text(env_content, encoding='utf-8')
-        print(f"  ✅ .env.example oluşturuldu")
+        print("  ✅ .env.example oluşturuldu")
 
     # docker-compose.yml
     dc_file = project_path / 'docker-compose.yml'
     if not dc_file.exists():
         dc_file.write_text(_docker_compose(slug, port), encoding='utf-8')
-        print(f"  ✅ docker-compose.yml oluşturuldu")
+        print("  ✅ docker-compose.yml oluşturuldu")
 
     if stack == 'python':
         gc_file = project_path / 'gunicorn.conf.py'
         if not gc_file.exists():
             gc_file.write_text(_gunicorn_conf(port), encoding='utf-8')
-            print(f"  ✅ gunicorn.conf.py oluşturuldu")
+            print("  ✅ gunicorn.conf.py oluşturuldu")
 
     # deploy.json — merkezi deploy manifesti
     dj_file = project_path / 'deploy.json'
@@ -285,7 +285,7 @@ def create_project_files(project_path: Path, slug: str, port: int, stack: str, d
         dj_file.write_text(dj_content, encoding='utf-8')
         print(f"  ✅ deploy.json oluşturuldu  (port={port}, dc={dc}, stack={stack})")
     else:
-        print(f"  ⏭  deploy.json zaten var, atlandı")
+        print("  ⏭  deploy.json zaten var, atlandı")
 
     # README
     readme = project_path / 'README.md'
@@ -297,7 +297,7 @@ def create_project_files(project_path: Path, slug: str, port: int, stack: str, d
             f"```bash\ncp .env.example .env\n# .env dosyasını düzenle\n```\n",
             encoding='utf-8'
         )
-        print(f"  ✅ README.md oluşturuldu")
+        print("  ✅ README.md oluşturuldu")
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +362,7 @@ def main():
             import random
             fallback_port = args.preferred_port or random.randint(8200, 9900)
             print(f"  ⚠️  --force aktif: geçici port {fallback_port} kullanılıyor.")
-            print(f"  ⚠️  Bu port panele KAYITLI DEĞİL. Geliştirme sadece lokal!")
+            print("  ⚠️  Bu port panele KAYITLI DEĞİL. Geliştirme sadece lokal!")
             allocated_port = fallback_port
         else:
             print()
@@ -386,7 +386,7 @@ def main():
     # 3. Özet
     print()
     print("═══════════════════════════════════════════════════════")
-    print(f"  🎉 Çeyiz hazır!")
+    print("  🎉 Çeyiz hazır!")
     print(f"     Proje  : {args.name}")
     print(f"     Slug   : {args.slug}")
     print(f"     Port   : {allocated_port}")

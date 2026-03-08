@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
-from extensions import db
 from core.helpers import _build_tenant_query, get_server_obj_with_access
 from core.tenant import get_tenant_id
+from extensions import db
 from models import (
     AlertHistory,
     AlertRule,

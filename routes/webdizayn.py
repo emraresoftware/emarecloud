@@ -3,12 +3,11 @@ EmareCloud — Web Dizayn Müşteri Yönetimi
 webdizayn.emarecloud.tr altında statik site barındırma.
 """
 
-import os
+import pathlib
 import re
 import shutil
 import subprocess
 import zipfile
-import pathlib
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required

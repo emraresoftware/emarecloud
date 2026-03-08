@@ -9,8 +9,8 @@ Kullanım:
     val = anahtar("ANTHROPIC_API_KEY")
 """
 from __future__ import annotations
+
 import os
-from typing import Optional
 from functools import lru_cache
 
 try:
@@ -55,7 +55,7 @@ def anahtar(isim: str) -> str:
 class _LazyKey:
     def __init__(self, isim: str):
         self._isim = isim
-        self._deger: Optional[str] = None
+        self._deger: str | None = None
     def _al(self) -> str:
         if self._deger is None:
             self._deger = anahtar(self._isim)

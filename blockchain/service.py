@@ -12,7 +12,6 @@ Bu modül, Cloud backend'in akıllı kontratlarla iletişim kurmasını sağlar:
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 logger = logging.getLogger('emarecloud.blockchain')
 
@@ -126,7 +125,7 @@ class BlockchainService:
 
     # ==================== TOKEN İŞLEMLERİ ====================
 
-    def get_token_balance(self, wallet_address: str) -> Optional[Decimal]:
+    def get_token_balance(self, wallet_address: str) -> Decimal | None:
         """Kullanıcının EMARE token bakiyesini döndürür (insan okunabilir)."""
         if not self.is_available or not self._token_contract:
             return None
@@ -138,7 +137,7 @@ class BlockchainService:
             logger.error(f"Token bakiye sorgu hatası [{wallet_address}]: {e}")
             return None
 
-    def get_token_info(self) -> Optional[dict]:
+    def get_token_info(self) -> dict | None:
         """Token genel bilgilerini döndürür."""
         if not self.is_available or not self._token_contract:
             return None
@@ -161,7 +160,7 @@ class BlockchainService:
 
     # ==================== REWARD POOL İŞLEMLERİ ====================
 
-    def get_reward_pool_info(self) -> Optional[dict]:
+    def get_reward_pool_info(self) -> dict | None:
         """RewardPool kontrat bilgilerini döndürür."""
         if not self.is_available or not self._reward_pool_contract:
             return None
@@ -184,7 +183,7 @@ class BlockchainService:
             logger.error(f"RewardPool bilgi sorgu hatası: {e}")
             return None
 
-    def get_user_reward_info(self, wallet_address: str) -> Optional[dict]:
+    def get_user_reward_info(self, wallet_address: str) -> dict | None:
         """Kullanıcının RewardPool verilerini döndürür."""
         if not self.is_available or not self._reward_pool_contract:
             return None
@@ -204,7 +203,7 @@ class BlockchainService:
             logger.error(f"RewardPool kullanıcı sorgu hatası [{wallet_address}]: {e}")
             return None
 
-    def oracle_claim_reward(self, user_address: str, ep_amount: int, claim_type: str) -> Optional[str]:
+    def oracle_claim_reward(self, user_address: str, ep_amount: int, claim_type: str) -> str | None:
         """
         Oracle olarak kullanıcıya EP→EMR ödülü verir.
 
@@ -244,7 +243,7 @@ class BlockchainService:
             logger.error(f"Oracle claim hatası: {e}")
             return None
 
-    def register_user_on_chain(self, wallet_address: str) -> Optional[str]:
+    def register_user_on_chain(self, wallet_address: str) -> str | None:
         """Kullanıcıyı RewardPool kontratına kaydeder."""
         if not self.is_available or not self._reward_pool_contract:
             return None
@@ -273,7 +272,7 @@ class BlockchainService:
             logger.error(f"Kullanıcı kayıt hatası: {e}")
             return None
 
-    def update_merkle_root(self, new_root: bytes) -> Optional[str]:
+    def update_merkle_root(self, new_root: bytes) -> str | None:
         """RewardPool Merkle root'unu günceller."""
         if not self.is_available or not self._reward_pool_contract:
             return None
@@ -303,7 +302,7 @@ class BlockchainService:
 
     # ==================== MARKETPLACE İŞLEMLERİ ====================
 
-    def get_marketplace_product(self, product_id: int) -> Optional[dict]:
+    def get_marketplace_product(self, product_id: int) -> dict | None:
         """On-chain marketplace ürün bilgisini döndürür."""
         if not self.is_available or not self._marketplace_contract:
             return None
@@ -329,7 +328,7 @@ class BlockchainService:
             logger.error(f"Marketplace ürün sorgu hatası [#{product_id}]: {e}")
             return None
 
-    def get_marketplace_stats(self) -> Optional[dict]:
+    def get_marketplace_stats(self) -> dict | None:
         """Marketplace genel istatistiklerini döndürür."""
         if not self.is_available or not self._marketplace_contract:
             return None
@@ -352,7 +351,7 @@ class BlockchainService:
 
     # ==================== SETTLEMENT İŞLEMLERİ ====================
 
-    def get_settlement_order(self, order_id: int) -> Optional[dict]:
+    def get_settlement_order(self, order_id: int) -> dict | None:
         """Escrow siparişi bilgisini döndürür."""
         if not self.is_available or not self._settlement_contract:
             return None
@@ -374,7 +373,7 @@ class BlockchainService:
             logger.error(f"Settlement sipariş sorgu hatası [#{order_id}]: {e}")
             return None
 
-    def get_settlement_stats(self) -> Optional[dict]:
+    def get_settlement_stats(self) -> dict | None:
         """Settlement genel istatistiklerini döndürür."""
         if not self.is_available or not self._settlement_contract:
             return None

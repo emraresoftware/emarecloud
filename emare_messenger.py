@@ -20,11 +20,12 @@ CLI:
   python emare_messenger.py yanit 5 "Tamam aldım"
 """
 
-import urllib.request
 import json
 import os
 import sys
+import urllib.request
 from datetime import datetime
+
 
 # ── Yapılandırma ──
 def _load_token():
@@ -40,7 +41,7 @@ def _load_token():
     ]
     for path in token_paths:
         if os.path.exists(path):
-            with open(path, "r") as f:
+            with open(path) as f:
                 token = f.read().strip()
                 if token:
                     return token
@@ -138,9 +139,8 @@ class EmareMesaj:
         if status == 201:
             print(f"  ✅ Mesaj gönderildi → {alici} (#{resp['number']})")
             return resp
-        else:
-            print(f"  ❌ Gönderilemedi: {resp.get('message', '')}")
-            return resp
+        print(f"  ❌ Gönderilemedi: {resp.get('message', '')}")
+        return resp
 
     def gonder_herkese(self, mesaj: str, acil: bool = False) -> dict:
         """Tüm dervişlere duyuru yap (broadcast)."""
@@ -176,9 +176,8 @@ class EmareMesaj:
         if status == 201:
             print(f"  📢 Duyuru yayınlandı (#{resp['number']})")
             return resp
-        else:
-            print(f"  ❌ Duyuru gönderilemedi: {resp.get('message', '')}")
-            return resp
+        print(f"  ❌ Duyuru gönderilemedi: {resp.get('message', '')}")
+        return resp
 
     # ── Mesaj Okuma ──
 
@@ -255,9 +254,8 @@ class EmareMesaj:
         if status == 201:
             print(f"  💬 Yanıt eklendi → #{issue_no}")
             return resp
-        else:
-            print(f"  ❌ Yanıt eklenemedi: {resp.get('message', '')}")
-            return resp
+        print(f"  ❌ Yanıt eklenemedi: {resp.get('message', '')}")
+        return resp
 
     # ── Mesaj Durumu ──
 

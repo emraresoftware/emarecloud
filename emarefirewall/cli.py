@@ -246,7 +246,7 @@ def main():
             if args.json_output:
                 print_json(result)
             else:
-                print(f"📊 Bağlantı İstatistikleri:")
+                print("📊 Bağlantı İstatistikleri:")
                 print(f"   Toplam: {result['total']}")
                 print(f"   ESTABLISHED: {result['established']}")
                 print(f"   LISTENING: {result['listening']}")

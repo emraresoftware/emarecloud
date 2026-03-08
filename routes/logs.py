@@ -19,10 +19,9 @@ import os
 import re
 from collections import Counter
 from datetime import datetime, timedelta
-from typing import Optional
 
 from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user  # type: ignore
+from flask_login import current_user, login_required  # type: ignore
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -32,7 +31,7 @@ LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
 LOG_FILE = os.path.join(LOG_DIR, 'emarecloud.log')
 
 
-def _parse_json_log_line(line: str) -> Optional[dict]:
+def _parse_json_log_line(line: str) -> dict | None:
     """JSON formatlı bir log satırını parse et."""
     line = line.strip()
     if not line:
@@ -51,8 +50,8 @@ def _parse_json_log_line(line: str) -> Optional[dict]:
         }
 
 
-def _read_log_lines(max_lines: int = 500, level_filter: Optional[str] = None,
-                     search: Optional[str] = None, since_hours: int = 24) -> list:
+def _read_log_lines(max_lines: int = 500, level_filter: str | None = None,
+                     search: str | None = None, since_hours: int = 24) -> list:
     """
     Log dosyasından son N satırı oku, filtrele ve döndür.
     Ters kronolojik sırada (en yeni önce).
@@ -65,7 +64,7 @@ def _read_log_lines(max_lines: int = 500, level_filter: Optional[str] = None,
 
     # Dosyanın sonundan oku (verimli — büyük dosyalar için)
     try:
-        with open(LOG_FILE, 'r', encoding='utf-8', errors='replace') as f:
+        with open(LOG_FILE, encoding='utf-8', errors='replace') as f:
             # Son 10000 satırı oku (performa dikkat)
             lines = f.readlines()[-10000:]
     except Exception:
@@ -89,11 +88,7 @@ def _read_log_lines(max_lines: int = 500, level_filter: Optional[str] = None,
         # Seviye filtresi
         if level_filter:
             entry_level = (entry.get('level') or '').upper()
-            if level_filter.upper() == 'ERROR' and entry_level not in ('ERROR', 'CRITICAL'):
-                continue
-            elif level_filter.upper() == 'WARNING' and entry_level not in ('WARNING', 'WARN'):
-                continue
-            elif level_filter.upper() == 'INFO' and entry_level != 'INFO':
+            if level_filter.upper() == 'ERROR' and entry_level not in ('ERROR', 'CRITICAL') or level_filter.upper() == 'WARNING' and entry_level not in ('WARNING', 'WARN') or level_filter.upper() == 'INFO' and entry_level != 'INFO':
                 continue
 
         # Arama filtresi
@@ -140,7 +135,6 @@ def _compute_log_stats(entries: list) -> dict:
             error_patterns[pattern] += 1
 
     # Sağlık skoru hesapla
-    total = len(entries) or 1
     error_count = level_counts.get('ERROR', 0) + level_counts.get('CRITICAL', 0)
     warning_count = level_counts.get('WARNING', 0) + level_counts.get('WARN', 0)
     health_score = max(0, 100 - (error_count * 5) - (warning_count * 1))
@@ -314,9 +308,8 @@ def get_audit_stats():
     """
     Audit log istatistikleri: en çok yapılan aksiyonlar, aktif kullanıcılar, başarısız işlemler.
     """
-    from extensions import db
-    from models import AuditLog
     from core.helpers import is_global_access
+    from models import AuditLog
 
     hours = int(request.args.get('hours', 168))
     cutoff = datetime.utcnow() - timedelta(hours=hours)
@@ -356,8 +349,8 @@ def get_audit_stats():
 @login_required
 def get_audit_actions():
     """Benzersiz aksiyon isimlerini döndür (filtre için)."""
-    from models import AuditLog
     from core.helpers import is_global_access
+    from models import AuditLog
 
     q = AuditLog.query
     if not is_global_access():
@@ -366,5 +359,5 @@ def get_audit_actions():
     actions = q.with_entities(AuditLog.action).distinct().all()
     return jsonify({
         'ok': True,
-        'actions': sorted(set(a[0] for a in actions if a[0])),
+        'actions': sorted({a[0] for a in actions if a[0]}),
     })

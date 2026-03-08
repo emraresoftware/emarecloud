@@ -5,9 +5,9 @@ Mevcut verileri varsayılan organizasyona atar ve yeni kolonları ekler.
 Güvenli: birden fazla kez çalıştırılabilir (idempotent).
 """
 
+import os
 import sqlite3
 import sys
-import os
 
 DB_PATH = os.environ.get('DB_PATH', 'instance/emarecloud.db')
 
@@ -37,7 +37,7 @@ def migrate():
         sys.exit(1)
 
     conn = get_db()
-    print(f"\n🔧 EmareCloud Tenant Migration")
+    print("\n🔧 EmareCloud Tenant Migration")
     print(f"📂 DB: {os.path.abspath(DB_PATH)}\n")
 
     # ═══════════════════════════════════════════════
@@ -154,27 +154,27 @@ def migrate():
         "SELECT id FROM subscriptions WHERE org_id = ? LIMIT 1", (org_id,)
     ).fetchone()
     if sub_row:
-        print(f"  ⏭️  Abonelik zaten mevcut")
+        print("  ⏭️  Abonelik zaten mevcut")
     else:
         conn.execute("""
             INSERT INTO subscriptions (org_id, plan_id, status, billing_cycle,
                                       payment_method, starts_at, created_at)
             VALUES (?, ?, 'active', 'monthly', 'none', datetime('now'), datetime('now'))
         """, (org_id, plan_id))
-        print(f"  ✅ Abonelik oluşturuldu")
+        print("  ✅ Abonelik oluşturuldu")
 
     quota_row = conn.execute(
         "SELECT id FROM resource_quotas WHERE org_id = ? LIMIT 1", (org_id,)
     ).fetchone()
     if quota_row:
-        print(f"  ⏭️  Kaynak kotası zaten mevcut")
+        print("  ⏭️  Kaynak kotası zaten mevcut")
     else:
         conn.execute("""
             INSERT INTO resource_quotas (org_id, max_servers, max_users, max_storage_gb,
                                          max_backups, max_vms, updated_at)
             VALUES (?, 100, 50, 100, 50, 20, datetime('now'))
         """, (org_id,))
-        print(f"  ✅ Kaynak kotası oluşturuldu")
+        print("  ✅ Kaynak kotası oluşturuldu")
 
     conn.commit()
 
@@ -218,7 +218,7 @@ def migrate():
     if orphans > 0:
         print(f"\n⚠️  {orphans} kayıt hâlâ org_id=NULL (yetim kayıt)")
     else:
-        print(f"\n✅ Tüm kayıtlar bir organizasyona atandı")
+        print("\n✅ Tüm kayıtlar bir organizasyona atandı")
 
     conn.close()
     print()

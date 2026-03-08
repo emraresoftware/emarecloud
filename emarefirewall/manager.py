@@ -21,8 +21,7 @@ Paramiko ile Kullanım:
 
 import re
 from datetime import datetime
-from typing import Any, Callable, Optional
-
+from typing import Callable
 
 # Tip: SSH executor fonksiyon imzası
 SSHExecutor = Callable[[str, str], tuple]
@@ -45,7 +44,7 @@ class FirewallManager:
         """SSH ile komut çalıştır."""
         return self._exec_fn(server_id, command)
 
-    def _detect_type(self, server_id: str) -> Optional[str]:
+    def _detect_type(self, server_id: str) -> str | None:
         """Firewall tipini tespit et: 'ufw' | 'firewalld' | None"""
         ok, out, _ = self._exec(server_id, "which ufw 2>/dev/null")
         if ok and out and "ufw" in out:

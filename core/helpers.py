@@ -49,6 +49,7 @@ def _user_can_see_server(srv) -> bool:
     Super admin → global, admin → kendi org, normal → kendi org."""
     try:
         from flask_login import current_user
+
         from core.tenant import get_tenant_id, is_global_access
         if not current_user.is_authenticated:
             return False

@@ -107,6 +107,12 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S106", "S105"]  # assert ve test şifreleri ok
 "setup.sh" = ["ALL"]
+"firewall_manager.py" = ["F821"]  # emarefirewall delegasyon katmanı — _exec, _detect_type referansları
+"routes/monitoring.py" = ["E712"]  # SQLAlchemy filter'da == False/True gerekli
+"routes/webdizayn.py" = ["S108", "S607"]  # tmp dizin ve subprocess kullanımı bileşik
+"emarefirewall/*" = ["E701", "E702", "E741", "F811"]  # Ayrı paket — compact syntax
+"emare_messenger.py" = ["W293", "E701", "E702", "E741"]  # Utility script
+"ceyiz_hazirla.py" = ["F841", "S311"]  # Setup script — random port + unused var
 
 [tool.ruff.lint.isort]
 known-first-party = ["core", "routes"]

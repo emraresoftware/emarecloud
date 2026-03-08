@@ -7,6 +7,7 @@ Docs: https://developers.cloudflare.com/api/
 """
 
 import os
+
 import requests
 from flask import Blueprint, jsonify, request
 from flask_login import login_required

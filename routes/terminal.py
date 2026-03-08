@@ -10,8 +10,8 @@ from flask import Blueprint, request
 from flask_login import current_user
 from flask_socketio import emit
 
-from audit import log_action
 from ai_assistant import ai_analyze, get_quick_prompts
+from audit import log_action
 from command_security import is_command_allowed
 from core.helpers import connect_server_ssh, get_server_by_id, get_server_obj_with_access, ssh_mgr
 from rbac import check_permission

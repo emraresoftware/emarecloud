@@ -256,7 +256,7 @@ def admin_panel():
     users = query.order_by(User.created_at.desc()).all()
     roles = get_all_roles()
     total_users = query.count()
-    active_users = query.filter(User.is_active_user == True).count()
+    active_users = query.filter(User.is_active_user.is_(True)).count()
     return render_template(
         'admin/panel.html',
         users=users,

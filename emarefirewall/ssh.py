@@ -15,7 +15,6 @@ Kullanım:
 """
 
 import os
-from typing import Optional
 
 try:
     import paramiko
@@ -32,8 +31,8 @@ class ParamikoExecutor:
         self._clients = {}
 
     def connect(self, server_id: str, host: str, user: str = "root",
-                port: int = 22, key_path: Optional[str] = None,
-                password: Optional[str] = None, timeout: int = 10):
+                port: int = 22, key_path: str | None = None,
+                password: str | None = None, timeout: int = 10):
         """Sunucuya SSH bağlantısı kurar."""
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

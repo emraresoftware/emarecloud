@@ -12,9 +12,8 @@ Kullanım:
     gemini_key = client.get("GOOGLE_API_KEY")
 """
 import os
+
 import httpx
-from typing import Optional
-from functools import lru_cache
 
 
 class EmareAPIClient:
@@ -25,10 +24,10 @@ class EmareAPIClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        token: Optional[str] = None,
+        base_url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
     ):
         self.base_url = (base_url or os.getenv("EMAREAPI_URL", "http://localhost:8000")).rstrip("/")
         self.username = username or os.getenv("EMAREAPI_USERNAME", "")
@@ -102,7 +101,7 @@ class EmareAPIClient:
 
 
 # ─── Hazır global istemci (ortam değişkenlerinden) ────────────────────────────
-_global_client: Optional[EmareAPIClient] = None
+_global_client: EmareAPIClient | None = None
 
 
 def get_client() -> EmareAPIClient:

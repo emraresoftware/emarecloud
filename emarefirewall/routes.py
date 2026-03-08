@@ -23,7 +23,6 @@ Kullanım:
     app.register_blueprint(fw_bp)
 """
 
-from functools import wraps
 from flask import Blueprint, jsonify, request
 
 from emarefirewall.manager import FirewallManager

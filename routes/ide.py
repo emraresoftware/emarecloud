@@ -5,7 +5,6 @@ Monaco Editor + xterm.js + AI Chat paneli için backend.
 """
 
 import os
-import stat
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required

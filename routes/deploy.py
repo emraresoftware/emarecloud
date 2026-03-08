@@ -17,21 +17,21 @@ SSH Yapısı:
   Komutlar sırayla çalıştırılır; biri başarısız olursa deploy FAILED olur.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import subprocess
 import threading
-import hashlib
-import hmac
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
-from extensions import db
-from models import DeployJob, AuditLog
 from core.logging_config import get_logger
+from extensions import db
+from models import AuditLog, DeployJob
 
 logger = get_logger(__name__)
 

@@ -8,7 +8,8 @@ Tüm işlevler emarefirewall paketine delege edilir.
 Bağımsız kullanım için: from emarefirewall import FirewallManager
 """
 
-from typing import Any, Optional
+from typing import Any
+
 from emarefirewall.manager import FirewallManager
 
 

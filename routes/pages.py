@@ -159,6 +159,7 @@ def ai_security_page():
 def token_payment_page():
     """EMARE Token ile abonelik satın alma sayfası."""
     from flask import current_app
+
     from models import Plan
 
     plans = Plan.query.filter_by(is_active=True).order_by(Plan.sort_order).all()
@@ -168,6 +169,7 @@ def token_payment_page():
     blockchain_enabled = current_app.config.get('BLOCKCHAIN_ENABLED', False)
 
     from flask_login import current_user
+
     from models import Organization
     user_org = None
     if current_user.org_id:

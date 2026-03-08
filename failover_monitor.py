@@ -6,13 +6,9 @@ Log: ~/Library/Logs/emare_failover.log
 """
 
 import json
-import os
 import socket
-import subprocess
-import sys
-import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 

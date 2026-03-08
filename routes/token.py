@@ -3,7 +3,6 @@ EmareCloud — Token & Blockchain API Route'ları
 EMARE token ekosistemiyle etkileşim endpoint'leri.
 """
 
-import json
 import logging
 
 from flask import Blueprint, jsonify, request

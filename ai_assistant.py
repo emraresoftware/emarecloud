@@ -5,8 +5,8 @@ komut önerisi, optimizasyon tavsiyeleri.
 Gemini erişilemezse kural tabanlı sistemle yanıt verir.
 """
 
-import re
 import logging
+import re
 
 logger = logging.getLogger('emarecloud.ai_assistant')
 

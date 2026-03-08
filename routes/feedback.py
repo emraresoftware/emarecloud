@@ -12,7 +12,7 @@ POST  /api/feedback/<id>/reply   → Admin: yanıt ver
 
 from datetime import datetime
 
-from flask import Blueprint, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from audit import log_action

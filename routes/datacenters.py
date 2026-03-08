@@ -4,7 +4,7 @@ EmareCloud — Veri Merkezi (Data Center) API Route'ları
 """
 
 from flask import Blueprint, jsonify, request
-from flask_login import current_user, login_required
+from flask_login import login_required
 
 from audit import log_action
 from core.helpers import _build_tenant_query, get_server_obj_with_access

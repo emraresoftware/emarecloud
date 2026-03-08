@@ -2564,7 +2564,6 @@ EMARE_PROJECTS = [
 
 def get_emare_projects():
     """EmareCode ile yazılan projeleri kategoriye göre gruplandırarak döndürür."""
-    from collections import OrderedDict
 
     # Durum sıralama önceliği
     status_order = {"production": 0, "ready": 1, "development": 2, "planning": 3}

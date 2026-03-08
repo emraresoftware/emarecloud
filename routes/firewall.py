@@ -12,10 +12,8 @@ from core.helpers import get_server_obj_with_access, ssh_mgr
 from firewall_manager import (
     add_port_forward,
     add_rich_rule,
-    add_rule as firewall_add_rule,
     add_service,
     block_ip,
-    delete_rule as firewall_delete_rule,
     disable_firewall,
     enable_firewall,
     fail2ban_ban,
@@ -25,7 +23,6 @@ from firewall_manager import (
     get_connection_stats,
     get_connections,
     get_fail2ban_status,
-    get_status as firewall_get_status,
     get_zone_detail,
     get_zones,
     remove_port_forward,
@@ -34,6 +31,15 @@ from firewall_manager import (
     security_scan,
     set_default_zone,
     unblock_ip,
+)
+from firewall_manager import (
+    add_rule as firewall_add_rule,
+)
+from firewall_manager import (
+    delete_rule as firewall_delete_rule,
+)
+from firewall_manager import (
+    get_status as firewall_get_status,
 )
 from rbac import permission_required
 
