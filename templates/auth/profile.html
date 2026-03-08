@@ -95,6 +95,122 @@
             </form>
         </div>
     </div>
+
+    <!-- 2FA (İki Faktörlü Doğrulama) -->
+    <div class="section" style="grid-column: 1 / -1;">
+        <div class="section-header">
+            <h2><i class="fas fa-shield-alt"></i> İki Faktörlü Doğrulama (2FA)</h2>
+            <span id="twofa-badge" class="twofa-badge {{ 'twofa-on' if current_user.totp_enabled else 'twofa-off' }}">
+                {{ '✅ Aktif' if current_user.totp_enabled else '⚠️ Kapalı' }}
+            </span>
+        </div>
+        <div class="section-body">
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">
+                2FA, hesabınıza ek bir güvenlik katmanı ekler. Google Authenticator, Authy veya benzeri TOTP uygulamaları ile kullanabilirsiniz.
+            </p>
+
+            {% if not current_user.totp_enabled %}
+            <!-- ── KURULUM (2FA Kapalı) ── -->
+            <div id="twofa-setup-section">
+                <button class="btn btn-primary" id="twofa-start-btn" onclick="start2FASetup()">
+                    <i class="fas fa-qrcode"></i> 2FA Kurulumunu Başlat
+                </button>
+            </div>
+
+            <!-- QR Kod + Doğrulama Adımı (gizli) -->
+            <div id="twofa-qr-section" style="display:none;">
+                <div class="twofa-qr-container">
+                    <div class="twofa-step">
+                        <span class="twofa-step-num">1</span>
+                        <span>Authenticator uygulamanızla QR kodu tarayın</span>
+                    </div>
+                    <div style="text-align:center;margin:16px 0;">
+                        <img id="twofa-qr-img" src="" alt="QR Code" style="border-radius:12px;border:2px solid var(--border-color);max-width:220px;">
+                    </div>
+                    <div class="twofa-secret-box">
+                        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">Veya bu kodu elle girin:</div>
+                        <code id="twofa-secret-code" style="font-size:15px;letter-spacing:2px;font-weight:700;color:var(--text-primary);"></code>
+                        <button class="btn-copy" onclick="copySecret()" title="Kopyala"><i class="fas fa-copy"></i></button>
+                    </div>
+
+                    <div class="twofa-step" style="margin-top:20px;">
+                        <span class="twofa-step-num">2</span>
+                        <span>Uygulamadaki 6 haneli kodu girin</span>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;">
+                        <input type="text" id="twofa-verify-code" maxlength="6" placeholder="000000"
+                               style="width:140px;text-align:center;font-size:20px;font-weight:700;letter-spacing:6px;padding:12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);"
+                               autocomplete="one-time-code">
+                        <button class="btn btn-primary" onclick="enable2FA()">
+                            <i class="fas fa-check-circle"></i> Doğrula ve Aktifleştir
+                        </button>
+                    </div>
+                    <div id="twofa-verify-error" style="color:#f87171;font-size:13px;margin-top:8px;display:none;"></div>
+                </div>
+            </div>
+
+            <!-- Kurtarma Kodları (gizli) -->
+            <div id="twofa-recovery-section" style="display:none;">
+                <div class="twofa-success-banner">
+                    <i class="fas fa-check-circle" style="font-size:24px;color:#22c55e;"></i>
+                    <div>
+                        <strong>2FA Başarıyla Aktifleştirildi!</strong>
+                        <div style="font-size:13px;color:var(--text-secondary);">
+                            Aşağıdaki kurtarma kodlarını güvenli bir yere kaydedin. Telefonunuza erişemezseniz bu kodları kullanabilirsiniz.
+                        </div>
+                    </div>
+                </div>
+                <div class="twofa-recovery-grid" id="twofa-recovery-codes"></div>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button class="btn btn-primary" onclick="copyRecoveryCodes()">
+                        <i class="fas fa-copy"></i> Kodları Kopyala
+                    </button>
+                    <button class="btn btn-outline" onclick="downloadRecoveryCodes()">
+                        <i class="fas fa-download"></i> İndir (.txt)
+                    </button>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- ── 2FA AKTİF — Devre Dışı Bırak ── -->
+            <div class="twofa-active-info">
+                <i class="fas fa-shield-alt" style="font-size:28px;color:#22c55e;"></i>
+                <div>
+                    <strong>2FA koruma aktif</strong>
+                    <div style="font-size:13px;color:var(--text-secondary);">Her giriş sırasında authenticator kodunuz istenecektir.</div>
+                </div>
+            </div>
+
+            <div id="twofa-disable-section" style="margin-top:16px;">
+                <button class="btn" style="background:#f87171;color:#fff;" onclick="show2FADisable()">
+                    <i class="fas fa-power-off"></i> 2FA Devre Dışı Bırak
+                </button>
+            </div>
+
+            <!-- Devre dışı onay (gizli) -->
+            <div id="twofa-disable-confirm" style="display:none;margin-top:16px;">
+                <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:12px;padding:16px;margin-bottom:12px;">
+                    <div style="color:#f87171;font-weight:700;font-size:14px;margin-bottom:4px;">
+                        <i class="fas fa-exclamation-triangle"></i> Dikkat
+                    </div>
+                    <div style="font-size:13px;color:var(--text-secondary);">
+                        2FA'yı devre dışı bırakmak hesabınızın güvenliğini azaltır. Devam etmek için şifrenizi girin.
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <input type="password" id="twofa-disable-password" placeholder="Mevcut şifreniz"
+                           style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);"
+                           autocomplete="current-password">
+                    <button class="btn" style="background:#f87171;color:#fff;" onclick="disable2FA()">
+                        <i class="fas fa-trash"></i> Onayla
+                    </button>
+                    <button class="btn btn-outline" onclick="hide2FADisable()">İptal</button>
+                </div>
+                <div id="twofa-disable-error" style="color:#f87171;font-size:13px;margin-top:8px;display:none;"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <style>
@@ -102,5 +218,197 @@
     @media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
     .dash-alert-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); color: var(--accent-blue); }
     .dash-alert-success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: var(--accent-green); }
+
+    /* 2FA Styles */
+    .twofa-badge { padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .twofa-on { background: rgba(34,197,94,.12); color: #22c55e; }
+    .twofa-off { background: rgba(234,179,8,.12); color: #eab308; }
+
+    .twofa-qr-container { background: var(--bg-hover); border-radius: 16px; padding: 24px; border: 1px solid var(--border-color); }
+    .twofa-step { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .twofa-step-num { width: 28px; height: 28px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+
+    .twofa-secret-box { display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px dashed var(--border-color); border-radius: 10px; padding: 12px 16px; margin-top: 12px; flex-wrap: wrap; }
+    .btn-copy { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; transition: all .2s; }
+    .btn-copy:hover { color: #6366f1; background: rgba(99,102,241,.08); }
+
+    .twofa-success-banner { display: flex; align-items: flex-start; gap: 14px; background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    .twofa-recovery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .twofa-recovery-grid .code { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-family: monospace; font-size: 14px; font-weight: 700; text-align: center; color: var(--text-primary); }
+
+    .twofa-active-info { display: flex; align-items: center; gap: 16px; background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.15); border-radius: 14px; padding: 20px; }
+
+    .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all .2s; }
+    .btn-outline:hover { border-color: #6366f1; color: #6366f1; }
 </style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    let recoveryCodesData = [];
+
+    // ── Toast Helper ──
+    function showToast(msg, type) {
+        type = type || 'info';
+        const colors = { success: '#22c55e', error: '#f87171', info: '#6366f1' };
+        const div = document.createElement('div');
+        div.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:all .3s;opacity:0;transform:translateX(20px);background:' + (colors[type] || colors.info);
+        div.textContent = msg;
+        document.body.appendChild(div);
+        requestAnimationFrame(() => { div.style.opacity = '1'; div.style.transform = 'translateX(0)'; });
+        setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 300); }, 3000);
+    }
+
+    // ── 2FA Kurulum Başlat ──
+    window.start2FASetup = function() {
+        const btn = document.getElementById('twofa-start-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Hazırlanıyor…';
+
+        fetch('/api/2fa/setup', { method: 'POST', headers: {'Content-Type': 'application/json'} })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-qrcode"></i> 2FA Kurulumunu Başlat';
+                    showToast(data.message || 'Hata', 'error');
+                    return;
+                }
+                // QR ve secret göster
+                document.getElementById('twofa-qr-img').src = data.qr_code;
+                document.getElementById('twofa-secret-code').textContent = data.secret;
+                document.getElementById('twofa-setup-section').style.display = 'none';
+                document.getElementById('twofa-qr-section').style.display = 'block';
+                // Kod input'una otofokus
+                setTimeout(() => document.getElementById('twofa-verify-code').focus(), 300);
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-qrcode"></i> 2FA Kurulumunu Başlat';
+                showToast('Bağlantı hatası', 'error');
+            });
+    };
+
+    // ── Kodu Doğrula ve Aktifleştir ──
+    window.enable2FA = function() {
+        const code = (document.getElementById('twofa-verify-code').value || '').trim();
+        const errEl = document.getElementById('twofa-verify-error');
+        errEl.style.display = 'none';
+
+        if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+            errEl.textContent = 'Lütfen 6 haneli sayısal kod girin.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        fetch('/api/2fa/enable', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ code: code }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                errEl.textContent = data.message || 'Geçersiz kod';
+                errEl.style.display = 'block';
+                return;
+            }
+            // Başarılı — kurtarma kodlarını göster
+            recoveryCodesData = data.recovery_codes || [];
+            document.getElementById('twofa-qr-section').style.display = 'none';
+            document.getElementById('twofa-recovery-section').style.display = 'block';
+            const grid = document.getElementById('twofa-recovery-codes');
+            grid.innerHTML = recoveryCodesData.map(c => `<div class="code">${c}</div>`).join('');
+
+            // Badge güncelle
+            const badge = document.getElementById('twofa-badge');
+            badge.className = 'twofa-badge twofa-on';
+            badge.innerHTML = '✅ Aktif';
+
+            showToast('2FA başarıyla aktifleştirildi!', 'success');
+        })
+        .catch(() => {
+            errEl.textContent = 'Bağlantı hatası';
+            errEl.style.display = 'block';
+        });
+    };
+
+    // ── Secret Kopyala ──
+    window.copySecret = function() {
+        const secret = document.getElementById('twofa-secret-code').textContent;
+        navigator.clipboard.writeText(secret).then(() => showToast('Secret kopyalandı', 'success'));
+    };
+
+    // ── Kurtarma Kodlarını Kopyala ──
+    window.copyRecoveryCodes = function() {
+        const text = recoveryCodesData.join('\n');
+        navigator.clipboard.writeText(text).then(() => showToast('Kurtarma kodları kopyalandı', 'success'));
+    };
+
+    // ── Kurtarma Kodlarını İndir ──
+    window.downloadRecoveryCodes = function() {
+        const text = '# EmareCloud 2FA Kurtarma Kodları\n# Bu kodları güvenli bir yerde saklayın.\n# Her kod yalnızca bir kez kullanılabilir.\n\n' + recoveryCodesData.join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'emarecloud-recovery-codes.txt';
+        a.click();
+    };
+
+    // ── 2FA Devre Dışı Bırak ──
+    window.show2FADisable = function() {
+        document.getElementById('twofa-disable-section').style.display = 'none';
+        document.getElementById('twofa-disable-confirm').style.display = 'block';
+        document.getElementById('twofa-disable-password').focus();
+    };
+
+    window.hide2FADisable = function() {
+        document.getElementById('twofa-disable-confirm').style.display = 'none';
+        document.getElementById('twofa-disable-section').style.display = 'block';
+    };
+
+    window.disable2FA = function() {
+        const password = document.getElementById('twofa-disable-password').value;
+        const errEl = document.getElementById('twofa-disable-error');
+        errEl.style.display = 'none';
+
+        if (!password) {
+            errEl.textContent = 'Şifrenizi girin.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        fetch('/api/2fa/disable', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ password: password }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                errEl.textContent = data.message || 'Hata';
+                errEl.style.display = 'block';
+                return;
+            }
+            showToast('2FA devre dışı bırakıldı', 'success');
+            // Sayfayı yenile
+            setTimeout(() => location.reload(), 1000);
+        })
+        .catch(() => {
+            errEl.textContent = 'Bağlantı hatası';
+            errEl.style.display = 'block';
+        });
+    };
+
+    // Enter tuşu ile doğrula
+    const codeInput = document.getElementById('twofa-verify-code');
+    if (codeInput) {
+        codeInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') enable2FA();
+        });
+    }
+})();
+</script>
 {% endblock %}
