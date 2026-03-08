@@ -1,4 +1,4 @@
-name: CI — Lint & Test
+name: CI/CD — Lint, Test & Deploy
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt || pip install flask==3.0.0 flask-sqlalchemy==3.1.1 flask-login==0.6.3 paramiko==3.4.0 psutil==5.9.7 flask-socketio==5.3.6 cryptography==41.0.7 pytest pytest-cov ruff
+          pip install -r requirements-dev.txt || pip install flask==3.0.0 flask-sqlalchemy==3.1.1 flask-login==0.6.3 paramiko==3.4.0 psutil==5.9.7 flask-socketio==5.3.6 cryptography==41.0.7 pyotp==2.9.0 qrcode==8.2 pytest pytest-cov ruff
 
       - name: Run tests with coverage
         run: |
@@ -59,3 +59,51 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+
+  deploy:
+    name: 🚀 Deploy to Production (107)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          script: |
+            set -e
+            cd /opt/emarecloud
+
+            echo "📦 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "📚 Installing dependencies..."
+            pip3 install -r requirements.txt --quiet 2>/dev/null || true
+
+            echo "🔄 Restarting service..."
+            systemctl restart emarecloud
+
+            echo "⏳ Waiting for service to start..."
+            sleep 3
+
+            if systemctl is-active --quiet emarecloud; then
+              echo "✅ Deploy successful! EmareCloud is running."
+            else
+              echo "❌ Service failed to start!"
+              systemctl status emarecloud --no-pager -l
+              exit 1
+            fi
+
+            echo "📋 Deploy info:"
+            echo "  Commit: $(git rev-parse --short HEAD)"
+            echo "  Time: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "  Branch: main"
