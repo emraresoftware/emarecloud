@@ -1,4 +1,4 @@
-name: CI/CD — Lint, Test & Deploy
+name: "CI/CD - Lint, Test and Deploy"
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    name: 🔍 Ruff Lint
+    name: "Ruff Lint"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,12 +19,11 @@ jobs:
         run: pip install ruff
       - name: Run ruff check
         run: ruff check . --output-format=github
-      # Format check — şimdilik uyarı modunda (fail etmez)
-      - name: Run ruff format check
-        run: ruff format --check . || echo "⚠️ Format uyumsuzlukları var — düzeltmek için: ruff format ."
+      - name: Run ruff format check (warn only)
+        run: ruff format --check . || echo "Format issues found - run ruff format to fix"
 
   test:
-    name: 🧪 Pytest
+    name: "Pytest"
     runs-on: ubuntu-latest
     needs: lint
     strategy:
@@ -62,7 +61,7 @@ jobs:
           path: coverage.xml
 
   deploy:
-    name: 🚀 Deploy to Production (107)
+    name: "Deploy to Production"
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -82,29 +81,20 @@ jobs:
           script: |
             set -e
             cd /opt/emarecloud
-
-            echo "📦 Pulling latest code..."
+            echo "Pulling latest code..."
             git fetch origin main
             git reset --hard origin/main
-
-            echo "📚 Installing dependencies..."
+            echo "Installing dependencies..."
             pip3 install -r requirements.txt --quiet 2>/dev/null || true
-
-            echo "🔄 Restarting service..."
+            echo "Restarting service..."
             systemctl restart emarecloud
-
-            echo "⏳ Waiting for service to start..."
             sleep 3
-
             if systemctl is-active --quiet emarecloud; then
-              echo "✅ Deploy successful! EmareCloud is running."
+              echo "Deploy successful! EmareCloud is running."
             else
-              echo "❌ Service failed to start!"
+              echo "Service failed to start!"
               systemctl status emarecloud --no-pager -l
               exit 1
             fi
-
-            echo "📋 Deploy info:"
-            echo "  Commit: $(git rev-parse --short HEAD)"
-            echo "  Time: $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "  Branch: main"
+            echo "Commit: $(git rev-parse --short HEAD)"
+            echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
