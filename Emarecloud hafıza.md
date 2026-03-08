@@ -1019,11 +1019,11 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 - [x] **Kullanıcı-Org atama** — Org panelinde üye ekleme/çıkarma dropdown'ı (atanmamış kullanıcıları gösterir)
 - [x] **Org bazlı kaynak kotası** — Org kartlarında progress bar (sunucu/üye/depolama/yedek), kota düzenleme modalı, `GET/PUT /api/organizations/<id>/quota` (commit `1721814`)
 - [x] **2FA (TOTP) UI** — Profil sayfasında QR kurulum, 6 haneli kod doğrulama, kurtarma kodları indirme, devre dışı bırakma (commit `ea12813`)
+- [x] **CI/CD pipeline** — GitHub Actions: lint (ruff) + test (pytest 3.10/3.11/3.12) + auto-deploy to 107 (SSH). Pipeline yeşil: run `22831206242` (commit `3d10cf9`)
 
 ### 🟢 Orta Vadeli
 7. [ ] **PostgreSQL'e geçiş** — SQLite → PostgreSQL (production DB ölçekleme)
 8. [ ] **Docker/Kubernetes deployment** — Containerized deploy
-9. [ ] **CI/CD pipeline** — GitHub Actions: lint + test + auto-deploy to 107
 10. [ ] **SSL sertifikası iyileştirme** — Let's Encrypt wildcard veya Cloudflare Origin cert
 11. [ ] **Oracle X6-2 sunucu** — AlmaLinux kurulumu (UEFI fix) + EmareCloud + KVM
 12. [ ] **Blockchain kontratları** — BSC Mainnet'e deploy (EmareToken, NodeReward)
@@ -1040,7 +1040,7 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 
 ### 📌 Teknik Borç
 - [ ] `EMARE_ORTAK_HAFIZA.md`'de EmareCloud sunucu bilgisi hâlâ 104 → 107 olarak güncellenmeli (symlink, dikkatli düzenleme)
-- [ ] Test coverage artırılmalı (mevcut %46 → hedef %70+)
+- [ ] Test coverage artırılmalı (mevcut %34 → hedef %50+)
 - [ ] routes/deploy.py, routes/webdizayn.py admin-only endpoint'lerde tenant kontrolü (düşük öncelik)
 - [ ] AlertHistory modeline org_id eklenebilir (şu an server_id üzerinden filtreleniyor)
 
