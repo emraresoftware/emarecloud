@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% block title %}Organizasyon Yönetimi - EmareCloud{% endblock %}
+{% block page_title %}Organizasyon Yönetimi{% endblock %}
+
+{% block head %}
+<style>
+.org-container { max-width: 1200px; margin: 0 auto; }
+
+.org-header {
+    background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(14,165,233,.08));
+    border: 1px solid var(--border-color); border-radius: 20px;
+    padding: 28px 32px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    justify-content: space-between;
+}
+.org-header-left { display: flex; align-items: center; gap: 20px; }
+.org-header-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, #6366f1, #0ea5e9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #fff; flex-shrink: 0;
+}
+.org-header-text h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+.org-header-text p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+
+/* Buttons */
+.btn-primary {
+    padding: 10px 20px; border-radius: 10px; border: none;
+    background: #6366f1; color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary:hover { background: #4f46e5; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.btn-danger { background: #f87171; }
+.btn-danger:hover { background: #ef4444; }
+.btn-outline {
+    background: transparent; border: 1px solid var(--border-color);
+    color: var(--text-primary); padding: 6px 12px; border-radius: 8px;
+    font-size: 12px; cursor: pointer; transition: all .2s;
+}
+.btn-outline:hover { border-color: #6366f1; color: #6366f1; }
+.btn-success { background: #22c55e; }
+.btn-success:hover { background: #16a34a; }
+
+/* Cards */
+.org-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
+.org-card {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 16px; padding: 24px; position: relative;
+    transition: all .2s;
+}
+.org-card:hover { border-color: #6366f1; box-shadow: 0 4px 24px rgba(99,102,241,.08); }
+.org-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.org-card-name { font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.org-card-slug { font-size: 12px; color: var(--text-secondary); font-family: monospace; }
+.org-card-badge {
+    padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+}
+.org-card-badge.active { background: rgba(34,197,94,.12); color: #22c55e; }
+.org-card-badge.inactive { background: rgba(248,113,113,.12); color: #f87171; }
+
+.org-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.org-card-stat { text-align: center; }
+.org-card-stat-val { font-size: 20px; font-weight: 800; color: var(--text-primary); }
+.org-card-stat-lbl { font-size: 11px; color: var(--text-secondary); }
+
+.org-card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+.org-card-meta span { margin-right: 16px; }
+
+.org-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Modal */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.5); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: all .2s;
+}
+.modal-overlay.active { opacity: 1; pointer-events: all; }
+.modal-box {
+    background: var(--bg-card); border-radius: 20px; padding: 32px;
+    width: 90%; max-width: 560px; max-height: 80vh; overflow-y: auto;
+    border: 1px solid var(--border-color);
+    transform: translateY(20px); transition: all .2s;
+}
+.modal-overlay.active .modal-box { transform: translateY(0); }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.form-group input, .form-group select {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border-color); background: var(--bg-input);
+    color: var(--text-primary); font-size: 14px;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #6366f1; }
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* Members */
+.member-list { margin-top: 12px; }
+.member-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border: 1px solid var(--border-color);
+    border-radius: 10px; margin-bottom: 8px; font-size: 13px;
+}
+.member-item:hover { border-color: #6366f1; }
+.member-info { display: flex; align-items: center; gap: 10px; }
+.member-avatar {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #0ea5e9);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700;
+}
+.member-role {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    background: rgba(99,102,241,.08); color: #6366f1; font-weight: 600;
+}
+
+/* Empty */
+.org-empty { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.org-empty i { font-size: 48px; opacity: .3; display: block; margin-bottom: 16px; }
+
+@media (max-width: 768px) { .org-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="org-container">
+    <!-- Header -->
+    <div class="org-header">
+        <div class="org-header-left">
+            <div class="org-header-icon"><i class="fas fa-building"></i></div>
+            <div class="org-header-text">
+                <h2>Organizasyon Yönetimi</h2>
+                <p>Multi-tenant organizasyonlar, üyeler, planlar ve kotalar — tek panelden yönet.</p>
+            </div>
+        </div>
+        {% if current_user.role == 'super_admin' %}
+        <button class="btn-primary" onclick="showCreateModal()">
+            <i class="fas fa-plus"></i> Yeni Organizasyon
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Org Cards -->
+    <div class="org-grid" id="orgGrid">
+        <div class="org-empty"><i class="fas fa-spinner fa-spin"></i> Yükleniyor…</div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="orgModal">
+    <div class="modal-box">
+        <div class="modal-title" id="modalTitle">Yeni Organizasyon</div>
+        <input type="hidden" id="editOrgId">
+        <div class="form-group">
+            <label>Organizasyon Adı *</label>
+            <input type="text" id="orgName" placeholder="Firma Adı A.Ş.">
+        </div>
+        <div class="form-group">
+            <label>Slug (otomatik oluşturulur)</label>
+            <input type="text" id="orgSlug" placeholder="firma-adi">
+        </div>
+        <div class="form-group">
+            <label>Domain (opsiyonel)</label>
+            <input type="text" id="orgDomain" placeholder="panel.firmaadi.com">
+        </div>
+        <div class="form-group">
+            <label>Plan</label>
+            <select id="orgPlan">
+                <option value="community">Community (Ücretsiz)</option>
+                <option value="professional">Professional</option>
+                <option value="enterprise">Enterprise</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Durum</label>
+            <select id="orgActive">
+                <option value="true">Aktif</option>
+                <option value="false">Pasif</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn-outline" onclick="closeModal()">İptal</button>
+            <button class="btn-primary" id="modalSaveBtn" onclick="saveOrg()">
+                <i class="fas fa-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Members Modal -->
+<div class="modal-overlay" id="membersModal">
+    <div class="modal-box">
+        <div class="modal-title"><i class="fas fa-users" style="color:#6366f1"></i> <span id="membersOrgName">Üyeler</span></div>
+        <input type="hidden" id="membersOrgId">
+
+        <!-- Add member -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <select id="addMemberSelect" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                <option value="">Kullanıcı seç…</option>
+            </select>
+            <button class="btn-primary btn-sm" onclick="addMember()"><i class="fas fa-plus"></i> Ekle</button>
+        </div>
+
+        <div class="member-list" id="memberList">
+            <div style="text-align:center;color:var(--text-secondary);padding:20px;">Yükleniyor…</div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-outline" onclick="closeMembersModal()">Kapat</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    let allOrgs = [];
+    let allUsers = [];
+
+    // ── Org'ları Yükle ──
+    function loadOrgs() {
+        fetch('/api/organizations')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) return;
+                allOrgs = data.organizations || [];
+                renderOrgs();
+            })
+            .catch(() => {
+                document.getElementById('orgGrid').innerHTML =
+                    '<div class="org-empty"><i class="fas fa-exclamation-triangle"></i> Yüklenemedi</div>';
+            });
+    }
+
+    function renderOrgs() {
+        const grid = document.getElementById('orgGrid');
+        if (allOrgs.length === 0) {
+            grid.innerHTML = '<div class="org-empty"><i class="fas fa-building"></i> Henüz organizasyon yok</div>';
+            return;
+        }
+        grid.innerHTML = allOrgs.map(org => {
+            const badge = org.is_active
+                ? '<span class="org-card-badge active">Aktif</span>'
+                : '<span class="org-card-badge inactive">Pasif</span>';
+            const members = org.member_count || 0;
+            const servers = org.server_count || 0;
+            const plan = org.plan_name || 'community';
+            const date = org.created_at ? new Date(org.created_at).toLocaleDateString('tr-TR') : '—';
+            return `<div class="org-card">
+                <div class="org-card-header">
+                    <div>
+                        <div class="org-card-name">${esc(org.name)}</div>
+                        <div class="org-card-slug">${esc(org.slug)}</div>
+                    </div>
+                    ${badge}
+                </div>
+                <div class="org-card-stats">
+                    <div class="org-card-stat">
+                        <div class="org-card-stat-val">${members}</div>
+                        <div class="org-card-stat-lbl">Üye</div>
+                    </div>
+                    <div class="org-card-stat">
+                        <div class="org-card-stat-val">${servers}</div>
+                        <div class="org-card-stat-lbl">Sunucu</div>
+                    </div>
+                    <div class="org-card-stat">
+                        <div class="org-card-stat-val" style="font-size:14px;">${esc(plan)}</div>
+                        <div class="org-card-stat-lbl">Plan</div>
+                    </div>
+                </div>
+                <div class="org-card-meta">
+                    <span><i class="fas fa-calendar"></i> ${date}</span>
+                    ${org.domain ? '<span><i class="fas fa-globe"></i> ' + esc(org.domain) + '</span>' : ''}
+                </div>
+                <div class="org-card-actions">
+                    <button class="btn-outline" onclick="showMembers(${org.id}, '${esc(org.name)}')">
+                        <i class="fas fa-users"></i> Üyeler
+                    </button>
+                    <button class="btn-outline" onclick="showEditModal(${org.id})">
+                        <i class="fas fa-edit"></i> Düzenle
+                    </button>
+                    ${org.slug !== 'default' ? '<button class="btn-outline" style="color:#f87171;border-color:#f87171;" onclick="deleteOrg(' + org.id + ',\'' + esc(org.name) + '\')"><i class="fas fa-trash"></i></button>' : ''}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Org Oluştur/Düzenle Modal ──
+    window.showCreateModal = function() {
+        document.getElementById('editOrgId').value = '';
+        document.getElementById('orgName').value = '';
+        document.getElementById('orgSlug').value = '';
+        document.getElementById('orgDomain').value = '';
+        document.getElementById('orgPlan').value = 'community';
+        document.getElementById('orgActive').value = 'true';
+        document.getElementById('modalTitle').textContent = 'Yeni Organizasyon';
+        document.getElementById('orgModal').classList.add('active');
+    };
+
+    window.showEditModal = function(orgId) {
+        const org = allOrgs.find(o => o.id === orgId);
+        if (!org) return;
+        document.getElementById('editOrgId').value = orgId;
+        document.getElementById('orgName').value = org.name || '';
+        document.getElementById('orgSlug').value = org.slug || '';
+        document.getElementById('orgDomain').value = org.domain || '';
+        document.getElementById('orgPlan').value = org.plan_name || 'community';
+        document.getElementById('orgActive').value = org.is_active ? 'true' : 'false';
+        document.getElementById('modalTitle').textContent = 'Düzenle: ' + org.name;
+        document.getElementById('orgModal').classList.add('active');
+    };
+
+    window.closeModal = function() {
+        document.getElementById('orgModal').classList.remove('active');
+    };
+
+    window.saveOrg = function() {
+        const orgId = document.getElementById('editOrgId').value;
+        const name = document.getElementById('orgName').value.trim();
+        if (!name) return showToast('Organizasyon adı zorunlu', 'error');
+
+        const body = {
+            name: name,
+            slug: document.getElementById('orgSlug').value.trim() || undefined,
+            domain: document.getElementById('orgDomain').value.trim() || null,
+            is_active: document.getElementById('orgActive').value === 'true',
+            plan: document.getElementById('orgPlan').value,
+        };
+
+        const url = orgId ? '/api/organizations/' + orgId : '/api/organizations';
+        const method = orgId ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(orgId ? 'Güncellendi' : 'Oluşturuldu', 'success');
+                closeModal();
+                loadOrgs();
+            } else {
+                showToast(data.message || 'Hata', 'error');
+            }
+        })
+        .catch(() => showToast('Bağlantı hatası', 'error'));
+    };
+
+    // ── Sil ──
+    window.deleteOrg = function(orgId, name) {
+        if (!confirm(name + ' organizasyonu silinecek. Emin misiniz?')) return;
+        fetch('/api/organizations/' + orgId, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(name + ' silindi', 'success');
+                    loadOrgs();
+                } else {
+                    showToast(data.message || 'Silinemedi', 'error');
+                }
+            });
+    };
+
+    // ── Üyeler Modal ──
+    window.showMembers = function(orgId, orgName) {
+        document.getElementById('membersOrgId').value = orgId;
+        document.getElementById('membersOrgName').textContent = orgName + ' — Üyeler';
+        document.getElementById('membersModal').classList.add('active');
+        loadMembers(orgId);
+        loadAllUsers();
+    };
+
+    window.closeMembersModal = function() {
+        document.getElementById('membersModal').classList.remove('active');
+    };
+
+    function loadMembers(orgId) {
+        fetch('/api/organizations/' + orgId + '/members')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) return;
+                const list = document.getElementById('memberList');
+                const members = data.members || [];
+                if (members.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">Henüz üye yok</div>';
+                    return;
+                }
+                list.innerHTML = members.map(m => {
+                    const initials = (m.username || '?').substring(0, 2).toUpperCase();
+                    return `<div class="member-item">
+                        <div class="member-info">
+                            <div class="member-avatar">${initials}</div>
+                            <div>
+                                <strong>${esc(m.username)}</strong>
+                                <div style="font-size:11px;color:var(--text-secondary);">${esc(m.email || '')}</div>
+                            </div>
+                            <span class="member-role">${esc(m.role)}</span>
+                        </div>
+                        <button class="btn-outline" style="color:#f87171;border-color:#f87171;" onclick="removeMember(${orgId}, ${m.id}, '${esc(m.username)}')">
+                            <i class="fas fa-user-minus"></i>
+                        </button>
+                    </div>`;
+                }).join('');
+            });
+    }
+
+    function loadAllUsers() {
+        if (allUsers.length > 0) {
+            populateUserSelect();
+            return;
+        }
+        fetch('/api/users')
+            .then(r => r.json())
+            .then(data => {
+                allUsers = data.users || [];
+                populateUserSelect();
+            })
+            .catch(() => {});
+    }
+
+    function populateUserSelect() {
+        const sel = document.getElementById('addMemberSelect');
+        const orgId = parseInt(document.getElementById('membersOrgId').value);
+        sel.innerHTML = '<option value="">Kullanıcı seç…</option>';
+        // Org'a atanmamış veya farklı org'taki kullanıcıları göster
+        allUsers.filter(u => !u.org_id || u.org_id !== orgId).forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.username + (u.org_id ? ' (org:' + u.org_id + ')' : ' (atanmamış)');
+            sel.appendChild(opt);
+        });
+    }
+
+    window.addMember = function() {
+        const orgId = document.getElementById('membersOrgId').value;
+        const userId = document.getElementById('addMemberSelect').value;
+        if (!userId) return showToast('Kullanıcı seçin', 'error');
+
+        fetch('/api/organizations/' + orgId + '/members', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ user_id: parseInt(userId) }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Üye eklendi', 'success');
+                loadMembers(parseInt(orgId));
+                allUsers = []; // Refresh user list
+                loadAllUsers();
+                loadOrgs();
+            } else {
+                showToast(data.message || 'Eklenemedi', 'error');
+            }
+        });
+    };
+
+    window.removeMember = function(orgId, userId, username) {
+        if (!confirm(username + ' organizasyondan çıkarılsın mı?')) return;
+        fetch('/api/organizations/' + orgId + '/members/' + userId, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(username + ' çıkarıldı', 'success');
+                    loadMembers(orgId);
+                    allUsers = [];
+                    loadAllUsers();
+                    loadOrgs();
+                } else {
+                    showToast(data.message || 'Çıkarılamadı', 'error');
+                }
+            });
+    };
+
+    // ── Yardımcılar ──
+    function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+    // Modal dışına tıklama
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+
+    // ── Başlat ──
+    loadOrgs();
+})();
+</script>
+{% endblock %}

@@ -1011,8 +1011,10 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 
 ## 19. Bekleyen İşler
 
-### 🔴 Acil (Blocker)
-1. [ ] **GitHub push token yenilenmeli** — Mevcut PAT (`github_pat_11BTKMVTY...`) write yetkisi yok, sadece read. GitHub'dan yeni token oluştur (repo write + workflow scope). Hem local hem 107 sunucusunda güncelle.
+### ✅ Tamamlananlar (Bu Oturum)
+- [x] **GitHub push token** — `gh auth setup-git` ile çözüldü (emraresoftware hesabı, full repo scope)
+- [x] **Log sistemi backend-frontend entegrasyonu** — routes/logs.py, ai_logs.html gerçek API'ye bağlandı, audit_logs.html sayfası oluşturuldu
+- [x] **MD dosya düzenlemesi** — Root 13→3 dosya, docs/ altında organize, dervişlere duyuru yapıldı (#24, #25)
 
 ### 🟡 Kısa Vadeli (Öncelikli)
 2. [ ] **İkinci org oluştur + test et** — UI veya API ile "Test Firması" org oluştur, yeni kullanıcı ata, login olup Emare'nin verilerini GÖREMEMESI gerektiğini doğrula

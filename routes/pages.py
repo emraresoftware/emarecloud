@@ -113,6 +113,15 @@ def audit_logs_page():
                            servers=get_servers_for_sidebar())
 
 
+@pages_bp.route('/admin/organizations')
+@login_required
+@role_required('super_admin', 'admin')
+def org_management_page():
+    """Organizasyon Yönetimi — org CRUD, üye yönetimi, kota."""
+    return render_template('admin/organizations.html',
+                           servers=get_servers_for_sidebar())
+
+
 @pages_bp.route('/ai-revenue')
 @login_required
 def ai_revenue_page():

@@ -300,6 +300,12 @@
                     <span>Kullanıcılar</span>
                 </a>
             </li>
+            <li class="menu-item {% if request.endpoint == 'pages.org_management_page' %}active{% endif %}">
+                <a href="/admin/organizations">
+                    <i class="fas fa-building"></i>
+                    <span>Organizasyonlar</span>
+                </a>
+            </li>
             <li class="menu-item {% if request.endpoint == 'auth.audit_logs_page' %}active{% endif %}">
                 <a href="/admin/audit">
                     <i class="fas fa-clipboard-list"></i>
