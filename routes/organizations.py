@@ -34,7 +34,14 @@ def api_list_orgs():
         else:
             orgs = []
 
-    return jsonify({'success': True, 'organizations': [o.to_dict() for o in orgs]})
+    result = []
+    for o in orgs:
+        d = o.to_dict()
+        q = o.resource_quota
+        d['quota'] = q.to_dict() if q else None
+        result.append(d)
+
+    return jsonify({'success': True, 'organizations': result})
 
 
 @org_bp.route('/api/organizations', methods=['POST'])
@@ -501,4 +508,73 @@ def api_token_payment_info():
         'rpc_url': rpc_url,
         'plans': paid_plans,
         'note': 'Token transfer yaptıktan sonra tx_hash ile /api/organizations/{id}/subscription/token-pay endpoint\'ini çağırın',
+    })
+
+
+# ==================== KOTA YÖNETİMİ ====================
+
+@org_bp.route('/api/organizations/<int:org_id>/quota', methods=['GET'])
+@login_required
+def api_get_quota(org_id):
+    """Organizasyonun kota bilgilerini ve mevcut kullanımı döndürür."""
+    org = db.session.get(Organization, org_id)
+    if not org:
+        return jsonify({'success': False, 'message': 'Organizasyon bulunamadı'}), 404
+
+    if not is_global_access() and get_tenant_id() != org_id:
+        return jsonify({'success': False, 'message': 'Erişim yok'}), 403
+
+    quota = org.resource_quota
+    limits = quota.to_dict() if quota else {
+        'max_servers': None, 'max_users': None,
+        'max_storage_gb': None, 'max_backups': None, 'max_vms': None,
+    }
+
+    usage = {
+        'servers': org.servers.count(),
+        'users': org.members.count(),
+    }
+
+    return jsonify({
+        'success': True,
+        'quota': limits,
+        'usage': usage,
+        'plan': org.plan_name,
+    })
+
+
+@org_bp.route('/api/organizations/<int:org_id>/quota', methods=['PUT'])
+@login_required
+@role_required('super_admin')
+def api_update_quota(org_id):
+    """Organizasyonun kaynak kotasını günceller (super_admin)."""
+    org = db.session.get(Organization, org_id)
+    if not org:
+        return jsonify({'success': False, 'message': 'Organizasyon bulunamadı'}), 404
+
+    data = request.get_json(silent=True) or {}
+    quota = org.resource_quota
+
+    if not quota:
+        quota = ResourceQuota(org_id=org_id)
+        db.session.add(quota)
+
+    fields = ['max_servers', 'max_users', 'max_storage_gb', 'max_backups', 'max_vms']
+    updated = []
+    for field in fields:
+        if field in data:
+            val = data[field]
+            if isinstance(val, int) and val >= 0:
+                setattr(quota, field, val)
+                updated.append(field)
+
+    db.session.commit()
+
+    log_action('quota.update', target_type='organization', target_id=org_id,
+              details={'updated_fields': updated, 'new_values': quota.to_dict()})
+
+    return jsonify({
+        'success': True,
+        'message': 'Kota güncellendi',
+        'quota': quota.to_dict(),
     })

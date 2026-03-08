@@ -64,6 +64,19 @@
 .org-card-stat-val { font-size: 20px; font-weight: 800; color: var(--text-primary); }
 .org-card-stat-lbl { font-size: 11px; color: var(--text-secondary); }
 
+/* Quota Progress Bars */
+.quota-section { margin-bottom: 16px; }
+.quota-section-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.quota-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.quota-label { font-size: 11px; color: var(--text-secondary); width: 70px; flex-shrink: 0; }
+.quota-bar-wrap { flex: 1; height: 8px; background: var(--bg-input, rgba(255,255,255,.08)); border-radius: 4px; overflow: hidden; }
+.quota-bar { height: 100%; border-radius: 4px; transition: width .4s ease; min-width: 2px; }
+.quota-bar.green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.quota-bar.yellow { background: linear-gradient(90deg, #eab308, #facc15); }
+.quota-bar.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+.quota-val { font-size: 11px; font-weight: 700; color: var(--text-primary); width: 56px; text-align: right; flex-shrink: 0; }
+.quota-none { font-size: 11px; color: var(--text-secondary); font-style: italic; }
+
 .org-card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
 .org-card-meta span { margin-right: 16px; }
 
@@ -212,6 +225,46 @@
         </div>
     </div>
 </div>
+
+<!-- Quota Modal -->
+<div class="modal-overlay" id="quotaModal">
+    <div class="modal-box">
+        <div class="modal-title"><i class="fas fa-tachometer-alt" style="color:#eab308"></i> Kaynak Kotası — <span id="quotaOrgName">Org</span></div>
+        <input type="hidden" id="quotaOrgId">
+
+        <div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2);border-radius:12px;padding:14px;margin-bottom:20px;">
+            <div style="font-size:12px;color:#eab308;font-weight:600;margin-bottom:4px;"><i class="fas fa-info-circle"></i> Mevcut Kullanım</div>
+            <div style="display:flex;gap:16px;" id="quotaUsageInfo">
+                <span style="font-size:13px;color:var(--text-secondary);">Yükleniyor…</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-server"></i> Maks. Sunucu</label>
+            <input type="number" id="quotaMaxServers" min="0" placeholder="3">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-users"></i> Maks. Kullanıcı</label>
+            <input type="number" id="quotaMaxUsers" min="0" placeholder="1">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-hdd"></i> Maks. Depolama (GB)</label>
+            <input type="number" id="quotaMaxStorage" min="0" placeholder="10">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-archive"></i> Maks. Yedek</label>
+            <input type="number" id="quotaMaxBackups" min="0" placeholder="3">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-desktop"></i> Maks. Sanal Makine</label>
+            <input type="number" id="quotaMaxVMs" min="0" placeholder="0">
+        </div>
+        <div class="form-actions">
+            <button class="btn-outline" onclick="closeQuotaModal()">İptal</button>
+            <button class="btn-primary" onclick="saveQuota()"><i class="fas fa-save"></i> Kaydet</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -247,8 +300,25 @@
                 : '<span class="org-card-badge inactive">Pasif</span>';
             const members = org.member_count || 0;
             const servers = org.server_count || 0;
-            const plan = org.plan_name || 'community';
+            const plan = org.plan_name || org.plan || 'community';
             const date = org.created_at ? new Date(org.created_at).toLocaleDateString('tr-TR') : '—';
+            const q = org.quota;
+
+            // Quota progress bars
+            let quotaHtml = '';
+            if (q) {
+                quotaHtml = `<div class="quota-section">
+                    <div class="quota-section-title"><i class="fas fa-tachometer-alt"></i> Kaynak Kotası</div>
+                    ${quotaBar('Sunucu', servers, q.max_servers)}
+                    ${quotaBar('Üye', members, q.max_users)}
+                    ${quotaBar('Depolama', null, q.max_storage_gb, 'GB')}
+                    ${quotaBar('Yedek', null, q.max_backups)}
+                    ${q.max_vms > 0 ? quotaBar('VM', null, q.max_vms) : ''}
+                </div>`;
+            } else {
+                quotaHtml = '<div class="quota-section"><span class="quota-none"><i class="fas fa-info-circle"></i> Kota tanımsız</span></div>';
+            }
+
             return `<div class="org-card">
                 <div class="org-card-header">
                     <div>
@@ -271,6 +341,7 @@
                         <div class="org-card-stat-lbl">Plan</div>
                     </div>
                 </div>
+                ${quotaHtml}
                 <div class="org-card-meta">
                     <span><i class="fas fa-calendar"></i> ${date}</span>
                     ${org.domain ? '<span><i class="fas fa-globe"></i> ' + esc(org.domain) + '</span>' : ''}
@@ -279,6 +350,9 @@
                     <button class="btn-outline" onclick="showMembers(${org.id}, '${esc(org.name)}')">
                         <i class="fas fa-users"></i> Üyeler
                     </button>
+                    <button class="btn-outline" onclick="showQuotaModal(${org.id}, '${esc(org.name)}')">
+                        <i class="fas fa-tachometer-alt"></i> Kota
+                    </button>
                     <button class="btn-outline" onclick="showEditModal(${org.id})">
                         <i class="fas fa-edit"></i> Düzenle
                     </button>
@@ -286,6 +360,27 @@
                 </div>
             </div>`;
         }).join('');
+    }
+
+    // ── Quota Progress Bar Helper ──
+    function quotaBar(label, current, max, unit) {
+        if (max === null || max === undefined) return '';
+        const u = unit || '';
+        if (current === null || current === undefined) {
+            // Kullanım bilinmiyor (storage/backup)
+            return `<div class="quota-row">
+                <span class="quota-label">${label}</span>
+                <div class="quota-bar-wrap"><div class="quota-bar green" style="width:0"></div></div>
+                <span class="quota-val">—/${max}${u}</span>
+            </div>`;
+        }
+        const pct = max > 0 ? Math.min((current / max) * 100, 100) : 0;
+        const color = pct >= 90 ? 'red' : pct >= 70 ? 'yellow' : 'green';
+        return `<div class="quota-row">
+            <span class="quota-label">${label}</span>
+            <div class="quota-bar-wrap"><div class="quota-bar ${color}" style="width:${pct}%"></div></div>
+            <span class="quota-val">${current}/${max}${u}</span>
+        </div>`;
     }
 
     // ── Org Oluştur/Düzenle Modal ──
@@ -479,6 +574,71 @@
 
     // ── Yardımcılar ──
     function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+    // ── Kota Modal ──
+    window.showQuotaModal = function(orgId, orgName) {
+        document.getElementById('quotaOrgId').value = orgId;
+        document.getElementById('quotaOrgName').textContent = orgName;
+        document.getElementById('quotaModal').classList.add('active');
+
+        // Kota bilgilerini yükle
+        fetch('/api/organizations/' + orgId + '/quota')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) return;
+                const q = data.quota || {};
+                const u = data.usage || {};
+                document.getElementById('quotaMaxServers').value = q.max_servers ?? '';
+                document.getElementById('quotaMaxUsers').value = q.max_users ?? '';
+                document.getElementById('quotaMaxStorage').value = q.max_storage_gb ?? '';
+                document.getElementById('quotaMaxBackups').value = q.max_backups ?? '';
+                document.getElementById('quotaMaxVMs').value = q.max_vms ?? '';
+
+                // Kullanım bilgi paneli
+                document.getElementById('quotaUsageInfo').innerHTML =
+                    `<span style="font-size:13px;"><strong>${u.servers || 0}</strong> sunucu</span>` +
+                    `<span style="font-size:13px;"><strong>${u.users || 0}</strong> kullanıcı</span>` +
+                    `<span style="font-size:13px;color:#6366f1;font-weight:600;">Plan: ${esc(data.plan || 'community')}</span>`;
+            })
+            .catch(() => {});
+    };
+
+    window.closeQuotaModal = function() {
+        document.getElementById('quotaModal').classList.remove('active');
+    };
+
+    window.saveQuota = function() {
+        const orgId = document.getElementById('quotaOrgId').value;
+        const body = {};
+        const fields = [
+            ['quotaMaxServers', 'max_servers'],
+            ['quotaMaxUsers', 'max_users'],
+            ['quotaMaxStorage', 'max_storage_gb'],
+            ['quotaMaxBackups', 'max_backups'],
+            ['quotaMaxVMs', 'max_vms'],
+        ];
+        fields.forEach(([elemId, key]) => {
+            const val = document.getElementById(elemId).value;
+            if (val !== '') body[key] = parseInt(val);
+        });
+
+        fetch('/api/organizations/' + orgId + '/quota', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Kota güncellendi', 'success');
+                closeQuotaModal();
+                loadOrgs();
+            } else {
+                showToast(data.message || 'Hata', 'error');
+            }
+        })
+        .catch(() => showToast('Bağlantı hatası', 'error'));
+    };
 
     // Modal dışına tıklama
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
