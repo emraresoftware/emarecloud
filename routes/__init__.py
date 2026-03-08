@@ -27,6 +27,7 @@ def register_blueprints(app):
     from routes.webdizayn import webdizayn_bp
     from routes.ports import ports_bp
     from routes.deploy import deploy_bp
+    from routes.logs import logs_bp
 
     blueprints = [
         auth_bp,
@@ -50,6 +51,7 @@ def register_blueprints(app):
         webdizayn_bp,
         ports_bp,
         deploy_bp,
+        logs_bp,
     ]
 
     for bp in blueprints:

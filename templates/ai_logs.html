@@ -400,63 +400,180 @@
 {% block scripts %}
 <script>
 (function(){
-    // Simulated live log feed
-    const logSamples = [
-        { time: null, level: 'info', msg: 'nginx: GET /api/monitoring/overview 200 0.023s' },
-        { time: null, level: 'ok', msg: 'emarecloud: Health check passed — all workers alive' },
-        { time: null, level: 'info', msg: 'sshd: Accepted publickey for root from 185.189.54.1 port 52341' },
-        { time: null, level: 'warn', msg: 'sshd: Failed password for invalid user admin from 185.220.101.45 port 43210' },
-        { time: null, level: 'info', msg: 'docker: Container ubuntu-9378 healthy — uptime 3d 14h' },
-        { time: null, level: 'ok', msg: 'firewalld: Reload complete — 8 rules active' },
-        { time: null, level: 'info', msg: 'nginx: GET /market 200 0.045s — User-Agent: Mozilla/5.0' },
-        { time: null, level: 'warn', msg: 'kernel: TCP: out of memory — consider increasing tcp_mem' },
-        { time: null, level: 'error', msg: 'nginx: upstream timed out (110: Connection timed out) while reading from upstream' },
-        { time: null, level: 'info', msg: 'crond: (root) CMD (/opt/emarecloud/backup.sh > /dev/null 2>&1)' },
-        { time: null, level: 'ok', msg: 'systemd: emarecloud.service: Main process exited, code=exited, status=0/SUCCESS' },
-        { time: null, level: 'info', msg: 'pm2: emare-dapp — CPU: 0.2% — MEM: 62.7 MB — restart: 0' },
-        { time: null, level: 'warn', msg: 'Docker: container log file exceeds 50MB — /var/lib/docker/containers/abc123' },
-        { time: null, level: 'error', msg: 'gunicorn: Worker timeout — PID 12345 killed' },
-        { time: null, level: 'ok', msg: 'certbot: Certificate not due for renewal yet (expires 2026-06-15)' },
-        { time: null, level: 'info', msg: 'nginx: GET /ai-wizard 200 0.012s' },
-        { time: null, level: 'info', msg: 'docker: Network bridge connected — 2 endpoints active' },
-        { time: null, level: 'warn', msg: 'audit: SELinux denying access to /tmp/emarecloud.sock' },
-        { time: null, level: 'ok', msg: 'systemd: nginx.service: Started successfully' },
-        { time: null, level: 'info', msg: 'EmareCloud: User admin logged in from 185.189.54.1' },
-    ];
-
     const feed = document.getElementById('logLiveFeed');
-    if (!feed) return;
+    const LEVEL_MAP = {
+        'CRITICAL': 'error', 'ERROR': 'error',
+        'WARNING': 'warn', 'WARN': 'warn',
+        'INFO': 'info', 'DEBUG': 'ok',
+    };
+    let lastTimestamp = null;
+    let liveTimer = null;
 
-    // Initial lines
-    function addLogLine() {
-        const sample = logSamples[Math.floor(Math.random() * logSamples.length)];
-        const now = new Date();
-        const time = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // ── İstatistikleri Yükle ──
+    function loadStats() {
+        fetch('/api/logs/stats?hours=24')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) return;
+                const el = id => document.getElementById(id);
+                el('logCritical').textContent = (data.kritik || 0) + (data.hata || 0);
+                el('logWarnings').textContent = data.uyari || 0;
+                el('logTotal').textContent = (data.toplam || 0).toLocaleString('tr-TR');
+                el('logScore').textContent = data.saglik_skoru || 0;
+
+                // Sağlık halkası
+                const score = data.saglik_skoru || 0;
+                const circle = document.getElementById('logHealthCircle');
+                if (circle) {
+                    const dash = Math.round(314 * score / 100);
+                    circle.setAttribute('stroke-dasharray', dash + ' 315');
+                    circle.setAttribute('stroke', score >= 80 ? '#22c55e' : score >= 50 ? '#fbbf24' : '#f87171');
+                }
+                const scoreTxt = document.querySelector('.log-health-score');
+                if (scoreTxt) scoreTxt.textContent = score;
+
+                // Hata dağılımı
+                updateErrorFrequency(data.hata_paternleri || {});
+            })
+            .catch(() => {});
+    }
+
+    function updateErrorFrequency(patterns) {
+        const container = document.getElementById('logFreqChart');
+        if (!container) return;
+        const entries = Object.entries(patterns).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        if (entries.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-secondary);font-size:13px;padding:12px 0;">Son 24 saatte hata paterni bulunamadı — harika!</div>';
+            return;
+        }
+        const max = entries[0][1];
+        container.innerHTML = entries.map(([pattern, count]) => {
+            const pct = Math.round(count / max * 100);
+            const color = count > max * 0.6 ? '#f87171' : count > max * 0.3 ? '#fbbf24' : '#6366f1';
+            const label = pattern.length > 25 ? pattern.substring(0, 25) + '…' : pattern;
+            return `<div class="log-freq-item">
+                <span class="log-freq-label">${label}</span>
+                <div class="log-freq-bar-bg"><div class="log-freq-bar" style="width:${pct}%;background:${color};"></div></div>
+                <span class="log-freq-count">${count}</span>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Anomalileri Yükle (error logları) ──
+    function loadAnomalies() {
+        fetch('/api/logs?level=ERROR&limit=10&hours=24')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) return;
+                const container = document.getElementById('logAnomalies');
+                if (!container) return;
+                if (data.logs.length === 0) {
+                    container.innerHTML = '<div style="color:var(--text-secondary);padding:20px;text-align:center;">Son 24 saatte anomali yok — sistem sağlıklı ✅</div>';
+                    return;
+                }
+                container.innerHTML = data.logs.map(log => {
+                    const level = (log.level || 'INFO').toUpperCase();
+                    const cls = level === 'CRITICAL' ? 'critical' : level === 'ERROR' ? 'critical' : 'warning';
+                    const icon = level === 'CRITICAL' ? 'fas fa-fire' : 'fas fa-exclamation-circle';
+                    const msg = log.message || '';
+                    const mod = log.module || 'system';
+                    const ts = log.timestamp ? timeAgo(log.timestamp) : '';
+                    return `<div class="log-anomaly-item ${cls}">
+                        <div class="log-anomaly-icon"><i class="${icon}"></i></div>
+                        <div class="log-anomaly-content">
+                            <div class="log-anomaly-title">[${mod}] ${level}</div>
+                            <div class="log-anomaly-desc">${escHtml(msg)}</div>
+                            <div class="log-anomaly-meta">
+                                <span class="log-anomaly-tag ${cls}">${level}</span>
+                                <span class="log-anomaly-time"><i class="fas fa-clock"></i> ${ts}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            })
+            .catch(() => {});
+    }
+
+    // ── Canlı Log Akışı ──
+    function loadLiveLogs() {
+        let url = '/api/logs/live?limit=30';
+        if (lastTimestamp) url += '&after=' + encodeURIComponent(lastTimestamp);
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok || !feed) return;
+                const logs = (data.logs || []).reverse(); // kronolojik sıra
+                logs.forEach(entry => {
+                    addLogLine(entry);
+                    if (entry.timestamp) lastTimestamp = entry.timestamp;
+                });
+            })
+            .catch(() => {});
+    }
+
+    function addLogLine(entry) {
+        if (!feed) return;
+        const ts = entry.timestamp
+            ? new Date(entry.timestamp).toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+            : new Date().toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        const level = (entry.level || 'INFO').toUpperCase();
+        const cssLvl = LEVEL_MAP[level] || 'info';
+        const msg = entry.message || '';
+        const isError = cssLvl === 'error';
+
         const line = document.createElement('div');
         line.className = 'log-line';
-        const isError = sample.level === 'error';
         line.innerHTML =
-            '<span class="log-line-time">' + time + '</span>' +
-            '<span class="log-line-level ' + sample.level + '">[' + sample.level.toUpperCase() + ']</span>' +
-            '<span class="log-line-msg' + (isError ? ' log-line-highlight' : '') + '">' + sample.msg + '</span>';
+            '<span class="log-line-time">' + ts + '</span>' +
+            '<span class="log-line-level ' + cssLvl + '">[' + level + ']</span>' +
+            '<span class="log-line-msg' + (isError ? ' log-line-highlight' : '') + '">' + escHtml(msg) + '</span>';
         feed.appendChild(line);
-        // Keep max 50 lines
-        while (feed.children.length > 50) feed.removeChild(feed.firstChild);
+        while (feed.children.length > 80) feed.removeChild(feed.firstChild);
         feed.scrollTop = feed.scrollHeight;
     }
 
-    // Add 8 initial lines
-    for (let i = 0; i < 8; i++) addLogLine();
-
-    // Add new line every 2-5 seconds
-    setInterval(addLogLine, 2000 + Math.random() * 3000);
-
-    // Refresh anomaly data from server (mock — in production would be API call)
-    function refreshLogStats() {
-        // In production: fetch('/api/log-intelligence').then(...)
-        // For now, demo data is static
+    // ── Audit İstatistikleri ──
+    function loadAuditStats() {
+        fetch('/api/audit-logs/stats?hours=24')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) return;
+                const el = document.getElementById('logResolved');
+                if (el) el.textContent = data.toplam || 0;
+            })
+            .catch(() => {});
     }
-    refreshLogStats();
+
+    // ── Yardımcılar ──
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function timeAgo(isoStr) {
+        try {
+            const diff = Date.now() - new Date(isoStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'az önce';
+            if (mins < 60) return mins + ' dk önce';
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return hours + ' saat önce';
+            return Math.floor(hours / 24) + ' gün önce';
+        } catch { return ''; }
+    }
+
+    // ── Başlat ──
+    loadStats();
+    loadAnomalies();
+    loadLiveLogs();
+    loadAuditStats();
+
+    // Otomatik yenileme
+    liveTimer = setInterval(loadLiveLogs, 5000);   // 5 saniyede bir canlı log
+    setInterval(loadStats, 60000);                   // 1 dk'da bir istatistikler
+    setInterval(loadAnomalies, 60000);               // 1 dk'da bir anomaliler
 })();
 </script>
 {% endblock %}

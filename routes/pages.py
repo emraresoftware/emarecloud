@@ -105,6 +105,14 @@ def ai_logs_page():
                            servers=get_servers_for_sidebar())
 
 
+@pages_bp.route('/audit-logs')
+@login_required
+def audit_logs_page():
+    """Audit Log — İşlem geçmişi paneli."""
+    return render_template('audit_logs.html',
+                           servers=get_servers_for_sidebar())
+
+
 @pages_bp.route('/ai-revenue')
 @login_required
 def ai_revenue_page():
