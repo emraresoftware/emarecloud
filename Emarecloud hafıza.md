@@ -1015,13 +1015,10 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 - [x] **GitHub push token** — `gh auth setup-git` ile çözüldü (emraresoftware hesabı, full repo scope)
 - [x] **Log sistemi backend-frontend entegrasyonu** — routes/logs.py, ai_logs.html gerçek API'ye bağlandı, audit_logs.html sayfası oluşturuldu
 - [x] **MD dosya düzenlemesi** — Root 13→3 dosya, docs/ altında organize, dervişlere duyuru yapıldı (#24, #25)
-
-### 🟡 Kısa Vadeli (Öncelikli)
-2. [ ] **İkinci org oluştur + test et** — UI veya API ile "Test Firması" org oluştur, yeni kullanıcı ata, login olup Emare'nin verilerini GÖREMEMESI gerektiğini doğrula
-3. [ ] **Org Yönetim Paneli** — Admin UI'da org CRUD sayfası (oluştur/düzenle/sil/üyeleri yönet)
-4. [ ] **Kullanıcı-Org atama UI** — Admin panelde kullanıcı düzenlerken org seçimi dropdown
-5. [ ] **Org bazlı kaynak kotası** — Plan limitleri (max sunucu, max kullanıcı) dashboard'da göster
-6. [ ] **2FA (TOTP) backend** — Google Authenticator entegrasyonu (models.py'de totp_secret zaten var, UI eksik)
+- [x] **Org Yönetim Paneli** — `templates/admin/organizations.html` — CRUD + üye yönetimi + plan seçimi (commit `fe44f36`)
+- [x] **Kullanıcı-Org atama** — Org panelinde üye ekleme/çıkarma dropdown'ı (atanmamış kullanıcıları gösterir)
+- [x] **Org bazlı kaynak kotası** — Org kartlarında progress bar (sunucu/üye/depolama/yedek), kota düzenleme modalı, `GET/PUT /api/organizations/<id>/quota` (commit `1721814`)
+- [x] **2FA (TOTP) UI** — Profil sayfasında QR kurulum, 6 haneli kod doğrulama, kurtarma kodları indirme, devre dışı bırakma (commit `ea12813`)
 
 ### 🟢 Orta Vadeli
 7. [ ] **PostgreSQL'e geçiş** — SQLite → PostgreSQL (production DB ölçekleme)
