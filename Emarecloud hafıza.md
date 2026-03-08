@@ -3,9 +3,9 @@
 > 🔗 **Ortak Hafıza:** [`EMARE_ORTAK_HAFIZA.md`](/Users/emre/Desktop/Emare/EMARE_ORTAK_HAFIZA.md) — Tüm Emare ekosistemi, sunucu bilgileri, standartlar ve proje envanteri için bak.
 
 
-> **Son Güncelleme:** 3 Mart 2026  
-> **Versiyon:** v1.0.0 — Secure Core Edition  
-> **Durum:** 37/37 özellik tamamlandı, production'da çalışıyor  
+> **Son Güncelleme:** 8 Mart 2026  
+> **Versiyon:** v1.1.0 — Multi-Tenant Edition  
+> **Durum:** 37/37 özellik + Multi-Tenant izolasyonu tamamlandı, production'da çalışıyor (185.189.54.107)  
 > **Bu dosya yazılımın tüm detaylarını içerir. Nerede kaldığımızı ve ne yaptığımızı unutmamak için referans dosyasıdır.**
 
 ---
@@ -973,67 +973,77 @@ emarecloud/
 
 ## 18. Aktif Çalışma Durumu — Nerede Kaldık?
 
-### Son Durum (3 Mart 2026)
+### Son Durum (8 Mart 2026)
 
-#### ✅ Tamamen Tamamlanan İşler
+#### ✅ Multi-Tenant İzolasyonu TAMAMLANDI (v1.1.0)
+- **65+ lokasyonda** tenant izolasyonu uygulandı
+- `core/helpers.py`: `_build_tenant_query(model)` ve `get_server_obj_with_access(server_id)` merkezi fonksiyonlar
+- `core/tenant.py`: Request bazlı middleware — `g.tenant_id`, `g.is_global` ayarlar
+- `models.py`: AlertRule, WebhookConfig, ScheduledTask, BackupProfile, AuditLog'a `org_id` eklendi
+- **Tüm route'lar tenant-aware**: servers, auth, monitoring, metrics, commands, firewall, virtualization, storage, terminal, datacenters, scoreboard, feedback
+- `migrate_tenant.py`: Mevcut verileri "Emare" organizasyonuna atama scripti çalıştırıldı
+- **Production (107) üzerinde deploy + test edildi, izolasyon onaylandı**
+
+#### Tenant Mimarisi Özet
+```
+Organization (tablo) → org_id FK → her modelde
+Middleware: g.tenant_id = current_user.org_id
+Super Admin: is_global=True, org_id scope veya tüm orglar
+Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
+```
+
+#### Mevcut Organizasyonlar (107 sunucu)
+| ID | İsim | Slug | Açıklama |
+|----|------|------|----------|
+| 1 | Varsayılan Organizasyon | default | Boş |
+| 2 | Emare | emare | Ana org — 4 kullanıcı, 3 sunucu |
+
+#### ✅ Önceden Tamamlanan İşler
 - EmareCloud yazılımı 37/37 özellik ile çalışır durumda
-- Production sunucu (185.189.54.104) üzerinde deploy edildi
-- Cloudflare gerçek API entegrasyonu tamamlandı ve deploy edildi
-- Cloudflare API token doğrulandı ve .env'e kaydedildi
-- `asistan.emarecloud.tr` DNS kaydı Cloudflare'da oluşturuldu (Proxied)
-- 77.92.152.3'te nginx konfigürasyonu yapıldı
-
-#### ⚠️ Devam Eden İşler
-
-**1. asistan.emarecloud.tr — Tarayıcıda Açılmıyor**
-- `curl` komutu ile 200 OK dönüyor (çalışıyor)
-- Tarayıcıda açılmıyor
-- **Sorunlar:**
-  - Port 80 NAT forwarding kuralı eksik (77.92.152.3:80 → 10.10.4.4:80)
-  - Cloudflare Worker route çakışması olabilir (`asistan.emarecloud.tr/*`)
-- **Çözüm:**
-  - Firewall'da port 80 forwarding ekle
-  - Cloudflare dashboard → Workers → Routes → Worker route'u sil
-  - DNS cache temizle
-
-**2. Oracle X6-2 Sunucu — OS Kurulumu**
-- AlmaLinux 10 Minimal ISO ile boot sırasında GRUB hatası
-- Hata: `error: file '/boot/grub/i386-pc/normal.mod' not found` → `grub rescue>`
-- **Sorun:** UEFI vs Legacy BIOS boot mode uyumsuzluğu
-- **Çözüm:**
-  - Sunucu BIOS'unda UEFI modunu aktifleştir
-  - ISO'yu GPT + UEFI (dd veya Rufus ile) olarak yeniden yaz
-  - AlmaLinux 10'u UEFI modunda kur
-- Kurulum tamamlanınca: EmareCloud + KVM kurulumu yapılacak
-
-**3. asistan.cloud.tr — DNS Beklemede**
-- `cloud.tr` domain'i Cloudflare'da değil (nameservers: `vitdns.com`)
-- Çözüm: vitdns panelinden A kaydı eklemek VEYA nameserver'ları Cloudflare'a taşımak
-- Düşük öncelikli
+- 107 sunucusuna (185.189.54.107) tam deploy: EmareCloud, EmareAPI, emare-dapp, nginx, SSL
+- Cloudflare gerçek API entegrasyonu tamamlandı
+- emarecloud.tr domain'i 107'ye yönlendirildi
+- DC-3 (Google Cloud 34.90.186.48) veritabanı migration tamamlandı
+- EmareFirewall standalone paket olarak çıkarıldı
+- Dervişler arası mesajlaşma sistemi kuruldu
 
 ---
 
 ## 19. Bekleyen İşler
 
-### Kısa Vadeli (Öncelikli)
-1. [ ] Oracle X6-2'ye AlmaLinux 10 kurulumu (BIOS UEFI fix)
-2. [ ] Port 80 NAT forwarding eklenmesi (77.92.152.3)
-3. [ ] Cloudflare Worker route temizliği
-4. [ ] Yeni sunucuya EmareCloud kurulumu + KVM
+### 🔴 Acil (Blocker)
+1. [ ] **GitHub push token yenilenmeli** — Mevcut PAT (`github_pat_11BTKMVTY...`) write yetkisi yok, sadece read. GitHub'dan yeni token oluştur (repo write + workflow scope). Hem local hem 107 sunucusunda güncelle.
 
-### Orta Vadeli
-5. [ ] PostgreSQL'e geçiş (production DB)
-6. [ ] Docker/Kubernetes deployment
-7. [ ] SSL sertifikası (Let's Encrypt veya Cloudflare origin)
-8. [ ] CI/CD pipeline (GitHub Actions)
-9. [ ] Blockchain kontratlarını BSC Mainnet'e deploy
+### 🟡 Kısa Vadeli (Öncelikli)
+2. [ ] **İkinci org oluştur + test et** — UI veya API ile "Test Firması" org oluştur, yeni kullanıcı ata, login olup Emare'nin verilerini GÖREMEMESI gerektiğini doğrula
+3. [ ] **Org Yönetim Paneli** — Admin UI'da org CRUD sayfası (oluştur/düzenle/sil/üyeleri yönet)
+4. [ ] **Kullanıcı-Org atama UI** — Admin panelde kullanıcı düzenlerken org seçimi dropdown
+5. [ ] **Org bazlı kaynak kotası** — Plan limitleri (max sunucu, max kullanıcı) dashboard'da göster
+6. [ ] **2FA (TOTP) backend** — Google Authenticator entegrasyonu (models.py'de totp_secret zaten var, UI eksik)
 
-### Uzun Vadeli
-10. [ ] AI modüllerinin gerçek backend implementasyonları
-11. [ ] Ödeme sistemi entegrasyonu (Stripe/Iyzico)
-12. [ ] Mobile app (React Native veya Flutter)
-13. [ ] Kubernetes cluster yönetimi (kubectl entegrasyonu)
-14. [ ] Prometheus/Grafana entegrasyonu
+### 🟢 Orta Vadeli
+7. [ ] **PostgreSQL'e geçiş** — SQLite → PostgreSQL (production DB ölçekleme)
+8. [ ] **Docker/Kubernetes deployment** — Containerized deploy
+9. [ ] **CI/CD pipeline** — GitHub Actions: lint + test + auto-deploy to 107
+10. [ ] **SSL sertifikası iyileştirme** — Let's Encrypt wildcard veya Cloudflare Origin cert
+11. [ ] **Oracle X6-2 sunucu** — AlmaLinux kurulumu (UEFI fix) + EmareCloud + KVM
+12. [ ] **Blockchain kontratları** — BSC Mainnet'e deploy (EmareToken, NodeReward)
+13. [ ] **Port 80 NAT forwarding** — 77.92.152.3:80 → 10.10.4.4:80 (Cloudflare proxy)
+
+### 🔵 Uzun Vadeli (Vizyon)
+14. [ ] **AI modülleri gerçek backend** — ai_optimizer, ai_security, ai_backup vb. gerçek implementasyon
+15. [ ] **Ödeme sistemi** — Stripe/Iyzico entegrasyonu + plan faturalandırma
+16. [ ] **Mobile app** — React Native veya Flutter (EmareCloud mobil)
+17. [ ] **Kubernetes cluster yönetimi** — kubectl entegrasyonu
+18. [ ] **Prometheus/Grafana** — Harici metrik toplama entegrasyonu
+19. [ ] **White-label mode** — Logo, renk, domain, branding müşteri bazlı özelleştirme
+20. [ ] **Provider Edition** — Hosting iş kurucu (müşteri CRUD, paket şablonları, faturalandırma)
+
+### 📌 Teknik Borç
+- [ ] `EMARE_ORTAK_HAFIZA.md`'de EmareCloud sunucu bilgisi hâlâ 104 → 107 olarak güncellenmeli (symlink, dikkatli düzenleme)
+- [ ] Test coverage artırılmalı (mevcut %46 → hedef %70+)
+- [ ] routes/deploy.py, routes/webdizayn.py admin-only endpoint'lerde tenant kontrolü (düşük öncelik)
+- [ ] AlertHistory modeline org_id eklenebilir (şu an server_id üzerinden filtreleniyor)
 
 ---
 
@@ -1061,14 +1071,14 @@ emarecloud/
 
 ## 21. Deploy Prosedürü
 
-### Production'a Deploy (185.189.54.104)
+### Production'a Deploy (185.189.54.107)
 
 ```bash
 # 1. Dosyaları sunucuya kopyala
-scp -r ./* root@185.189.54.104:/tmp/emarecloud_deploy/
+scp -r ./* root@185.189.54.107:/tmp/emarecloud_deploy/
 
 # 2. SSH ile bağlan
-ssh root@185.189.54.104
+ssh root@185.189.54.107
 
 # 3. Dosyaları kopyala
 cp -r /tmp/emarecloud_deploy/* /opt/emarecloud/
@@ -1086,9 +1096,8 @@ curl -s http://localhost:5555/health
 
 ### Yeni Bağımlılık Eklendiğinde
 ```bash
-ssh root@185.189.54.104
-source /opt/emarecloud/venv/bin/activate
-pip install <paket_adı>
+ssh root@185.189.54.107
+pip3 install <paket_adı>
 systemctl restart emarecloud
 ```
 
@@ -1096,7 +1105,7 @@ systemctl restart emarecloud
 
 ## 22. Faydalı Komutlar
 
-### Production Sunucu (185.189.54.104)
+### Production Sunucu (185.189.54.107)
 ```bash
 # Servis yönetimi
 systemctl restart emarecloud
@@ -1110,11 +1119,11 @@ systemctl restart nginx
 # Veritabanı
 sqlite3 /opt/emarecloud/instance/emarecloud.db ".tables"
 sqlite3 /opt/emarecloud/instance/emarecloud.db "SELECT * FROM users;"
+sqlite3 /opt/emarecloud/instance/emarecloud.db "SELECT id,name,slug FROM organizations;"
 
-# Venv
-source /opt/emarecloud/venv/bin/activate
-pip list
-pip install <paket>
+# Python (sistem Python3.11)
+pip3 install <paket>
+systemctl restart emarecloud
 ```
 
 ### Cloudflare API Test

@@ -59,11 +59,19 @@ freelancer sysadmin'ler, ajanslar ve AI/LLM sunucu yöneten ekipler için tasarl
 
 ---
 
-## Faz 3: Enterprise Edition (v3.0.0) 📋
+## Faz 3: Enterprise Edition (v3.0.0) � DEVAM EDİYOR
 **Hedef:** Kurumsal ölçekte çoklu-kiracı (multi-tenant) yönetim.
 
+### Tamamlanan Özellikler
+- [x] **Multi-Tenant Veri İzolasyonu** — Organizasyon bazlı row-level izolasyon (65+ endpoint, org_id FK)
+- [x] **Tenant Middleware** — Request bazlı g.tenant_id çözümleme, super admin global erişim
+- [x] **Merkezi Query Builder** — `_build_tenant_query(model)` tüm modeller için tenant filtre
+- [x] **Migration Script** — Mevcut verileri organizasyona atama (`migrate_tenant.py`)
+
 ### Planlanan Özellikler
-- [ ] **Multi-Tenant** — Organizasyon bazlı izolasyon
+- [ ] **Org Yönetim Paneli** — Admin UI ile organizasyon CRUD (oluştur/düzenle/sil)
+- [ ] **Kullanıcı-Org Atama UI** — Kullanıcıları organizasyona ata/çıkar
+- [ ] **Org Bazlı Kaynak Kotası** — Plan limitleri (sunucu sayısı, kullanıcı sayısı)
 - [ ] **LDAP/SAML SSO** — Kurumsal kimlik doğrulama entegrasyonu
 - [ ] **Terraform Entegrasyonu** — Infrastructure as Code desteği
 - [ ] **Kubernetes Yönetimi** — K8s cluster izleme ve yönetim
