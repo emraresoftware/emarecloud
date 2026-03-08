@@ -114,3 +114,8 @@ def setup_logging(app):
         return response
 
     return root_logger
+
+
+def get_logger(name: str):
+    """Modüller için kolayca logger döndürür."""
+    return logging.getLogger(name)
