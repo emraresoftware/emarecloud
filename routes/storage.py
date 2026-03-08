@@ -10,7 +10,7 @@ from flask_login import login_required
 
 from audit import log_action
 from core.config_io import load_config, save_config
-from core.helpers import monitor, ssh_mgr
+from core.helpers import get_server_obj_with_access, monitor, ssh_mgr
 from rbac import permission_required
 
 storage_bp = Blueprint('storage', __name__)
@@ -101,6 +101,9 @@ def api_raid_protocols_delete(protocol_id):
 @login_required
 @permission_required('storage.view')
 def api_server_storage_status(server_id):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     return jsonify({

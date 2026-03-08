@@ -16,12 +16,40 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 from flask_login import current_user, login_required
 
 from audit import log_action
+from core.tenant import get_tenant_id, is_global_access
 from extensions import db
-from models import Feedback
+from models import Feedback, User
 from rbac import permission_required
 
 feedback_bp = Blueprint('feedback', __name__)
 
+def _tenant_feedback_query():
+    """Tenant filtrelenmiş Feedback sorgusu (User.org_id üzerinden)."""
+    query = Feedback.query
+    if is_global_access() and not get_tenant_id():
+        return query
+    tenant_id = get_tenant_id()
+    if tenant_id is not None:
+        query = query.join(User, Feedback.user_id == User.id).filter(User.org_id == tenant_id)
+    else:
+        query = query.join(User, Feedback.user_id == User.id).filter(User.org_id.is_(None))
+    return query
+
+
+def _get_feedback_with_access(fb_id):
+    """Feedback nesnesini tenant erişim kontrolü ile döndürür."""
+    fb = db.session.get(Feedback, fb_id)
+    if not fb:
+        return None
+    if is_global_access() and not get_tenant_id():
+        return fb
+    tenant_id = get_tenant_id()
+    user = db.session.get(User, fb.user_id)
+    if not user:
+        return None
+    if tenant_id is not None:
+        return fb if user.org_id == tenant_id else None
+    return fb if user.org_id is None else None
 
 # ═══════════════════════════════════════════════════════════
 #  KULLANICI ENDPOINTLERİ
@@ -97,7 +125,7 @@ def feedback_admin():
     priority_filter = request.args.get('priority', '')
     search          = request.args.get('q', '').strip()
 
-    query = Feedback.query
+    query = _tenant_feedback_query()
 
     if status_filter:
         query = query.filter(Feedback.status == status_filter)
@@ -110,12 +138,13 @@ def feedback_admin():
 
     items = query.order_by(Feedback.created_at.desc()).all()
 
+    base = _tenant_feedback_query()
     stats = {
-        'total':       Feedback.query.count(),
-        'open':        Feedback.query.filter_by(status='open').count(),
-        'in_progress': Feedback.query.filter_by(status='in_progress').count(),
-        'resolved':    Feedback.query.filter_by(status='resolved').count(),
-        'bugs':        Feedback.query.filter_by(category='bug', status='open').count(),
+        'total':       base.count(),
+        'open':        base.filter(Feedback.status == 'open').count(),
+        'in_progress': base.filter(Feedback.status == 'in_progress').count(),
+        'resolved':    base.filter(Feedback.status == 'resolved').count(),
+        'bugs':        base.filter(Feedback.category == 'bug', Feedback.status == 'open').count(),
     }
 
     return render_template('feedback_admin.html',
@@ -132,7 +161,9 @@ def feedback_admin():
 @permission_required('admin.access')
 def update_feedback_status(fb_id):
     """Admin: Durum güncelle."""
-    fb = Feedback.query.get_or_404(fb_id)
+    fb = _get_feedback_with_access(fb_id)
+    if not fb:
+        return jsonify(success=False, message='Geri bildirim bulunamadı'), 404
     data = request.get_json(silent=True) or {}
     status = data.get('status', '')
     if status not in Feedback.STATUSES:
@@ -150,7 +181,9 @@ def update_feedback_status(fb_id):
 @permission_required('admin.access')
 def reply_feedback(fb_id):
     """Admin: Yanıt ver."""
-    fb = Feedback.query.get_or_404(fb_id)
+    fb = _get_feedback_with_access(fb_id)
+    if not fb:
+        return jsonify(success=False, message='Geri bildirim bulunamadı'), 404
     data = request.get_json(silent=True) or {}
     reply = (data.get('reply') or '').strip()
     if not reply or len(reply) < 2:

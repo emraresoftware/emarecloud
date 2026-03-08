@@ -10,6 +10,8 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
 from extensions import db
+from core.helpers import _build_tenant_query, get_server_obj_with_access
+from core.tenant import get_tenant_id
 from models import (
     AlertHistory,
     AlertRule,
@@ -32,8 +34,8 @@ monitoring_bp = Blueprint('monitoring', __name__)
 @login_required
 @permission_required('monitoring.view')
 def list_alert_rules():
-    """Tüm alert kurallarını listeler."""
-    rules = AlertRule.query.order_by(AlertRule.created_at.desc()).all()
+    """Tenant bazlı alert kurallarını listeler."""
+    rules = _build_tenant_query(AlertRule).order_by(AlertRule.created_at.desc()).all()
     return jsonify({'success': True, 'rules': [r.to_dict() for r in rules]})
 
 
@@ -63,6 +65,7 @@ def create_alert_rule():
     rule = AlertRule(
         name=name,
         server_id=data.get('server_id') or None,
+        org_id=get_tenant_id(),
         metric=metric,
         condition=data.get('condition', '>'),
         threshold=threshold,
@@ -133,12 +136,18 @@ def delete_alert_rule(rule_id):
 @login_required
 @permission_required('monitoring.view')
 def alert_history():
-    """Alert geçmişini döndürür."""
+    """Tenant bazlı alert geçmişini döndürür."""
     limit = min(int(request.args.get('limit', 50)), 200)
     server_id = request.args.get('server_id')
     severity = request.args.get('severity')
 
-    q = AlertHistory.query.order_by(AlertHistory.created_at.desc())
+    # Tenant izolasyonu: sadece tenant'a ait sunucuların alarmları
+    tenant_sids = [s.id for s in _build_tenant_query(ServerCredential).all()]
+    if tenant_sids:
+        q = AlertHistory.query.filter(AlertHistory.server_id.in_(tenant_sids))
+    else:
+        q = AlertHistory.query.filter(AlertHistory.id < 0)
+    q = q.order_by(AlertHistory.created_at.desc())
     if server_id:
         q = q.filter_by(server_id=server_id)
     if severity:
@@ -167,13 +176,21 @@ def acknowledge_alert(alert_id):
 @login_required
 @permission_required('monitoring.view')
 def alert_stats():
-    """Alert istatistiklerini döndürür."""
-    total = AlertHistory.query.count()
-    unacknowledged = AlertHistory.query.filter_by(acknowledged=False).count()
-    last_24h = AlertHistory.query.filter(
+    """Tenant bazlı alert istatistiklerini döndürür."""
+    tenant_sids = [s.id for s in _build_tenant_query(ServerCredential).all()]
+    if tenant_sids:
+        base_q = AlertHistory.query.filter(AlertHistory.server_id.in_(tenant_sids))
+    else:
+        base_q = AlertHistory.query.filter(AlertHistory.id < 0)
+
+    total = base_q.count()
+    unacknowledged = base_q.filter(AlertHistory.acknowledged == False).count()
+    last_24h = base_q.filter(
         AlertHistory.created_at >= datetime.utcnow() - timedelta(hours=24)
     ).count()
-    critical = AlertHistory.query.filter_by(severity='critical', acknowledged=False).count()
+    critical = base_q.filter(
+        AlertHistory.severity == 'critical', AlertHistory.acknowledged == False
+    ).count()
 
     return jsonify({
         'success': True,
@@ -192,8 +209,8 @@ def alert_stats():
 @login_required
 @permission_required('monitoring.view')
 def list_webhooks():
-    """Webhook konfigürasyonlarını listeler."""
-    webhooks = WebhookConfig.query.order_by(WebhookConfig.created_at.desc()).all()
+    """Tenant bazlı webhook konfigürasyonlarını listeler."""
+    webhooks = _build_tenant_query(WebhookConfig).order_by(WebhookConfig.created_at.desc()).all()
     return jsonify({'success': True, 'webhooks': [w.to_dict() for w in webhooks]})
 
 
@@ -216,6 +233,7 @@ def create_webhook():
         name=name,
         webhook_type=wtype,
         url=data.get('url'),
+        org_id=get_tenant_id(),
         smtp_host=data.get('smtp_host'),
         smtp_port=data.get('smtp_port'),
         smtp_user=data.get('smtp_user'),
@@ -307,8 +325,8 @@ def test_webhook(webhook_id):
 @login_required
 @permission_required('monitoring.view')
 def list_tasks():
-    """Zamanlanmış görevleri listeler."""
-    tasks = ScheduledTask.query.order_by(ScheduledTask.created_at.desc()).all()
+    """Tenant bazlı zamanlanmış görevleri listeler."""
+    tasks = _build_tenant_query(ScheduledTask).order_by(ScheduledTask.created_at.desc()).all()
     return jsonify({'success': True, 'tasks': [t.to_dict() for t in tasks]})
 
 
@@ -344,6 +362,7 @@ def create_task():
         server_id=server_id,
         command=command,
         schedule=schedule,
+        org_id=get_tenant_id(),
         is_active=data.get('is_active', True),
         created_by=current_user.id,
     )
@@ -433,8 +452,8 @@ def run_task_now(task_id):
 @login_required
 @permission_required('monitoring.view')
 def list_backups():
-    """Yedekleme profillerini listeler."""
-    profiles = BackupProfile.query.order_by(BackupProfile.created_at.desc()).all()
+    """Tenant bazlı yedekleme profillerini listeler."""
+    profiles = _build_tenant_query(BackupProfile).order_by(BackupProfile.created_at.desc()).all()
     return jsonify({'success': True, 'backups': [p.to_dict() for p in profiles]})
 
 
@@ -464,6 +483,7 @@ def create_backup():
         server_id=server_id,
         source_path=source_path,
         dest_path=dest_path,
+        org_id=get_tenant_id(),
         schedule=data.get('schedule', '0 2 * * *'),
         retention_days=int(data.get('retention_days', 30)),
         compression=data.get('compression', 'gzip'),
@@ -537,7 +557,11 @@ def run_backup_now(profile_id):
 @login_required
 @permission_required('monitoring.view')
 def metric_history(server_id):
-    """Sunucu metrik geçmişini döndürür (trend analizi için)."""
+    """Sunucu metrik geçmişini döndürür (trend analizi için) — tenant kontrollü."""
+    # Tenant erişim kontrolü
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     hours = min(int(request.args.get('hours', 24)), 720)  # max 30 gün
     since = datetime.utcnow() - timedelta(hours=hours)
 
@@ -559,8 +583,8 @@ def metric_history(server_id):
 @login_required
 @permission_required('monitoring.view')
 def metrics_summary():
-    """Tüm sunucular için son metrik özetini döndürür."""
-    servers = ServerCredential.query.all()
+    """Tenant bazlı sunucular için son metrik özetini döndürür."""
+    servers = _build_tenant_query(ServerCredential).all()
     summary = []
 
     for srv in servers:
@@ -583,34 +607,49 @@ def metrics_summary():
 @login_required
 @permission_required('monitoring.view')
 def monitoring_overview():
-    """Monitoring genel bakış — dashboard için tek endpoint."""
-    # Alert istatistikleri
-    alert_total = AlertHistory.query.count()
-    alert_unack = AlertHistory.query.filter_by(acknowledged=False).count()
-    alert_24h = AlertHistory.query.filter(
+    """Monitoring genel bakış — tenant izolasyonlu dashboard."""
+    # Alert istatistikleri (tenant bazlı)
+    _alert_q = _build_tenant_query(AlertRule)
+    _history_q = _build_tenant_query(AlertRule)  # AlertHistory'de org_id yok, server üzerinden filtrele
+
+    # ServerCredential üzerinden tenant sunucu ID'lerini al
+    tenant_server_ids = [s.id for s in _build_tenant_query(ServerCredential).all()]
+
+    if tenant_server_ids:
+        history_base = AlertHistory.query.filter(AlertHistory.server_id.in_(tenant_server_ids))
+    else:
+        history_base = AlertHistory.query.filter(AlertHistory.id < 0)  # Boş sonuç
+
+    alert_total = history_base.count()
+    alert_unack = history_base.filter(AlertHistory.acknowledged == False).count()
+    alert_24h = history_base.filter(
         AlertHistory.created_at >= datetime.utcnow() - timedelta(hours=24)
     ).count()
-    alert_critical = AlertHistory.query.filter_by(severity='critical', acknowledged=False).count()
+    alert_critical = history_base.filter(
+        AlertHistory.severity == 'critical', AlertHistory.acknowledged == False
+    ).count()
 
     # Son alarmlar
-    recent_alerts = AlertHistory.query.order_by(
+    recent_alerts = history_base.order_by(
         AlertHistory.created_at.desc()
     ).limit(10).all()
 
-    # Aktif kurallar
-    active_rules = AlertRule.query.filter_by(is_active=True).count()
+    # Aktif kurallar (tenant bazlı)
+    active_rules = _build_tenant_query(AlertRule).filter(AlertRule.is_active == True).count()
 
-    # Backup durumu
-    total_backups = BackupProfile.query.count()
-    active_backups = BackupProfile.query.filter_by(is_active=True).count()
-    failed_backups = BackupProfile.query.filter_by(last_status='failed').count()
+    # Backup durumu (tenant bazlı)
+    _backup_q = _build_tenant_query(BackupProfile)
+    total_backups = _backup_q.count()
+    active_backups = _backup_q.filter(BackupProfile.is_active == True).count()
+    failed_backups = _backup_q.filter(BackupProfile.last_status == 'failed').count()
 
-    # Scheduled tasks
-    total_tasks = ScheduledTask.query.count()
-    active_tasks = ScheduledTask.query.filter_by(is_active=True).count()
+    # Scheduled tasks (tenant bazlı)
+    _task_q = _build_tenant_query(ScheduledTask)
+    total_tasks = _task_q.count()
+    active_tasks = _task_q.filter(ScheduledTask.is_active == True).count()
 
-    # Webhook sayısı
-    total_webhooks = WebhookConfig.query.filter_by(is_active=True).count()
+    # Webhook sayısı (tenant bazlı)
+    total_webhooks = _build_tenant_query(WebhookConfig).filter(WebhookConfig.is_active == True).count()
 
     return jsonify({
         'success': True,

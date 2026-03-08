@@ -1,0 +1,8 @@
+# EmareFirewall bağımlılıkları
+# Core (manager.py, cli.py) — ek bağımlılık gerektirmez
+
+# SSH bağlantısı için (uzak sunucu yönetimi)
+paramiko>=2.12.0
+
+# Web API kullanacaksanız (opsiyonel)
+flask>=2.3.0

@@ -7,6 +7,8 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
 from audit import log_action
+from core.helpers import _build_tenant_query, get_server_obj_with_access
+from core.tenant import get_tenant_id, is_global_access
 from extensions import db
 from models import DataCenter, ServerCredential
 from rbac import permission_required
@@ -14,12 +16,25 @@ from rbac import permission_required
 dc_bp = Blueprint('datacenters', __name__)
 
 
+def _get_dc_with_access(dc_id):
+    """DataCenter nesnesini tenant erişim kontrolü ile döndürür."""
+    dc = db.session.get(DataCenter, dc_id)
+    if not dc:
+        return None
+    if is_global_access() and not get_tenant_id():
+        return dc
+    tenant_id = get_tenant_id()
+    if tenant_id is not None:
+        return dc if dc.org_id == tenant_id else None
+    return dc if dc.org_id is None else None
+
+
 @dc_bp.route('/api/datacenters', methods=['GET'])
 @login_required
 @permission_required('dc.view')
 def api_list_datacenters():
     """Tüm veri merkezlerini listele."""
-    dcs = DataCenter.query.order_by(DataCenter.name).all()
+    dcs = _build_tenant_query(DataCenter).order_by(DataCenter.name).all()
     return jsonify({
         'success': True,
         'datacenters': [dc.to_dict() for dc in dcs],
@@ -31,12 +46,13 @@ def api_list_datacenters():
 @permission_required('dc.view')
 def api_get_datacenter(dc_id):
     """Tek bir DC detayını al (sunucularıyla birlikte)."""
-    dc = db.session.get(DataCenter, dc_id)
+    dc = _get_dc_with_access(dc_id)
     if not dc:
         return jsonify({'success': False, 'message': 'Veri merkezi bulunamadı'}), 404
 
     dc_dict = dc.to_dict()
-    dc_dict['servers'] = [s.to_dict() for s in dc.servers.all()]
+    dc_dict['servers'] = [s.to_dict() for s in
+                          _build_tenant_query(ServerCredential).filter_by(dc_id=dc_id).all()]
     return jsonify({'success': True, 'datacenter': dc_dict})
 
 
@@ -54,7 +70,7 @@ def api_create_datacenter():
         return jsonify({'success': False, 'message': '"name" ve "code" zorunlu'}), 400
 
     # Benzersizlik kontrolü
-    if DataCenter.query.filter_by(code=code).first():
+    if _build_tenant_query(DataCenter).filter_by(code=code).first():
         return jsonify({'success': False, 'message': f'"{code}" kodu zaten kullanılıyor'}), 409
 
     dc = DataCenter(
@@ -67,6 +83,7 @@ def api_create_datacenter():
         status=data.get('status', 'active'),
         latitude=data.get('latitude'),
         longitude=data.get('longitude'),
+        org_id=get_tenant_id(),
     )
     db.session.add(dc)
     db.session.commit()
@@ -82,7 +99,7 @@ def api_create_datacenter():
 def api_update_datacenter(dc_id):
     """Veri merkezi güncelle."""
     data = request.get_json(silent=True) or {}
-    dc = db.session.get(DataCenter, dc_id)
+    dc = _get_dc_with_access(dc_id)
     if not dc:
         return jsonify({'success': False, 'message': 'Veri merkezi bulunamadı'}), 404
 
@@ -96,7 +113,7 @@ def api_update_datacenter(dc_id):
 
     if 'code' in data:
         new_code = (data['code'] or '').strip().lower()
-        existing = DataCenter.query.filter_by(code=new_code).first()
+        existing = _build_tenant_query(DataCenter).filter_by(code=new_code).first()
         if existing and existing.id != dc_id:
             return jsonify({'success': False, 'message': f'"{new_code}" kodu zaten kullanılıyor'}), 409
         dc.code = new_code
@@ -117,13 +134,13 @@ def api_update_datacenter(dc_id):
 @permission_required('dc.manage')
 def api_delete_datacenter(dc_id):
     """Veri merkezi sil — içindeki sunucular dc_id=NULL olur."""
-    dc = db.session.get(DataCenter, dc_id)
+    dc = _get_dc_with_access(dc_id)
     if not dc:
         return jsonify({'success': False, 'message': 'Veri merkezi bulunamadı'}), 404
 
     name = dc.name
-    # Sunucuları DC'den ayır (silme)
-    ServerCredential.query.filter_by(dc_id=dc_id).update({'dc_id': None})
+    # Sunucuları DC'den ayır (sadece tenant'ın sunucuları)
+    _build_tenant_query(ServerCredential).filter_by(dc_id=dc_id).update({'dc_id': None})
     db.session.delete(dc)
     db.session.commit()
 
@@ -140,13 +157,13 @@ def api_assign_servers_to_dc(dc_id):
     data = request.get_json(silent=True) or {}
     server_ids = data.get('server_ids', [])
 
-    dc = db.session.get(DataCenter, dc_id)
+    dc = _get_dc_with_access(dc_id)
     if not dc:
         return jsonify({'success': False, 'message': 'Veri merkezi bulunamadı'}), 404
 
     count = 0
     for sid in server_ids:
-        srv = db.session.get(ServerCredential, sid)
+        srv = get_server_obj_with_access(sid)
         if srv:
             srv.dc_id = dc_id
             count += 1
@@ -165,9 +182,14 @@ def api_unassign_servers_from_dc(dc_id):
     data = request.get_json(silent=True) or {}
     server_ids = data.get('server_ids', [])
 
+    # DC erişim kontrolü
+    dc = _get_dc_with_access(dc_id)
+    if not dc:
+        return jsonify({'success': False, 'message': 'Veri merkezi bulunamadı'}), 404
+
     count = 0
     for sid in server_ids:
-        srv = db.session.get(ServerCredential, sid)
+        srv = get_server_obj_with_access(sid)
         if srv and srv.dc_id == dc_id:
             srv.dc_id = None
             count += 1
@@ -183,13 +205,13 @@ def api_unassign_servers_from_dc(dc_id):
 @permission_required('dc.view')
 def api_dc_overview():
     """Tüm DC'lerin özet bilgisi + atanmamış sunucular."""
-    dcs = DataCenter.query.order_by(DataCenter.name).all()
-    unassigned = ServerCredential.query.filter_by(dc_id=None).all()
+    dcs = _build_tenant_query(DataCenter).order_by(DataCenter.name).all()
+    unassigned = _build_tenant_query(ServerCredential).filter_by(dc_id=None).all()
 
     return jsonify({
         'success': True,
         'datacenters': [dc.to_dict() for dc in dcs],
         'unassigned_servers': [s.to_dict() for s in unassigned],
-        'total_servers': ServerCredential.query.count(),
+        'total_servers': _build_tenant_query(ServerCredential).count(),
         'total_dcs': len(dcs),
     })

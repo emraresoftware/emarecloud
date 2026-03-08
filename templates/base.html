@@ -261,6 +261,14 @@
                 </a>
             </li>
             {% endif %}
+            {% if current_user.is_authenticated and current_user.has_permission('firewall.view') %}
+            <li class="menu-item {% if request.endpoint == 'pages.firewall_page' %}active{% endif %}">
+                <a href="/firewall">
+                    <i class="fas fa-shield-halved" style="color:#ef4444"></i>
+                    <span>Güvenlik Duvarı</span>
+                </a>
+            </li>
+            {% endif %}
             {% if current_user.is_authenticated and current_user.has_permission('cloudflare.view') %}
             <li class="menu-item {% if request.endpoint == 'pages.cloudflare_page' %}active{% endif %}">
                 <a href="/cloudflare">

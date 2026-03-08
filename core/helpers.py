@@ -45,14 +45,22 @@ def _check_single_server(server_dict: dict) -> dict:
 
 
 def _user_can_see_server(srv) -> bool:
-    """Admin herkesi görür; normal kullanıcı sadece kendi eklediği sunucuyu görür."""
+    """Tenant izolasyonu: Kullanıcı kendi organizasyonundaki sunucuları görür.
+    Super admin → global, admin → kendi org, normal → kendi org."""
     try:
         from flask_login import current_user
+        from core.tenant import get_tenant_id, is_global_access
         if not current_user.is_authenticated:
             return False
-        if current_user.is_admin:
+        # Süper admin global modda → her şeyi görür
+        if is_global_access() and not get_tenant_id():
             return True
-        return srv.added_by == current_user.id
+        # Tenant ID varsa → sadece o org'un sunucuları
+        tenant_id = get_tenant_id()
+        if tenant_id is not None:
+            return srv.org_id == tenant_id
+        # Tenant olmayan geçiş dönemi: org_id=None sunucular görülebilir
+        return srv.org_id is None
     except Exception:
         # Background thread / uygulama context olmayan durumlar — erişim açık bırak
         return True
@@ -60,7 +68,7 @@ def _user_can_see_server(srv) -> bool:
 
 def get_server_by_id(server_id: str) -> dict | None:
     """ID ile sunucu bilgisi (şifre dahil — sadece backend).
-    Kullanıcı izolasyonu: admin olmayan sadece kendi sunucusunu alabilir."""
+    Tenant izolasyonu: kullanıcı sadece kendi org'unun sunucusunu alabilir."""
     srv = db.session.get(ServerCredential, server_id)
     if not srv:
         return None
@@ -69,15 +77,37 @@ def get_server_by_id(server_id: str) -> dict | None:
     return srv.to_dict(include_password=True)
 
 
+def get_server_obj_with_access(server_id: str):
+    """Server DB nesnesi döndürür, tenant erişim kontrolü ile.
+    Nesneye erişim yoksa None döndürür."""
+    srv = db.session.get(ServerCredential, server_id)
+    if not srv:
+        return None
+    if not _user_can_see_server(srv):
+        return None
+    return srv
+
+
+def _build_tenant_query(model):
+    """Verilen model için tenant filtrelenmiş sorgu üretir.
+    model'de org_id kolonu olmalı."""
+    from core.tenant import get_tenant_id, is_global_access
+    query = model.query
+    # Süper admin global modda → filtre yok
+    if is_global_access() and not get_tenant_id():
+        return query
+    tenant_id = get_tenant_id()
+    if tenant_id is not None:
+        return query.filter(model.org_id == tenant_id)
+    # Geçiş dönemi: org_id=None kayıtlar
+    return query.filter(model.org_id.is_(None))
+
+
 def get_servers_for_sidebar() -> list:
     """Sidebar + template için sunucu listesi — paralel reachability kontrolü.
-    Kullanıcı izolasyonu: admin olmayan sadece kendi sunucularını görür."""
+    Tenant izolasyonu: kullanıcı sadece kendi org'unun sunucularını görür."""
     try:
-        from flask_login import current_user
-        if current_user.is_authenticated and not current_user.is_admin:
-            query = ServerCredential.query.filter_by(added_by=current_user.id)
-        else:
-            query = ServerCredential.query
+        query = _build_tenant_query(ServerCredential)
     except Exception:
         query = ServerCredential.query
     raw = [s.to_dict() for s in query.order_by(ServerCredential.added_at).all()]

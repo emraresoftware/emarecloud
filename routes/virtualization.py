@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required
 
 from audit import log_action
-from core.helpers import ssh_mgr
+from core.helpers import get_server_obj_with_access, ssh_mgr
 from rbac import permission_required
 from virtualization_manager import (
     create_container as vm_create,
@@ -38,6 +38,9 @@ vms_bp = Blueprint('virtualization_api', __name__)
 @login_required
 @permission_required('vm.view')
 def api_vms_list(server_id):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     return jsonify({'success': True, 'vms': list_containers(ssh_mgr, server_id)})
@@ -47,6 +50,9 @@ def api_vms_list(server_id):
 @login_required
 @permission_required('vm.view')
 def api_vms_images(server_id):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     return jsonify({'success': True, 'images': vm_get_images(ssh_mgr, server_id)})
@@ -56,6 +62,9 @@ def api_vms_images(server_id):
 @login_required
 @permission_required('vm.manage')
 def api_vms_create(server_id):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     data = request.get_json(silent=True) or {}
@@ -78,6 +87,9 @@ def api_vms_create(server_id):
 @login_required
 @permission_required('vm.manage')
 def api_vms_start(server_id, name):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     ok, msg = vm_start(ssh_mgr, server_id, name)
@@ -88,6 +100,9 @@ def api_vms_start(server_id, name):
 @login_required
 @permission_required('vm.manage')
 def api_vms_stop(server_id, name):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     ok, msg = vm_stop(ssh_mgr, server_id, name)
@@ -98,6 +113,9 @@ def api_vms_stop(server_id, name):
 @login_required
 @permission_required('vm.manage')
 def api_vms_delete(server_id, name):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     ok, msg = vm_delete(ssh_mgr, server_id, name)
@@ -109,6 +127,9 @@ def api_vms_delete(server_id, name):
 @login_required
 @permission_required('vm.manage')
 def api_vms_exec(server_id, name):
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
     data = request.get_json(silent=True) or {}

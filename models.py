@@ -364,6 +364,8 @@ class AuditLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # Multi-tenant
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
     username = db.Column(db.String(80))          # Denormalized — hızlı sorgu için
     action = db.Column(db.String(100), nullable=False, index=True)
     target_type = db.Column(db.String(50))       # server, user, firewall, vm, market
@@ -603,6 +605,8 @@ class AlertRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     server_id = db.Column(db.String(20), nullable=True)    # null = tüm sunucular
+    # Multi-tenant
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
     metric = db.Column(db.String(50), nullable=False)       # cpu, memory, disk
     condition = db.Column(db.String(10), default='>')       # >, <, >=, <=
     threshold = db.Column(db.Float, nullable=False)
@@ -678,6 +682,8 @@ class WebhookConfig(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    # Multi-tenant
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
     webhook_type = db.Column(db.String(20), nullable=False)  # slack, discord, email, custom
     url = db.Column(db.String(500), nullable=True)           # webhook URL
     # SMTP alanları (email tipi için)
@@ -716,6 +722,8 @@ class ScheduledTask(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    # Multi-tenant
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
     server_id = db.Column(db.String(20), nullable=False)
     command = db.Column(db.Text, nullable=False)
     schedule = db.Column(db.String(100), nullable=False)     # cron format: "0 2 * * *"
@@ -749,6 +757,8 @@ class BackupProfile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    # Multi-tenant
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
     server_id = db.Column(db.String(20), nullable=False)
     source_path = db.Column(db.String(500), nullable=False)
     dest_path = db.Column(db.String(500), nullable=False)

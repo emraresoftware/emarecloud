@@ -13,6 +13,8 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required, login_user, logout_user
 
 from audit import log_action
+from core.helpers import _build_tenant_query
+from core.tenant import get_tenant_id, is_global_access
 from extensions import db
 from models import ApiToken, AuditLog, User
 from rbac import PERMISSION_GROUPS, get_all_roles, role_required
@@ -154,6 +156,7 @@ def register():
             role='read_only',
             is_active_user=True,
             et_balance=100000.0,   # 🎁 Hoş geldin hediyesi — 100.000 ET
+            org_id=None,  # Self-register — henüz org'a atanmamış
         )
         user.set_password(password)
         db.session.add(user)
@@ -229,8 +232,9 @@ def profile():
 @login_required
 @role_required('super_admin', 'admin')
 def admin_users():
-    """Kullanıcı yönetimi sayfası."""
-    users = User.query.order_by(User.created_at.desc()).all()
+    """Kullanıcı yönetimi sayfası — tenant izolasyonlu."""
+    query = _build_tenant_query(User)
+    users = query.order_by(User.created_at.desc()).all()
     roles = get_all_roles()
     return render_template('admin/users.html', users=users, roles=roles)
 
@@ -248,10 +252,11 @@ def audit_logs_page():
 @role_required('super_admin')
 def admin_panel():
     """Süper yönetici kontrol paneli — kullanıcı & modül yetki yönetimi."""
-    users = User.query.order_by(User.created_at.desc()).all()
+    query = _build_tenant_query(User)
+    users = query.order_by(User.created_at.desc()).all()
     roles = get_all_roles()
-    total_users = User.query.count()
-    active_users = User.query.filter_by(is_active_user=True).count()
+    total_users = query.count()
+    active_users = query.filter(User.is_active_user == True).count()
     return render_template(
         'admin/panel.html',
         users=users,
@@ -268,7 +273,8 @@ def admin_panel():
 @login_required
 @role_required('super_admin', 'admin')
 def api_list_users():
-    users = User.query.order_by(User.created_at.desc()).all()
+    query = _build_tenant_query(User)
+    users = query.order_by(User.created_at.desc()).all()
     return jsonify({'success': True, 'users': [u.to_dict() for u in users]})
 
 
@@ -306,6 +312,7 @@ def api_create_user():
         username=username,
         email=email or None,
         role=stored_role,
+        org_id=get_tenant_id() or current_user.org_id,
         created_by=current_user.id,
     )
     user.set_password(password)
@@ -331,6 +338,11 @@ def api_update_user(user_id):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'success': False, 'message': 'Kullanıcı bulunamadı'}), 404
+    # Tenant izolasyonu: sadece kendi org'ünüzden kullanıcı güncelleyebilirsiniz
+    if not is_global_access():
+        tenant_id = get_tenant_id()
+        if tenant_id and user.org_id != tenant_id:
+            return jsonify({'success': False, 'message': 'Bu kullanıcıya erişim yetkiniz yok'}), 403
 
     data = request.get_json(silent=True) or {}
     changes = {}
@@ -372,6 +384,11 @@ def api_delete_user(user_id):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'success': False, 'message': 'Kullanıcı bulunamadı'}), 404
+    # Tenant izolasyonu
+    if not is_global_access():
+        tenant_id = get_tenant_id()
+        if tenant_id and user.org_id != tenant_id:
+            return jsonify({'success': False, 'message': 'Bu kullanıcıya erişim yetkiniz yok'}), 403
     username = user.username
     db.session.delete(user)
     db.session.commit()
@@ -391,7 +408,7 @@ def api_audit_logs():
     action_filter = request.args.get('action', '')
     user_filter = request.args.get('username', '')
 
-    query = AuditLog.query.order_by(AuditLog.created_at.desc())
+    query = _build_tenant_query(AuditLog).order_by(AuditLog.created_at.desc())
     if action_filter:
         query = query.filter(AuditLog.action.like(f'%{action_filter}%'))
     if user_filter:

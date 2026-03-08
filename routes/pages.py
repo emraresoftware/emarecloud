@@ -400,6 +400,15 @@ def cloudflare_page():
     return render_template('cloudflare.html', servers=get_servers_for_sidebar())
 
 
+# ── EmareFirewall — Güvenlik Duvarı Yönetimi ────────────────
+@pages_bp.route('/firewall')
+@login_required
+@permission_required('firewall.view')
+def firewall_page():
+    """EmareFirewall — Güvenlik duvarı yönetim paneli."""
+    return render_template('firewall.html', servers=get_servers_for_sidebar())
+
+
 # ── Data Center Yönetimi ────────────────────────────────────
 @pages_bp.route('/datacenters')
 @login_required

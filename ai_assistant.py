@@ -14,7 +14,7 @@ logger = logging.getLogger('emarecloud.ai_assistant')
 # GEMINI ENTEGRASYONU — anahtarlar.py üzerinden
 # ============================================================
 
-_GEMINI_MODEL = "gemini-2.0-flash"    # Hızlı, ücretsiz kota yüksek
+_GEMINI_MODEL = "gemini-2.5-flash"    # Hızlı, ücretsiz kota yüksek
 
 _SYSTEM_PROMPT = """Sen EmareCloud platformunun yerleşik AI asistanısın. Adın "Emare AI".
 

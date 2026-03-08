@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmareFirewall — Güvenlik Duvarı Yönetimi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f172a; --bg-card: #1e293b; --bg-input: #334155;
+            --text: #f1f5f9; --text-secondary: #94a3b8;
+            --border-color: #334155; --primary: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+               background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+        a { color: #3b82f6; text-decoration: none; }
+
+        /* ─────────── EmareFirewall — Ana Layout ─────────── */
+        .fw-container{max-width:1200px;margin:0 auto}
+        .fw-hero{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.06));border:1px solid var(--border-color);border-radius:20px;padding:24px 28px;margin-bottom:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+        .fw-hero-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;flex-shrink:0}
+        .fw-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+        .fw-hero p{margin:0;color:var(--text-secondary);font-size:13px}
+        .fw-hero-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        .fw-server-select{padding:8px 14px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-input);color:var(--text);font-size:13px;font-weight:600;min-width:180px}
+        .fw-status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+        .fw-status-pill.active{background:rgba(34,197,94,.12);color:#22c55e}
+        .fw-status-pill.inactive{background:rgba(239,68,68,.12);color:#ef4444}
+        .fw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+        .fw-stat{background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;padding:16px;text-align:center;transition:.2s}
+        .fw-stat:hover{border-color:var(--primary);transform:translateY(-2px)}
+        .fw-stat-val{font-size:28px;font-weight:800;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .fw-stat-lbl{font-size:11px;color:var(--text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+        .fw-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+        .fw-tab{padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+        .fw-tab:hover{border-color:#ef4444;color:#ef4444}
+        .fw-tab.active{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border-color:transparent}
+        .fw-panel{display:none;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px}
+        .fw-panel.active{display:block}
+        .fw-panel h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+        .fw-table{width:100%;border-collapse:collapse}
+        .fw-table th{text-align:left;padding:10px 12px;font-size:11px;color:var(--text-secondary);border-bottom:1px solid var(--border-color);text-transform:uppercase;letter-spacing:.5px}
+        .fw-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid rgba(128,128,128,.08)}
+        .fw-table tr:hover{background:rgba(239,68,68,.03)}
+        .fw-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700}
+        .fw-badge.port{background:rgba(59,130,246,.1);color:#3b82f6}
+        .fw-badge.service{background:rgba(34,197,94,.1);color:#22c55e}
+        .fw-badge.rich_rule{background:rgba(168,85,247,.1);color:#a855f7}
+        .fw-badge.forward{background:rgba(249,115,22,.1);color:#f97316}
+        .fw-badge.ip_block{background:rgba(239,68,68,.1);color:#ef4444}
+        .fw-badge.other{background:rgba(128,128,128,.1);color:var(--text-secondary)}
+        .fw-btn{padding:8px 16px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+        .fw-btn:hover{transform:scale(1.02)}
+        .fw-btn-primary{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
+        .fw-btn-danger{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+        .fw-btn-danger:hover{background:#ef4444;color:#fff}
+        .fw-btn-success{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+        .fw-btn-success:hover{background:#22c55e;color:#fff}
+        .fw-btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border-color)}
+        .fw-btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+        .fw-btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
+        .fw-form-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
+        .fw-form-group{display:flex;flex-direction:column;gap:4px}
+        .fw-form-group label{font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
+        .fw-form-group input,.fw-form-group select{padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text);min-width:120px}
+        .fw-form-group input:focus,.fw-form-group select:focus{outline:none;border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08)}
+        .fw-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+        .fw-search{padding:8px 14px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text);min-width:200px}
+        .fw-score-ring{width:100px;height:100px;position:relative;margin:0 auto 10px}
+        .fw-score-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+        .fw-score-ring circle{fill:none;stroke-width:8;stroke-linecap:round}
+        .fw-score-ring .bg{stroke:var(--border-color)}
+        .fw-score-ring .fg{stroke:#22c55e;transition:stroke-dashoffset .6s ease}
+        .fw-score-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800}
+        .fw-finding{padding:12px;border-radius:10px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+        .fw-finding.critical{background:rgba(239,68,68,.06);border-left:3px solid #ef4444}
+        .fw-finding.high{background:rgba(249,115,22,.06);border-left:3px solid #f97316}
+        .fw-finding.medium{background:rgba(234,179,8,.06);border-left:3px solid #eab308}
+        .fw-finding.low{background:rgba(59,130,246,.06);border-left:3px solid #3b82f6}
+        .fw-conn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        @media(max-width:768px){.fw-conn-grid{grid-template-columns:1fr}}
+        .fw-conn-card{background:var(--bg-input);border-radius:12px;padding:16px}
+        .fw-conn-card h4{margin:0 0 10px;font-size:13px;font-weight:700}
+        .fw-conn-bar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+        .fw-conn-bar-fill{height:6px;border-radius:3px;transition:width .3s}
+        .fw-conn-bar-label{font-size:11px;color:var(--text-secondary);min-width:100px}
+        .fw-conn-bar-val{font-size:11px;font-weight:700;min-width:30px;text-align:right}
+        .fw-zone-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+        .fw-zone-card{padding:14px;border:1px solid var(--border-color);border-radius:12px;cursor:pointer;transition:.2s;text-align:center}
+        .fw-zone-card:hover{border-color:#ef4444;transform:translateY(-2px)}
+        .fw-zone-card.active{border-color:#ef4444;background:rgba(239,68,68,.04)}
+        .fw-zone-card .name{font-size:14px;font-weight:700}
+        .fw-zone-card .info{font-size:11px;color:var(--text-secondary);margin-top:4px}
+        .fw-jail{background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:12px}
+        .fw-jail h4{margin:0 0 8px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+        .fw-jail-stats{display:flex;gap:16px;margin-bottom:8px}
+        .fw-jail-stat{font-size:12px}
+        .fw-jail-stat span{font-weight:800;color:#ef4444}
+        .fw-banned-list{display:flex;flex-wrap:wrap;gap:6px}
+        .fw-banned-ip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(239,68,68,.08);border-radius:6px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace}
+        @keyframes fwPulse{0%,100%{opacity:1}50%{opacity:.5}}
+        .fw-loading{animation:fwPulse 1.5s infinite}
+        .fw-empty{text-align:center;padding:40px;color:var(--text-secondary);font-size:14px}
+        .fw-empty i{font-size:40px;margin-bottom:12px;opacity:.3;display:block}
+        .fw-toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:.3s}
+        .fw-toast.show{transform:translateY(0);opacity:1}
+        .fw-toast.success{background:#22c55e;color:#fff}
+        .fw-toast.error{background:#ef4444;color:#fff}
+    </style>
+</head>
+<body>
+<div class="fw-container">
+    <!-- Hero -->
+    <div class="fw-hero">
+        <div class="fw-hero-icon"><i class="fas fa-shield-halved"></i></div>
+        <div>
+            <h2>🔥 EmareFirewall</h2>
+            <p>Güvenlik duvarı kuralları, IP engelleme, port yönlendirme, fail2ban ve güvenlik taraması — tek panelden.</p>
+        </div>
+        <div class="fw-hero-right">
+            <select class="fw-server-select" id="fwServerSelect" onchange="fwSwitchServer()">
+                <option value="">— Sunucu seçin —</option>
+                <!-- Sunucular JS ile veya server-side ile doldurulabilir -->
+            </select>
+            <span class="fw-status-pill inactive" id="fwStatusPill">
+                <i class="fas fa-circle" style="font-size:8px"></i>
+                <span id="fwStatusText">Bekleniyor</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="fw-stats" id="fwStats">
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatRules">-</div><div class="fw-stat-lbl">Toplam Kural</div></div>
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatPorts">-</div><div class="fw-stat-lbl">Açık Port</div></div>
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatServices">-</div><div class="fw-stat-lbl">Servis</div></div>
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatBlocked">-</div><div class="fw-stat-lbl">Engelli IP</div></div>
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatConns">-</div><div class="fw-stat-lbl">Aktif Bağlantı</div></div>
+        <div class="fw-stat"><div class="fw-stat-val" id="fwStatScore">-</div><div class="fw-stat-lbl">Güvenlik Skoru</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="fw-tabs">
+        <div class="fw-tab active" onclick="fwTab('rules')"><i class="fas fa-list"></i> Kurallar</div>
+        <div class="fw-tab" onclick="fwTab('ip-block')"><i class="fas fa-ban"></i> IP Engelle</div>
+        <div class="fw-tab" onclick="fwTab('port-fwd')"><i class="fas fa-right-left"></i> Port Yönlendirme</div>
+        <div class="fw-tab" onclick="fwTab('zones')"><i class="fas fa-layer-group"></i> Zone'lar</div>
+        <div class="fw-tab" onclick="fwTab('fail2ban')"><i class="fas fa-user-lock"></i> Fail2ban</div>
+        <div class="fw-tab" onclick="fwTab('connections')"><i class="fas fa-network-wired"></i> Bağlantılar</div>
+        <div class="fw-tab" onclick="fwTab('security')"><i class="fas fa-radar"></i> Güvenlik Taraması</div>
+    </div>
+
+    <!-- TAB: Kurallar -->
+    <div class="fw-panel active" id="panel-rules">
+        <h3><i class="fas fa-list" style="color:#ef4444"></i> Firewall Kuralları</h3>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ KURAL EKLE</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Port / Aralık</label><input type="text" id="rulePort" placeholder="80, 443, 8000-9000" style="min-width:140px"></div>
+                <div class="fw-form-group"><label>Protokol</label><select id="ruleProto"><option value="tcp">TCP</option><option value="udp">UDP</option><option value="tcp/udp">TCP+UDP</option></select></div>
+                <div class="fw-form-group"><label>İşlem</label><select id="ruleAction"><option value="allow">İzin Ver</option><option value="deny">Reddet</option></select></div>
+                <div class="fw-form-group"><label>Kaynak IP</label><input type="text" id="ruleFromIp" placeholder="opsiyonel"></div>
+                <button class="fw-btn fw-btn-primary" onclick="fwAddRule()"><i class="fas fa-plus"></i> Ekle</button>
+            </div>
+            <div class="fw-form-row" style="margin-bottom:0">
+                <div class="fw-form-group"><label>Servis Ekle</label><select id="ruleService"><option value="">—</option><option value="http">HTTP</option><option value="https">HTTPS</option><option value="ssh">SSH</option><option value="ftp">FTP</option><option value="dns">DNS</option><option value="mysql">MySQL</option><option value="postgresql">PostgreSQL</option><option value="redis">Redis</option></select></div>
+                <button class="fw-btn fw-btn-success" onclick="fwAddService()"><i class="fas fa-plus"></i> Servis Ekle</button>
+            </div>
+        </div>
+        <div class="fw-toolbar">
+            <input class="fw-search" type="text" placeholder="🔍 Kural ara..." id="ruleSearch" oninput="fwFilterRules()">
+            <button class="fw-btn fw-btn-ghost" onclick="fwRefresh()"><i class="fas fa-sync"></i> Yenile</button>
+            <button class="fw-btn fw-btn-success" onclick="fwToggleFirewall(true)" id="btnEnable" style="display:none"><i class="fas fa-power-off"></i> Etkinleştir</button>
+            <button class="fw-btn fw-btn-danger" onclick="fwToggleFirewall(false)" id="btnDisable" style="display:none"><i class="fas fa-power-off"></i> Devre Dışı</button>
+        </div>
+        <table class="fw-table"><thead><tr><th>#</th><th>Tip</th><th>Kural</th><th>İşlem</th></tr></thead><tbody id="rulesBody"><tr><td colspan="4" class="fw-empty"><i class="fas fa-shield-halved"></i>Sunucu seçin</td></tr></tbody></table>
+    </div>
+
+    <!-- TAB: IP Engelleme -->
+    <div class="fw-panel" id="panel-ip-block">
+        <h3><i class="fas fa-ban" style="color:#ef4444"></i> IP Engelleme</h3>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div class="fw-form-row" style="margin-bottom:0">
+                <div class="fw-form-group"><label>IP / CIDR</label><input type="text" id="blockIp" placeholder="1.2.3.4" style="min-width:200px"></div>
+                <div class="fw-form-group"><label>Sebep</label><input type="text" id="blockReason" placeholder="opsiyonel" style="min-width:200px"></div>
+                <button class="fw-btn fw-btn-danger" onclick="fwBlockIp()"><i class="fas fa-ban"></i> Engelle</button>
+            </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">🌍 GEO-BLOCK</div>
+            <div class="fw-form-row" style="margin-bottom:0">
+                <div class="fw-form-group"><label>Ülke</label><select id="geoCountry"><option value="">—</option><option value="CN">🇨🇳 Çin</option><option value="RU">🇷🇺 Rusya</option><option value="KP">🇰🇵 K.Kore</option><option value="IR">🇮🇷 İran</option><option value="BR">🇧🇷 Brezilya</option></select></div>
+                <button class="fw-btn fw-btn-danger" onclick="fwGeoBlock()"><i class="fas fa-earth-americas"></i> Ülkeyi Engelle</button>
+            </div>
+        </div>
+        <h4 style="font-size:14px;margin:16px 0 10px">Engelli IP'ler</h4>
+        <div id="blockedIpsList"><div class="fw-empty"><i class="fas fa-shield-halved"></i>Henüz yok</div></div>
+    </div>
+
+    <!-- TAB: Port Yönlendirme -->
+    <div class="fw-panel" id="panel-port-fwd">
+        <h3><i class="fas fa-right-left" style="color:#f97316"></i> Port Yönlendirme</h3>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div class="fw-form-row" style="margin-bottom:0">
+                <div class="fw-form-group"><label>Kaynak Port</label><input type="text" id="fwdPort" placeholder="8080"></div>
+                <div class="fw-form-group"><label>Hedef Port</label><input type="text" id="fwdToPort" placeholder="80"></div>
+                <div class="fw-form-group"><label>Hedef IP</label><input type="text" id="fwdToAddr" placeholder="opsiyonel"></div>
+                <div class="fw-form-group"><label>Proto</label><select id="fwdProto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                <button class="fw-btn fw-btn-primary" onclick="fwAddForward()"><i class="fas fa-plus"></i> Ekle</button>
+            </div>
+        </div>
+        <div id="forwardsList"><div class="fw-empty"><i class="fas fa-right-left"></i>Yönlendirme yok</div></div>
+    </div>
+
+    <!-- TAB: Zones -->
+    <div class="fw-panel" id="panel-zones">
+        <h3><i class="fas fa-layer-group" style="color:#a855f7"></i> Firewall Zone'ları</h3>
+        <div class="fw-zone-grid" id="zonesGrid"><div class="fw-empty" style="grid-column:1/-1"><i class="fas fa-layer-group"></i>Yükleniyor...</div></div>
+        <div id="zoneDetail" style="display:none;background:var(--bg-input);border-radius:12px;padding:16px;margin-top:16px"><h4 id="zoneDetailTitle"></h4><div id="zoneDetailContent"></div></div>
+    </div>
+
+    <!-- TAB: Fail2ban -->
+    <div class="fw-panel" id="panel-fail2ban">
+        <h3><i class="fas fa-user-lock" style="color:#eab308"></i> Fail2ban</h3>
+        <div id="fail2banContent"><div class="fw-empty"><i class="fas fa-user-lock"></i>Yükleniyor...</div></div>
+    </div>
+
+    <!-- TAB: Bağlantılar -->
+    <div class="fw-panel" id="panel-connections">
+        <h3><i class="fas fa-network-wired" style="color:#3b82f6"></i> Aktif Bağlantılar</h3>
+        <div class="fw-conn-grid" id="connStatsGrid"></div>
+        <h4 style="font-size:14px;margin:20px 0 10px">Son Bağlantılar</h4>
+        <div style="overflow-x:auto"><table class="fw-table"><thead><tr><th>Proto</th><th>Durum</th><th>Yerel</th><th>Uzak</th><th>Process</th><th>İşlem</th></tr></thead><tbody id="connBody"><tr><td colspan="6" class="fw-empty">Yükleniyor...</td></tr></tbody></table></div>
+    </div>
+
+    <!-- TAB: Güvenlik Taraması -->
+    <div class="fw-panel" id="panel-security">
+        <h3><i class="fas fa-shield-halved" style="color:#22c55e"></i> Güvenlik Taraması</h3>
+        <div style="text-align:center;margin-bottom:20px"><button class="fw-btn fw-btn-primary" onclick="fwRunScan()" id="btnScan"><i class="fas fa-radar"></i> Taramayı Başlat</button></div>
+        <div id="securityResult" style="display:none">
+            <div style="text-align:center;margin-bottom:24px">
+                <div class="fw-score-ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" id="scoreCircle" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/></svg><div class="fw-score-val" id="scoreVal">0</div></div>
+                <div style="font-size:14px;font-weight:700" id="scoreLabel">Taranıyor...</div>
+            </div>
+            <h4 style="font-size:14px;margin:12px 0 8px"><i class="fas fa-triangle-exclamation"></i> Bulgular</h4>
+            <div id="scanFindings"></div>
+            <h4 style="font-size:14px;margin:16px 0 8px"><i class="fas fa-lightbulb"></i> Öneriler</h4>
+            <ul id="scanRecs" style="padding-left:20px;font-size:13px;line-height:1.8"></ul>
+        </div>
+    </div>
+</div>
+
+<div class="fw-toast" id="fwToast"></div>
+
+<script>
+/*
+ * EmareFirewall — Standalone UI JavaScript
+ *
+ * Bu script /api/servers/<id>/firewall/* endpoint'lerini kullanır.
+ * API_BASE değişkenini değiştirerek farklı bir backend'e yönlendirebilirsiniz.
+ */
+const API_BASE = '';  // Aynı origin ise boş, farklıysa: 'https://api.example.com'
+
+const FW = { serverId: null, status: null };
+
+function fwToast(msg, type='success') {
+    const t = document.getElementById('fwToast');
+    t.textContent = msg; t.className = 'fw-toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function fwApi(path, method='GET', body=null) {
+    if (!FW.serverId) { fwToast('Sunucu seçin', 'error'); return null; }
+    const url = `${API_BASE}/api/servers/${FW.serverId}/firewall/${path}`;
+    const opts = { method, headers: {'Content-Type': 'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    try { const r = await fetch(url, opts); return await r.json(); }
+    catch(e) { fwToast('API hatası: ' + e.message, 'error'); return null; }
+}
+
+function fwTab(name) {
+    document.querySelectorAll('.fw-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.fw-panel').forEach(p => p.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'fail2ban') fwLoadFail2ban();
+    if (name === 'connections') fwLoadConnections();
+    if (name === 'zones') fwLoadZones();
+    if (name === 'ip-block') fwLoadBlocked();
+}
+
+function fwSwitchServer() {
+    FW.serverId = document.getElementById('fwServerSelect').value;
+    if (FW.serverId) fwRefresh();
+}
+
+async function fwRefresh() {
+    if (!FW.serverId) return;
+    const d = await fwApi('status');
+    if (!d || !d.success) { fwToast(d?.message || 'Durum alınamadı', 'error'); return; }
+    FW.status = d.firewall; fwUpdateUI();
+}
+
+function fwUpdateUI() {
+    const fw = FW.status; if (!fw) return;
+    const pill = document.getElementById('fwStatusPill');
+    const pillText = document.getElementById('fwStatusText');
+    pill.className = 'fw-status-pill ' + (fw.active ? 'active' : 'inactive');
+    pillText.textContent = fw.active ? `${(fw.type||'').toUpperCase()} Aktif` : `${(fw.type||'?').toUpperCase()} Kapalı`;
+    document.getElementById('btnEnable').style.display = fw.active ? 'none' : 'inline-flex';
+    document.getElementById('btnDisable').style.display = fw.active ? 'inline-flex' : 'none';
+    document.getElementById('fwStatRules').textContent = (fw.rules||[]).length;
+    document.getElementById('fwStatPorts').textContent = (fw.ports||[]).length || (fw.rules||[]).filter(r=>r.type==='port').length;
+    document.getElementById('fwStatServices').textContent = (fw.services||[]).length || (fw.rules||[]).filter(r=>r.type==='service').length;
+    const tbody = document.getElementById('rulesBody');
+    if (!fw.rules || !fw.rules.length) { tbody.innerHTML = '<tr><td colspan="4" class="fw-empty"><i class="fas fa-check-circle" style="color:#22c55e"></i>Kural yok</td></tr>'; return; }
+    tbody.innerHTML = fw.rules.map(r => `<tr data-rule="${(r.rule||'').toLowerCase()}"><td style="font-weight:700;color:var(--text-secondary)">${r.index}</td><td><span class="fw-badge ${r.type||'other'}">${{port:'Port',service:'Servis',rich_rule:'Rich',forward:'Fwd',ip_block:'IP',other:'Diğer'}[r.type]||r.type}</span></td><td style="font-family:monospace;font-size:12px">${esc(r.rule)}</td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteRule(${r.index})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+    fwLoadBlockedCount(); fwLoadConnStats();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fwFilterRules() { const q = document.getElementById('ruleSearch').value.toLowerCase(); document.querySelectorAll('#rulesBody tr').forEach(tr => { tr.style.display = (tr.getAttribute('data-rule')||'').includes(q) ? '' : 'none'; }); }
+
+async function fwAddRule() {
+    const p = document.getElementById('rulePort').value.trim(); if (!p) { fwToast('Port girin','error'); return; }
+    const d = await fwApi('rules','POST',{port:p,protocol:document.getElementById('ruleProto').value,action:document.getElementById('ruleAction').value,from_ip:document.getElementById('ruleFromIp').value.trim()});
+    if (d?.success) { fwToast(d.message||'Eklendi'); document.getElementById('rulePort').value=''; fwRefresh(); } else fwToast(d?.message||'Hata','error');
+}
+async function fwAddService() {
+    const s = document.getElementById('ruleService').value; if (!s) { fwToast('Servis seçin','error'); return; }
+    const d = await fwApi('services','POST',{service:s}); if (d?.success) { fwToast(d.message||'Eklendi'); fwRefresh(); } else fwToast(d?.message||'Hata','error');
+}
+async function fwDeleteRule(i) { if (!confirm(`Kural #${i} silinecek?`)) return; const d = await fwApi(`rules/${i}`,'DELETE'); if (d?.success) { fwToast('Silindi'); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
+async function fwToggleFirewall(e) { if (!confirm(e?'Etkinleştirilecek?':'DİKKAT! Devre dışı bırakılacak!')) return; const d = await fwApi(e?'enable':'disable','POST'); if (d?.success) { fwToast(d.message); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
+async function fwBlockIp() { const ip = document.getElementById('blockIp').value.trim(); if (!ip) { fwToast('IP girin','error'); return; } const d = await fwApi('block-ip','POST',{ip,reason:document.getElementById('blockReason').value.trim()}); if (d?.success) { fwToast(`${ip} engellendi`); document.getElementById('blockIp').value=''; fwLoadBlocked(); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
+async function fwUnblockIp(ip) { if (!confirm(`${ip} kaldırılsın?`)) return; const d = await fwApi('unblock-ip','POST',{ip}); if (d?.success) { fwToast('Kaldırıldı'); fwLoadBlocked(); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
+async function fwLoadBlocked() { const d = await fwApi('blocked-ips'); const el = document.getElementById('blockedIpsList'); if (!d?.success||!d.blocked?.length) { el.innerHTML='<div class="fw-empty">Engelli IP yok</div>'; return; } el.innerHTML='<table class="fw-table"><thead><tr><th>#</th><th>IP</th><th>İşlem</th></tr></thead><tbody>'+d.blocked.map(b=>`<tr><td>${b.index}</td><td style="font-family:monospace">${esc(b.ip)}</td><td><button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwUnblockIp('${b.ip}')"><i class="fas fa-unlock"></i></button></td></tr>`).join('')+'</tbody></table>'; }
+async function fwLoadBlockedCount() { const d = await fwApi('blocked-ips'); document.getElementById('fwStatBlocked').textContent = d?.blocked?.length||0; }
+async function fwGeoBlock() { const cc = document.getElementById('geoCountry').value; if (!cc) { fwToast('Ülke seçin','error'); return; } if (!confirm(`${cc} engellenecek?`)) return; fwToast('İndiriliyor...'); const d = await fwApi('geo-block','POST',{country:cc}); if (d?.success) fwToast(d.message); else fwToast(d?.message||'Hata','error'); }
+async function fwAddForward() { const p=document.getElementById('fwdPort').value.trim(),tp=document.getElementById('fwdToPort').value.trim(); if(!p||!tp){fwToast('Port girin','error');return;} const d=await fwApi('port-forward','POST',{port:p,to_port:tp,to_addr:document.getElementById('fwdToAddr').value.trim(),protocol:document.getElementById('fwdProto').value}); if(d?.success){fwToast(d.message||'Eklendi');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwLoadZones() { const d = await fwApi('zones'); const g = document.getElementById('zonesGrid'); if (!d?.success||!d.zones?.length) { g.innerHTML='<div class="fw-empty" style="grid-column:1/-1">Zone yok</div>'; return; } g.innerHTML=d.zones.map(z=>`<div class="fw-zone-card ${z===d.active?'active':''}" onclick="fwShowZone('${z}')"><div class="name">${z}</div><div class="info">${z===d.active?'✅ Aktif':''}${z===d.default?' ⭐ Varsayılan':''}</div></div>`).join(''); }
+async function fwShowZone(zone) { document.querySelectorAll('.fw-zone-card').forEach(c=>c.classList.remove('active')); event.currentTarget.classList.add('active'); const d=await fwApi(`zones/${zone}`); const el=document.getElementById('zoneDetail'); el.style.display='block'; document.getElementById('zoneDetailTitle').textContent=`Zone: ${zone}`; if(!d?.success){document.getElementById('zoneDetailContent').innerHTML='<p>Alınamadı</p>';return;} const det=d.detail; document.getElementById('zoneDetailContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div><b>Servisler:</b> ${(det.services||[]).join(', ')||'-'}</div><div><b>Portlar:</b> ${(det.ports||[]).join(', ')||'-'}</div><div><b>Arayüzler:</b> ${(det.interfaces||[]).join(', ')||'-'}</div><div><b>Masquerade:</b> ${det.masquerade?'Evet':'Hayır'}</div><div style="grid-column:1/-1"><b>Rich:</b> ${(det.rich_rules||[]).join('<br>')||'-'}</div></div>`; }
+async function fwLoadFail2ban() { const d=await fwApi('fail2ban'); const el=document.getElementById('fail2banContent'); if(!d?.success){el.innerHTML='<div class="fw-empty">Alınamadı</div>';return;} const f=d.fail2ban; if(!f.installed){el.innerHTML='<div class="fw-empty">Fail2ban kurulu değil</div>';return;} let h=`<div style="margin-bottom:12px"><span class="fw-status-pill ${f.active?'active':'inactive'}"><i class="fas fa-circle" style="font-size:8px"></i> ${f.active?'Aktif':'Kapalı'}</span> <strong>${f.jails.length} Jail</strong></div>`; for(const j of f.jails){const i=f.banned_ips[j]||{}; h+=`<div class="fw-jail"><h4><i class="fas fa-lock" style="color:#eab308"></i> ${j}</h4><div class="fw-jail-stats"><div class="fw-jail-stat">Anlık: <span>${i.currently_banned||0}</span></div><div class="fw-jail-stat">Toplam: <span>${i.total_banned||0}</span></div></div>`; if(i.banned_list?.length){h+=`<div class="fw-banned-list">`+i.banned_list.map(ip=>`<span class="fw-banned-ip">${ip} <button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#22c55e;border:none" onclick="fwF2bUnban('${j}','${ip}')"><i class="fas fa-unlock"></i></button></span>`).join('')+`</div>`;} h+=`<div class="fw-form-row" style="margin-top:8px;margin-bottom:0"><input type="text" class="f2b-ban-input" placeholder="IP ban et..." style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;width:160px;background:var(--bg);color:var(--text)" data-jail="${j}"><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwF2bBan('${j}')"><i class="fas fa-ban"></i> Ban</button></div></div>`;} el.innerHTML=h; }
+async function fwF2bUnban(j,ip) { const d=await fwApi('fail2ban/unban','POST',{jail:j,ip}); if(d?.success){fwToast('Unban');fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
+async function fwF2bBan(j) { const inp=document.querySelector(`.f2b-ban-input[data-jail="${j}"]`); const ip=inp?.value?.trim(); if(!ip){fwToast('IP girin','error');return;} const d=await fwApi('fail2ban/ban','POST',{jail:j,ip}); if(d?.success){fwToast('Ban edildi');inp.value='';fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
+async function fwLoadConnections() { fwLoadConnStats(); const d=await fwApi('connections?limit=50'); const tb=document.getElementById('connBody'); if(!d?.success||!d.connections?.length){tb.innerHTML='<tr><td colspan="6" class="fw-empty">Veri yok</td></tr>';return;} tb.innerHTML=d.connections.map(c=>`<tr><td><span class="fw-badge port">${c.proto}</span></td><td>${c.state}</td><td style="font-family:monospace;font-size:11px">${esc(c.local)}</td><td style="font-family:monospace;font-size:11px">${esc(c.peer)}</td><td style="font-size:11px">${esc(c.process||'-')}</td><td>${c.peer&&!c.peer.includes('*')?`<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwBlockConnIp('${c.peer}')"><i class="fas fa-ban"></i></button>`:''}</td></tr>`).join(''); }
+function fwBlockConnIp(p) { const ip=p.split(':')[0].replace(/[\[\]]/g,''); if(!ip||ip==='*') return; document.getElementById('blockIp').value=ip; document.querySelector('.fw-tab:nth-child(2)').click(); }
+async function fwLoadConnStats() { const d=await fwApi('connection-stats'); if(!d?.success)return; const s=d.stats; document.getElementById('fwStatConns').textContent=s.established||0; const g=document.getElementById('connStatsGrid'); g.innerHTML=`<div class="fw-conn-card"><h4>Durum Dağılımı</h4>${bar('ESTABLISHED',s.established,s.total,'#22c55e')}${bar('LISTENING',s.listening,s.total,'#3b82f6')}${bar('TIME_WAIT',s.time_wait,s.total,'#eab308')}${bar('CLOSE_WAIT',s.close_wait,s.total,'#ef4444')}</div><div class="fw-conn-card"><h4>Top IP'ler</h4>${(s.top_ips||[]).slice(0,6).map(([ip,c])=>bar(ip,c,s.total,'#a855f7')).join('')}</div>`; }
+function bar(l,v,t,c) { const p=t>0?Math.round(v/t*100):0; return `<div class="fw-conn-bar"><div class="fw-conn-bar-label">${l}</div><div style="flex:1;background:var(--border-color);border-radius:3px;height:6px"><div style="width:${p}%;background:${c};border-radius:3px;height:100%"></div></div><div class="fw-conn-bar-val">${v}</div></div>`; }
+async function fwRunScan() { document.getElementById('btnScan').disabled=true; document.getElementById('btnScan').innerHTML='<i class="fas fa-spinner fa-spin"></i> Taranıyor...'; document.getElementById('securityResult').style.display='block'; const d=await fwApi('security-scan'); document.getElementById('btnScan').disabled=false; document.getElementById('btnScan').innerHTML='<i class="fas fa-radar"></i> Tekrar Tara'; if(!d?.success){fwToast(d?.message||'Hata','error');return;} const sc=d.scan,s=sc.score||0; document.getElementById('fwStatScore').textContent=s; const ci=document.getElementById('scoreCircle'); ci.style.strokeDashoffset=264-264*s/100; ci.style.stroke=s>=80?'#22c55e':s>=50?'#eab308':'#ef4444'; document.getElementById('scoreVal').textContent=s; document.getElementById('scoreLabel').textContent=s>=90?'🛡️ Mükemmel':s>=70?'⚠️ İyi':s>=50?'🟡 Orta':'🔴 Riskli'; const fe=document.getElementById('scanFindings'); if(!sc.findings?.length){fe.innerHTML='<div class="fw-finding low"><i class="fas fa-check-circle" style="color:#22c55e;font-size:18px"></i><div><b>Sorun yok!</b></div></div>';}else{fe.innerHTML=sc.findings.map(f=>`<div class="fw-finding ${f.severity}"><i class="fas fa-${f.severity==='critical'?'skull-crossbones':f.severity==='high'?'exclamation-triangle':'exclamation-circle'}" style="font-size:16px;margin-top:2px"></i><div><b>${esc(f.title)}</b><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(f.detail)}</div></div></div>`).join('');} document.getElementById('scanRecs').innerHTML=(sc.recommendations||[]).map(r=>`<li>${esc(r)}</li>`).join(''); }
+
+// Sunucu ekleme fonksiyonu (standalone kullanım için)
+function fwAddServer(id, name) {
+    const sel = document.getElementById('fwServerSelect');
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = name;
+    sel.appendChild(opt);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('fwServerSelect');
+    if (sel.value) { FW.serverId = sel.value; fwRefresh(); }
+});
+</script>
+</body>
+</html>

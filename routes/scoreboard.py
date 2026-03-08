@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify
 from flask_login import login_required
 
+from core.helpers import _build_tenant_query
 from extensions import db
 from models import User
 from rbac import permission_required
@@ -20,7 +21,7 @@ scoreboard_bp = Blueprint('scoreboard', __name__)
 @permission_required('scoreboard.view')
 def scoreboard_data():
     """Tüm geliştirici durumlarını döndürür."""
-    users = User.query.filter_by(is_active_user=True).all()
+    users = _build_tenant_query(User).filter_by(is_active_user=True).all()
     five_min_ago = datetime.utcnow() - timedelta(minutes=5)
 
     developers = []

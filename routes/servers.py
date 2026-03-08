@@ -11,10 +11,13 @@ from flask_login import current_user, login_required
 
 from audit import log_action
 from core.helpers import (
+    _build_tenant_query,
     connect_server_ssh,
     get_server_by_id,
+    get_server_obj_with_access,
     ssh_mgr,
 )
+from core.tenant import get_tenant_id
 from extensions import db
 from license_manager import check_server_limit
 from models import ServerCredential
@@ -38,10 +41,7 @@ servers_bp = Blueprint('servers', __name__)
 @login_required
 @permission_required('server.view')
 def api_list_servers():
-    if current_user.is_admin:
-        query = ServerCredential.query
-    else:
-        query = ServerCredential.query.filter_by(added_by=current_user.id)
+    query = _build_tenant_query(ServerCredential)
     raw = [s.to_dict() for s in query.all()]
     if not raw:
         return jsonify({'success': True, 'servers': []})
@@ -97,8 +97,12 @@ def api_add_server():
         if val is None or (isinstance(val, str) and not val.strip()):
             return jsonify({'success': False, 'message': f'"{field}" alanı zorunludur'}), 400
 
-    # Lisans sunucu limiti kontrolü
-    current_count = ServerCredential.query.count()
+    # Lisans sunucu limiti kontrolü (tenant bazlı)
+    tenant_id = get_tenant_id()
+    if tenant_id:
+        current_count = ServerCredential.query.filter_by(org_id=tenant_id).count()
+    else:
+        current_count = ServerCredential.query.filter(ServerCredential.org_id.is_(None)).count()
     allowed, limit_msg = check_server_limit(current_count)
     if not allowed:
         return jsonify({'success': False, 'message': limit_msg}), 403
@@ -126,6 +130,7 @@ def api_add_server():
         responsible=(data.get('responsible') or '').strip(),
         os_planned=(data.get('os_planned') or '').strip(),
         dc_id=data.get('dc_id') or None,
+        org_id=get_tenant_id(),
         added_by=current_user.id if current_user.is_authenticated else None,
     )
     password = data.get('password', '')
@@ -143,11 +148,9 @@ def api_add_server():
 @login_required
 @permission_required('server.delete')
 def api_delete_server(server_id):
-    srv = db.session.get(ServerCredential, server_id)
+    srv = get_server_obj_with_access(server_id)
     if not srv:
-        return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
-    if not current_user.is_admin and srv.added_by != current_user.id:
-        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     name = srv.name
     db.session.delete(srv)
     db.session.commit()
@@ -164,11 +167,9 @@ def api_update_server(server_id):
     data = request.get_json(silent=True) or {}
     if not data:
         return jsonify({'success': False, 'message': 'Veri gönderilmedi'}), 400
-    srv = db.session.get(ServerCredential, server_id)
+    srv = get_server_obj_with_access(server_id)
     if not srv:
-        return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
-    if not current_user.is_admin and srv.added_by != current_user.id:
-        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
 
     field_map = {
         'name': 'name', 'host': 'host', 'username': 'username',
@@ -219,11 +220,9 @@ def api_connect_server(server_id):
 @login_required
 @permission_required('server.disconnect')
 def api_disconnect_server(server_id):
-    srv = db.session.get(ServerCredential, server_id)
+    srv = get_server_obj_with_access(server_id)
     if not srv:
-        return jsonify({'success': False, 'message': 'Sunucu bulunamadı'}), 404
-    if not current_user.is_admin and srv.added_by != current_user.id:
-        return jsonify({'success': False, 'message': 'Bu sunucuya erişim yetkiniz yok'}), 403
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
     ssh_mgr.disconnect(server_id)
     log_action('server.disconnect', target_type='server', target_id=server_id)
     return jsonify({'success': True, 'message': 'Bağlantı kesildi'})

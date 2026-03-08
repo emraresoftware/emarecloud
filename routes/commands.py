@@ -8,7 +8,7 @@ from flask_login import current_user, login_required
 
 from audit import log_action
 from command_security import is_command_allowed
-from core.helpers import ssh_mgr
+from core.helpers import get_server_obj_with_access, ssh_mgr
 from rbac import permission_required
 
 commands_bp = Blueprint('commands', __name__)
@@ -18,11 +18,16 @@ commands_bp = Blueprint('commands', __name__)
 @login_required
 @permission_required('server.execute')
 def api_execute_command(server_id):
-    """Sunucuda komut çalıştırır — rol bazlı güvenlik kontrolü ile."""
+    """Sunucuda komut çalıştırır — rol bazlı güvenlik kontrolü ve tenant izolasyonu ile."""
     data = request.get_json(silent=True) or {}
     command = (data.get('command') or '').strip()
     if not command:
         return jsonify({'success': False, 'message': 'Komut belirtilmedi'}), 400
+
+    # Tenant erişim kontrolü
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
 
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
@@ -46,6 +51,11 @@ def api_execute_command(server_id):
 def api_quick_action(server_id):
     data = request.get_json(silent=True) or {}
     action = data.get('action', '')
+
+    # Tenant erişim kontrolü
+    srv = get_server_obj_with_access(server_id)
+    if not srv:
+        return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yetkiniz yok'}), 404
 
     if not ssh_mgr.is_connected(server_id):
         return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400

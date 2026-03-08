@@ -1,8 +1,4 @@
-python3 ceyiz_hazirla.py \
-  --name "Yeni Proje" \
-  --slug "yeniproje" \
-  --stack python \
-  --path /Users/emre/Desktop/Emare/yeniproje#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 ╔═══════════════════════════════════════════════════════════════════╗
 ║  EmareCloud — Yeni Derviş Çeyiz Hazırlama Scripti                ║

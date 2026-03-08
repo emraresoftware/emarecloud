@@ -13,7 +13,7 @@ from flask_socketio import emit
 from audit import log_action
 from ai_assistant import ai_analyze, get_quick_prompts
 from command_security import is_command_allowed
-from core.helpers import connect_server_ssh, get_server_by_id, ssh_mgr
+from core.helpers import connect_server_ssh, get_server_by_id, get_server_obj_with_access, ssh_mgr
 from rbac import check_permission
 
 terminal_bp = Blueprint('terminal', __name__)
@@ -78,6 +78,12 @@ def register_terminal_events(socketio):
 
         if not command:
             emit('terminal_output', {'output': '\r\n$ '})
+            return
+
+        # Tenant erişim kontrolü
+        srv = get_server_obj_with_access(server_id)
+        if not srv:
+            emit('terminal_output', {'output': '\r\n❌ Sunucu bulunamadı veya erişim yetkiniz yok\r\n$ '})
             return
 
         if not ssh_mgr.is_connected(server_id):

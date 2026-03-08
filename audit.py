@@ -27,8 +27,17 @@ def log_action(action: str, target_type: str = None, target_id: str = None,
     from models import AuditLog
 
     try:
+        # Tenant bilgisini al
+        _org_id = None
+        try:
+            if current_user and current_user.is_authenticated:
+                _org_id = getattr(current_user, 'org_id', None)
+        except Exception:
+            pass
+
         entry = AuditLog(
             user_id=current_user.id if current_user and current_user.is_authenticated else None,
+            org_id=_org_id,
             username=current_user.username if current_user and current_user.is_authenticated else 'anonymous',
             action=action,
             target_type=target_type,
