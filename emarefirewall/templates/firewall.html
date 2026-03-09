@@ -167,6 +167,13 @@
                 <div class="fw-form-group"><label>Servis Ekle</label><select id="ruleService"><option value="">—</option><option value="http">HTTP</option><option value="https">HTTPS</option><option value="ssh">SSH</option><option value="ftp">FTP</option><option value="dns">DNS</option><option value="mysql">MySQL</option><option value="postgresql">PostgreSQL</option><option value="redis">Redis</option></select></div>
                 <button class="fw-btn fw-btn-success" onclick="fwAddService()"><i class="fas fa-plus"></i> Servis Ekle</button>
             </div>
+            <div style="border-top:1px solid var(--border-color);margin-top:14px;padding-top:14px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">🔥 RICH RULE EKLE <span style="font-weight:400;font-size:11px">(sadece firewalld)</span></div>
+                <div class="fw-form-row" style="margin-bottom:0">
+                    <div class="fw-form-group" style="flex:1"><label>Rich Rule</label><input type="text" id="richRuleText" placeholder="rule family='ipv4' source address='10.0.0.0/24' accept" style="min-width:360px"></div>
+                    <button class="fw-btn fw-btn-primary" onclick="fwAddRichRule()"><i class="fas fa-plus"></i> Ekle</button>
+                </div>
+            </div>
         </div>
         <div class="fw-toolbar">
             <input class="fw-search" type="text" placeholder="🔍 Kural ara..." id="ruleSearch" oninput="fwFilterRules()">
@@ -273,9 +280,17 @@ function fwToast(msg, type='success') {
 async function fwApi(path, method='GET', body=null) {
     if (!FW.serverId) { fwToast('Sunucu seçin', 'error'); return null; }
     const url = `${API_BASE}/api/servers/${FW.serverId}/firewall/${path}`;
-    const opts = { method, headers: {'Content-Type': 'application/json'} };
+    const opts = { method, headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    }};
     if (body) opts.body = JSON.stringify(body);
-    try { const r = await fetch(url, opts); return await r.json(); }
+    try {
+        const r = await fetch(url, opts);
+        if (r.status === 429) { fwToast('Çok fazla istek, lütfen bekleyin', 'error'); return null; }
+        if (r.status === 403) { fwToast('Erişim reddedildi', 'error'); return null; }
+        return await r.json();
+    }
     catch(e) { fwToast('API hatası: ' + e.message, 'error'); return null; }
 }
 
@@ -288,6 +303,7 @@ function fwTab(name) {
     if (name === 'connections') fwLoadConnections();
     if (name === 'zones') fwLoadZones();
     if (name === 'ip-block') fwLoadBlocked();
+    if (name === 'port-fwd') fwLoadForwards();
 }
 
 function fwSwitchServer() {
@@ -315,8 +331,14 @@ function fwUpdateUI() {
     document.getElementById('fwStatServices').textContent = (fw.services||[]).length || (fw.rules||[]).filter(r=>r.type==='service').length;
     const tbody = document.getElementById('rulesBody');
     if (!fw.rules || !fw.rules.length) { tbody.innerHTML = '<tr><td colspan="4" class="fw-empty"><i class="fas fa-check-circle" style="color:#22c55e"></i>Kural yok</td></tr>'; return; }
-    tbody.innerHTML = fw.rules.map(r => `<tr data-rule="${(r.rule||'').toLowerCase()}"><td style="font-weight:700;color:var(--text-secondary)">${r.index}</td><td><span class="fw-badge ${r.type||'other'}">${{port:'Port',service:'Servis',rich_rule:'Rich',forward:'Fwd',ip_block:'IP',other:'Diğer'}[r.type]||r.type}</span></td><td style="font-family:monospace;font-size:12px">${esc(r.rule)}</td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteRule(${r.index})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
-    fwLoadBlockedCount(); fwLoadConnStats();
+    tbody.innerHTML = fw.rules.map((r, ri) => {
+        const tl = {port:'Port',service:'Servis',rich_rule:'Rich',forward:'Fwd',ip_block:'IP',other:'Diğer'}[r.type]||r.type;
+        let acts = `<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteRule(${r.index})" title="Sil"><i class="fas fa-trash"></i></button>`;
+        if (r.type==='service') { const sn=(r.rule||'').replace('service','').trim(); acts+=` <button class="fw-btn fw-btn-sm" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2)" onclick="fwRemoveService('${sn}')" title="Servisi kaldır"><i class="fas fa-times"></i></button>`; }
+        if (r.type==='rich_rule') { acts+=` <button class="fw-btn fw-btn-sm" style="background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.2)" onclick="fwDeleteRichRuleByIdx(${ri})" title="Rich rule kaldır"><i class="fas fa-times"></i></button>`; }
+        return `<tr data-rule="${(r.rule||'').toLowerCase()}"><td style="font-weight:700;color:var(--text-secondary)">${r.index}</td><td><span class="fw-badge ${r.type||'other'}">${tl}</span></td><td style="font-family:monospace;font-size:12px">${esc(r.rule)}</td><td style="white-space:nowrap">${acts}</td></tr>`;
+    }).join('');
+    fwLoadBlockedCount(); fwLoadConnStats(); fwLoadForwards();
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -340,7 +362,7 @@ async function fwLoadBlockedCount() { const d = await fwApi('blocked-ips'); docu
 async function fwGeoBlock() { const cc = document.getElementById('geoCountry').value; if (!cc) { fwToast('Ülke seçin','error'); return; } if (!confirm(`${cc} engellenecek?`)) return; fwToast('İndiriliyor...'); const d = await fwApi('geo-block','POST',{country:cc}); if (d?.success) fwToast(d.message); else fwToast(d?.message||'Hata','error'); }
 async function fwAddForward() { const p=document.getElementById('fwdPort').value.trim(),tp=document.getElementById('fwdToPort').value.trim(); if(!p||!tp){fwToast('Port girin','error');return;} const d=await fwApi('port-forward','POST',{port:p,to_port:tp,to_addr:document.getElementById('fwdToAddr').value.trim(),protocol:document.getElementById('fwdProto').value}); if(d?.success){fwToast(d.message||'Eklendi');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
 async function fwLoadZones() { const d = await fwApi('zones'); const g = document.getElementById('zonesGrid'); if (!d?.success||!d.zones?.length) { g.innerHTML='<div class="fw-empty" style="grid-column:1/-1">Zone yok</div>'; return; } g.innerHTML=d.zones.map(z=>`<div class="fw-zone-card ${z===d.active?'active':''}" onclick="fwShowZone('${z}')"><div class="name">${z}</div><div class="info">${z===d.active?'✅ Aktif':''}${z===d.default?' ⭐ Varsayılan':''}</div></div>`).join(''); }
-async function fwShowZone(zone) { document.querySelectorAll('.fw-zone-card').forEach(c=>c.classList.remove('active')); event.currentTarget.classList.add('active'); const d=await fwApi(`zones/${zone}`); const el=document.getElementById('zoneDetail'); el.style.display='block'; document.getElementById('zoneDetailTitle').textContent=`Zone: ${zone}`; if(!d?.success){document.getElementById('zoneDetailContent').innerHTML='<p>Alınamadı</p>';return;} const det=d.detail; document.getElementById('zoneDetailContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div><b>Servisler:</b> ${(det.services||[]).join(', ')||'-'}</div><div><b>Portlar:</b> ${(det.ports||[]).join(', ')||'-'}</div><div><b>Arayüzler:</b> ${(det.interfaces||[]).join(', ')||'-'}</div><div><b>Masquerade:</b> ${det.masquerade?'Evet':'Hayır'}</div><div style="grid-column:1/-1"><b>Rich:</b> ${(det.rich_rules||[]).join('<br>')||'-'}</div></div>`; }
+async function fwShowZone(zone) { document.querySelectorAll('.fw-zone-card').forEach(c=>c.classList.remove('active')); event.currentTarget.classList.add('active'); const d=await fwApi(`zones/${zone}`); const el=document.getElementById('zoneDetail'); el.style.display='block'; document.getElementById('zoneDetailTitle').innerHTML=`Zone: ${zone} <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwSetDefaultZone('${zone}')" style="margin-left:12px"><i class="fas fa-star"></i> Varsayılan Yap</button>`; if(!d?.success){document.getElementById('zoneDetailContent').innerHTML='<p>Alınamadı</p>';return;} const det=d.detail; document.getElementById('zoneDetailContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div><b>Servisler:</b> ${(det.services||[]).join(', ')||'-'}</div><div><b>Portlar:</b> ${(det.ports||[]).join(', ')||'-'}</div><div><b>Arayüzler:</b> ${(det.interfaces||[]).join(', ')||'-'}</div><div><b>Masquerade:</b> ${det.masquerade?'Evet':'Hayır'}</div><div style="grid-column:1/-1"><b>Rich:</b> ${(det.rich_rules||[]).join('<br>')||'-'}</div></div>`; }
 async function fwLoadFail2ban() { const d=await fwApi('fail2ban'); const el=document.getElementById('fail2banContent'); if(!d?.success){el.innerHTML='<div class="fw-empty">Alınamadı</div>';return;} const f=d.fail2ban; if(!f.installed){el.innerHTML='<div class="fw-empty">Fail2ban kurulu değil</div>';return;} let h=`<div style="margin-bottom:12px"><span class="fw-status-pill ${f.active?'active':'inactive'}"><i class="fas fa-circle" style="font-size:8px"></i> ${f.active?'Aktif':'Kapalı'}</span> <strong>${f.jails.length} Jail</strong></div>`; for(const j of f.jails){const i=f.banned_ips[j]||{}; h+=`<div class="fw-jail"><h4><i class="fas fa-lock" style="color:#eab308"></i> ${j}</h4><div class="fw-jail-stats"><div class="fw-jail-stat">Anlık: <span>${i.currently_banned||0}</span></div><div class="fw-jail-stat">Toplam: <span>${i.total_banned||0}</span></div></div>`; if(i.banned_list?.length){h+=`<div class="fw-banned-list">`+i.banned_list.map(ip=>`<span class="fw-banned-ip">${ip} <button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#22c55e;border:none" onclick="fwF2bUnban('${j}','${ip}')"><i class="fas fa-unlock"></i></button></span>`).join('')+`</div>`;} h+=`<div class="fw-form-row" style="margin-top:8px;margin-bottom:0"><input type="text" class="f2b-ban-input" placeholder="IP ban et..." style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;width:160px;background:var(--bg);color:var(--text)" data-jail="${j}"><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwF2bBan('${j}')"><i class="fas fa-ban"></i> Ban</button></div></div>`;} el.innerHTML=h; }
 async function fwF2bUnban(j,ip) { const d=await fwApi('fail2ban/unban','POST',{jail:j,ip}); if(d?.success){fwToast('Unban');fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
 async function fwF2bBan(j) { const inp=document.querySelector(`.f2b-ban-input[data-jail="${j}"]`); const ip=inp?.value?.trim(); if(!ip){fwToast('IP girin','error');return;} const d=await fwApi('fail2ban/ban','POST',{jail:j,ip}); if(d?.success){fwToast('Ban edildi');inp.value='';fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
@@ -349,6 +371,64 @@ function fwBlockConnIp(p) { const ip=p.split(':')[0].replace(/[\[\]]/g,''); if(!
 async function fwLoadConnStats() { const d=await fwApi('connection-stats'); if(!d?.success)return; const s=d.stats; document.getElementById('fwStatConns').textContent=s.established||0; const g=document.getElementById('connStatsGrid'); g.innerHTML=`<div class="fw-conn-card"><h4>Durum Dağılımı</h4>${bar('ESTABLISHED',s.established,s.total,'#22c55e')}${bar('LISTENING',s.listening,s.total,'#3b82f6')}${bar('TIME_WAIT',s.time_wait,s.total,'#eab308')}${bar('CLOSE_WAIT',s.close_wait,s.total,'#ef4444')}</div><div class="fw-conn-card"><h4>Top IP'ler</h4>${(s.top_ips||[]).slice(0,6).map(([ip,c])=>bar(ip,c,s.total,'#a855f7')).join('')}</div>`; }
 function bar(l,v,t,c) { const p=t>0?Math.round(v/t*100):0; return `<div class="fw-conn-bar"><div class="fw-conn-bar-label">${l}</div><div style="flex:1;background:var(--border-color);border-radius:3px;height:6px"><div style="width:${p}%;background:${c};border-radius:3px;height:100%"></div></div><div class="fw-conn-bar-val">${v}</div></div>`; }
 async function fwRunScan() { document.getElementById('btnScan').disabled=true; document.getElementById('btnScan').innerHTML='<i class="fas fa-spinner fa-spin"></i> Taranıyor...'; document.getElementById('securityResult').style.display='block'; const d=await fwApi('security-scan'); document.getElementById('btnScan').disabled=false; document.getElementById('btnScan').innerHTML='<i class="fas fa-radar"></i> Tekrar Tara'; if(!d?.success){fwToast(d?.message||'Hata','error');return;} const sc=d.scan,s=sc.score||0; document.getElementById('fwStatScore').textContent=s; const ci=document.getElementById('scoreCircle'); ci.style.strokeDashoffset=264-264*s/100; ci.style.stroke=s>=80?'#22c55e':s>=50?'#eab308':'#ef4444'; document.getElementById('scoreVal').textContent=s; document.getElementById('scoreLabel').textContent=s>=90?'🛡️ Mükemmel':s>=70?'⚠️ İyi':s>=50?'🟡 Orta':'🔴 Riskli'; const fe=document.getElementById('scanFindings'); if(!sc.findings?.length){fe.innerHTML='<div class="fw-finding low"><i class="fas fa-check-circle" style="color:#22c55e;font-size:18px"></i><div><b>Sorun yok!</b></div></div>';}else{fe.innerHTML=sc.findings.map(f=>`<div class="fw-finding ${f.severity}"><i class="fas fa-${f.severity==='critical'?'skull-crossbones':f.severity==='high'?'exclamation-triangle':'exclamation-circle'}" style="font-size:16px;margin-top:2px"></i><div><b>${esc(f.title)}</b><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(f.detail)}</div></div></div>`).join('');} document.getElementById('scanRecs').innerHTML=(sc.recommendations||[]).map(r=>`<li>${esc(r)}</li>`).join(''); }
+
+// ── Rich Rule Ekle/Sil ──
+async function fwAddRichRule() {
+    const rule = document.getElementById('richRuleText').value.trim();
+    if (!rule) { fwToast('Rich rule girin', 'error'); return; }
+    const d = await fwApi('rich-rules', 'POST', { rule });
+    if (d?.success) { fwToast(d.message || 'Rich rule eklendi'); document.getElementById('richRuleText').value = ''; fwRefresh(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+async function fwDeleteRichRuleByIdx(arrIdx) {
+    const r = FW.status?.rules?.[arrIdx];
+    if (!r || !confirm('Rich rule silinecek?')) return;
+    const d = await fwApi('rich-rules', 'DELETE', { rule: r.rule });
+    if (d?.success) { fwToast('Rich rule silindi'); fwRefresh(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ── Servis Kaldır ──
+async function fwRemoveService(svc) {
+    if (!svc || !confirm(`'${svc}' servisi kaldırılsın?`)) return;
+    const d = await fwApi(`services/${svc}`, 'DELETE');
+    if (d?.success) { fwToast(d.message || 'Servis kaldırıldı'); fwRefresh(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ── Port Forward Listele/Sil ──
+function fwLoadForwards() {
+    const fw = FW.status;
+    const el = document.getElementById('forwardsList');
+    if (!el) return;
+    if (!fw || !fw.forward_ports || !fw.forward_ports.length) {
+        el.innerHTML = '<div class="fw-empty"><i class="fas fa-right-left"></i> Yönlendirme yok</div>';
+        return;
+    }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>#</th><th>Yönlendirme</th><th>İşlem</th></tr></thead><tbody>' +
+        fw.forward_ports.map((fp, i) => `<tr><td>${i+1}</td><td style="font-family:monospace;font-size:12px">${esc(fp)}</td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteForward(${i})" title="Kaldır"><i class="fas fa-trash"></i></button></td></tr>`).join('') +
+        '</tbody></table>';
+}
+async function fwDeleteForward(idx) {
+    const fp = FW.status?.forward_ports?.[idx];
+    if (!fp || !confirm('Port yönlendirme silinecek?')) return;
+    const pm = fp.match(/port=(\d+)/), prm = fp.match(/proto=(\w+)/);
+    const tpm = fp.match(/toport=(\d+)/), tam = fp.match(/toaddr=([\d.]+)/);
+    const d = await fwApi('port-forward', 'DELETE', {
+        port: pm ? pm[1] : '', protocol: prm ? prm[1] : 'tcp',
+        to_port: tpm ? tpm[1] : '', to_addr: tam ? tam[1] : ''
+    });
+    if (d?.success) { fwToast('Port yönlendirme silindi'); fwRefresh(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ── Zone Varsayılan Yap ──
+async function fwSetDefaultZone(zone) {
+    if (!confirm(`'${zone}' varsayılan zone yapılsın?`)) return;
+    const d = await fwApi('zones/default', 'POST', { zone });
+    if (d?.success) { fwToast(d.message || 'Varsayılan zone değiştirildi'); fwLoadZones(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
 
 // Sunucu ekleme fonksiyonu (standalone kullanım için)
 function fwAddServer(id, name) {

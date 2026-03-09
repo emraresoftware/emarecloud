@@ -23,9 +23,19 @@ Kullanım:
     app.register_blueprint(fw_bp)
 """
 
+import re
+import time
+import logging
+from functools import wraps
+
 from flask import Blueprint, jsonify, request
 
 from emarefirewall.manager import FirewallManager
+
+logger = logging.getLogger('emarefirewall.routes')
+
+# GÜVENLİK: İzin verilen server_id formatı — alfanümerik, tire, altçizgi, nokta
+_VALID_SERVER_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$')
 
 
 def _noop_decorator(*args, **kwargs):
@@ -44,6 +54,8 @@ def create_blueprint(
     audit_fn=None,
     connection_checker=None,
     url_prefix="",
+    csrf_checker=None,
+    rate_limit_per_minute=30,
 ):
     """
     Firewall Flask Blueprint'i oluşturur.
@@ -55,6 +67,9 @@ def create_blueprint(
         audit_fn: Audit log fonksiyonu: audit_fn(action, **kwargs). None ise log yok.
         connection_checker: (server_id) -> bool. None ise her zaman True.
         url_prefix: Blueprint URL prefix.
+        csrf_checker: CSRF token doğrulama fonksiyonu: csrf_checker() -> bool.
+                      None ise CSRF kontrolü yapılmaz (ama X-Requested-With header kontrolü yapılır).
+        rate_limit_per_minute: Dakika başına izin verilen istek sayısı (0 = sınırsız).
 
     Returns:
         Flask Blueprint
@@ -66,11 +81,73 @@ def create_blueprint(
     perm_view = (lambda fn: permission_decorator('firewall.view')(fn)) if permission_decorator else _noop_decorator
     perm_manage = (lambda fn: permission_decorator('firewall.manage')(fn)) if permission_decorator else _noop_decorator
 
+    # ═══ GÜVENLİK: Rate Limiter (IP bazlı in-memory) ═══
+    _rate_store = {}  # ip -> [timestamp, ...]
+
+    def _rate_limited():
+        """Rate limit kontrolü. Aşılırsa hata response döner."""
+        if rate_limit_per_minute <= 0:
+            return None
+        ip = request.remote_addr or 'unknown'
+        now = time.time()
+        window = 60.0
+        if ip not in _rate_store:
+            _rate_store[ip] = []
+        # Eski girişleri temizle
+        _rate_store[ip] = [t for t in _rate_store[ip] if now - t < window]
+        if len(_rate_store[ip]) >= rate_limit_per_minute:
+            return jsonify({'success': False, 'message': 'Çok fazla istek. Lütfen bekleyin.'}), 429
+        _rate_store[ip].append(now)
+        return None
+
+    # ═══ GÜVENLİK: CSRF Koruması ═══
+    def _csrf_check():
+        """State-changing (POST/PUT/DELETE) isteklerinde CSRF koruması."""
+        if request.method == 'GET':
+            return None
+        # 1. Harici csrf_checker varsa kullan
+        if csrf_checker is not None:
+            if not csrf_checker():
+                return jsonify({'success': False, 'message': 'CSRF doğrulama başarısız.'}), 403
+            return None
+        # 2. Yoksa, en azından XHR header kontrolü yap (AJAX dışından gelen form POST'ları engeller)
+        xhr = request.headers.get('X-Requested-With', '')
+        ct = request.content_type or ''
+        if 'XMLHttpRequest' not in xhr and 'application/json' not in ct:
+            return jsonify({'success': False, 'message': 'İstek reddedildi (CSRF koruması).'}), 403
+        return None
+
+    # ═══ GÜVENLİK: server_id doğrulama ═══
+    def _validate_server_id(server_id):
+        if not _VALID_SERVER_ID_RE.match(server_id):
+            return jsonify({'success': False, 'message': 'Geçersiz sunucu ID formatı.'}), 400
+        return None
+
+    # ═══ GÜVENLİK: Hata mesajı sanitizasyonu ═══
+    def _safe_error_msg(e):
+        """Dahili hata detaylarını dı kullanıcıya göstermez."""
+        msg = str(e)
+        # Dosya yolu, stack trace gibi hassas bilgileri filtrele
+        if any(k in msg.lower() for k in ['traceback', '/home/', '/root/', '/etc/', 'password', 'secret']):
+            logger.error('Firewall iç hata: %s', msg)
+            return 'İşlem sırasında bir hata oluştu.'
+        return msg
+
     def _audit(action, **kw):
         if audit_fn:
             audit_fn(action, **kw)
 
     def _check(server_id):
+        """Sunucu ID doğrulama + bağlantı kontrolü + rate limit + CSRF."""
+        id_err = _validate_server_id(server_id)
+        if id_err:
+            return id_err
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
         if connection_checker and not connection_checker(server_id):
             return jsonify({'success': False, 'message': 'Sunucu bağlı değil'}), 400
         return None
@@ -85,7 +162,7 @@ def create_blueprint(
         try:
             return jsonify({'success': True, 'firewall': fw.get_status(server_id)})
         except Exception as e:
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': _safe_error_msg(e)}), 500
 
     @bp.route('/api/servers/<server_id>/firewall/enable', methods=['POST'])
     @auth
@@ -336,7 +413,7 @@ def create_blueprint(
         try:
             return jsonify({'success': True, 'scan': fw.security_scan(server_id)})
         except Exception as e:
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': _safe_error_msg(e)}), 500
 
     # ── Geo-Block ──
     @bp.route('/api/servers/<server_id>/firewall/geo-block', methods=['POST'])

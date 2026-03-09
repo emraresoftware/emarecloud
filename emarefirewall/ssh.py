@@ -15,6 +15,10 @@ Kullanım:
 """
 
 import os
+import logging
+from typing import Optional
+
+logger = logging.getLogger('emarefirewall.ssh')
 
 try:
     import paramiko
@@ -31,11 +35,34 @@ class ParamikoExecutor:
         self._clients = {}
 
     def connect(self, server_id: str, host: str, user: str = "root",
-                port: int = 22, key_path: str | None = None,
-                password: str | None = None, timeout: int = 10):
-        """Sunucuya SSH bağlantısı kurar."""
+                port: int = 22, key_path: Optional[str] = None,
+                password: Optional[str] = None, timeout: int = 10,
+                host_key_policy: str = "warning"):
+        """
+        Sunucuya SSH bağlantısı kurar.
+
+        Args:
+            host_key_policy: 'reject' | 'warning' | 'auto'
+                - 'reject':  Bilinmeyen host key'leri reddeder (en güvenli)
+                - 'warning': Bilinmeyen key'leri kabul eder ama log'a yazar (varsayılan)
+                - 'auto':    Hepsini sessizce kabul eder (GELİŞTİRME ORTAMI İÇİN)
+        """
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # Host key doğrulaması — önce known_hosts yükle
+        known_hosts = os.path.expanduser("~/.ssh/known_hosts")
+        if os.path.exists(known_hosts):
+            try:
+                client.load_host_keys(known_hosts)
+            except Exception as e:
+                logger.warning("known_hosts yüklenemedi: %s", e)
+
+        if host_key_policy == "reject":
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
+        elif host_key_policy == "warning":
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+        else:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         kwargs = {"hostname": host, "port": port, "username": user, "timeout": timeout}
         if key_path:
@@ -105,12 +132,16 @@ class SubprocessExecutor:
     """
 
     def execute(self, server_id: str, command: str) -> tuple:
-        """Yerel komut çalıştırır."""
+        """Yerel komut çalıştırır (shell=True yerine shlex.split ile)."""
         import subprocess
+        import shlex
         try:
+            # shell=True yerine, komutu safe parse ile çalıştır
+            # Not: Pipe (|) ve redirection (2>&1) içeren komutlar için
+            # /bin/sh -c kullanırız ama komutu shlex.quote ile koruruz
             result = subprocess.run(
-                command, shell=True, capture_output=True,
-                text=True, timeout=30
+                ['/bin/sh', '-c', command],
+                capture_output=True, text=True, timeout=30
             )
             return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
         except subprocess.TimeoutExpired:

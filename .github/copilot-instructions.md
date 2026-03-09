@@ -19,6 +19,16 @@ python3 EMARE_ORTAK_CALISMA/emare_messenger.py emarecloud oku
 
 **Bu adımı atlamak yasaktır.** Oturumda bir kez yapılması yeterlidir.
 
+### 🔔 Push Bildirim Kontrolü
+
+Eğer `.github/YENI_MESAJ.md` dosyası varsa, içeriğini oku ve kullanıcıya bildir.
+Bu dosya GitHub Actions tarafından yeni mesaj geldiğinde otomatik oluşturulur.
+
+Mesajı okuduktan sonra dosyayı sil:
+```bash
+rm -f .github/YENI_MESAJ.md && git add -A && git commit -m "docs: mesaj okundu" && git push
+```
+
 ## Oturum Başlangıç Protokolü (İLK FIRSATTA)
 
 Kullanıcı ilk isteğini verdikten sonra, arka planda şu dosyaları oku:

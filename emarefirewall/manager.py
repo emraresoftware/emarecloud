@@ -20,11 +20,135 @@ Paramiko ile Kullanım:
 """
 
 import re
-from datetime import datetime
-from typing import Callable
+import shlex
+from datetime import datetime, timezone
+from typing import Callable, Optional
 
 # Tip: SSH executor fonksiyon imzası
 SSHExecutor = Callable[[str, str], tuple]
+
+# ═══════════════════ GÜVENLİK: Input Validation ═══════════════════
+
+# İzin verilen port formatları: 80, 443, 8000-9000, 80/tcp
+_VALID_PORT_RE = re.compile(r'^\d{1,5}(-\d{1,5})?(/(?:tcp|udp))?$')
+# İzin verilen IP formatları: IPv4, IPv4/CIDR
+_VALID_IP_RE = re.compile(
+    r'^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}'
+    r'(?:25[0-5]|2[0-4]\d|[01]?\d\d?)'
+    r'(?:/(?:[12]?\d|3[0-2]))?$'
+)
+# İzin verilen servis adları: sadece harf, rakam, tire
+_VALID_SERVICE_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')
+# İzin verilen zone adları
+_VALID_ZONE_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')
+# İzin verilen protokoller
+_VALID_PROTOCOLS = {'tcp', 'udp', 'tcp/udp'}
+# İzin verilen ufw action'ları
+_VALID_ACTIONS = {'allow', 'deny', 'reject', 'limit'}
+# İzin verilen ülke kodları (2 büyük harf)
+_VALID_COUNTRY_RE = re.compile(r'^[A-Z]{2}$')
+# İzin verilen jail adları
+_VALID_JAIL_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')
+
+
+def _validate_port(port: str) -> str:
+    """Port değerini doğrular. Geçersizse ValueError fırlatır."""
+    port = (port or '').strip()
+    if not port:
+        raise ValueError('Port belirtin.')
+    # Birden fazla port virgülle ayrılabilir
+    for p in port.split(','):
+        p = p.strip()
+        if not _VALID_PORT_RE.match(p):
+            raise ValueError(f'Geçersiz port formatı: {p}')
+        # Port numarası aralık kontrolü
+        nums = re.findall(r'\d+', p)
+        for n in nums:
+            if int(n) < 1 or int(n) > 65535:
+                raise ValueError(f'Port 1-65535 arasında olmalı: {n}')
+    return port
+
+
+def _validate_ip(ip: str) -> str:
+    """IP adresini doğrular. Geçersizse ValueError fırlatır."""
+    ip = (ip or '').strip()
+    if not ip:
+        raise ValueError('IP adresi belirtin.')
+    if not _VALID_IP_RE.match(ip):
+        raise ValueError(f'Geçersiz IP formatı: {ip}')
+    return ip
+
+
+def _validate_service(service: str) -> str:
+    """Servis adını doğrular."""
+    service = (service or '').strip()
+    if not service:
+        raise ValueError('Servis adı belirtin.')
+    if not _VALID_SERVICE_RE.match(service):
+        raise ValueError(f'Geçersiz servis adı: {service}')
+    return service
+
+
+def _validate_protocol(proto: str) -> str:
+    """Protokolü doğrular."""
+    proto = (proto or 'tcp').strip().lower()
+    if proto not in _VALID_PROTOCOLS:
+        raise ValueError(f'Geçersiz protokol: {proto}. İzin verilenler: {_VALID_PROTOCOLS}')
+    return proto
+
+
+def _validate_action(action: str) -> str:
+    """UFW action'ı doğrular."""
+    action = (action or 'allow').strip().lower()
+    if action not in _VALID_ACTIONS:
+        raise ValueError(f'Geçersiz işlem: {action}. İzin verilenler: {_VALID_ACTIONS}')
+    return action
+
+
+def _validate_zone(zone: str) -> str:
+    """Zone adını doğrular."""
+    zone = (zone or '').strip()
+    if not zone:
+        raise ValueError('Zone adı belirtin.')
+    if not _VALID_ZONE_RE.match(zone):
+        raise ValueError(f'Geçersiz zone adı: {zone}')
+    return zone
+
+
+def _validate_country(cc: str) -> str:
+    """Ülke kodunu doğrular."""
+    cc = (cc or '').strip().upper()
+    if not cc or not _VALID_COUNTRY_RE.match(cc):
+        raise ValueError('Geçerli 2 harfli ülke kodu girin (örn: CN, RU).')
+    return cc
+
+
+def _validate_jail(jail: str) -> str:
+    """Fail2ban jail adını doğrular."""
+    jail = (jail or '').strip()
+    if not jail:
+        raise ValueError('Jail adı belirtin.')
+    if not _VALID_JAIL_RE.match(jail):
+        raise ValueError(f'Geçersiz jail adı: {jail}')
+    return jail
+
+
+def _validate_rich_rule(rule: str) -> str:
+    """Rich rule sözdizimini temel düzeyde doğrular."""
+    rule = (rule or '').strip()
+    if not rule:
+        raise ValueError('Kural belirtin.')
+    # Shell-tehlikeli karakterleri engelle
+    dangerous = [';', '&&', '||', '`', '$(',  '${', '>', '<', '|', '\n', '\r']
+    for d in dangerous:
+        if d in rule:
+            raise ValueError(f'Kuraldaki güvenlik dışı karakter: {d}')
+    return rule
+
+
+def _sq(value: str) -> str:
+    """Shell-safe quoting (shlex.quote wrapper)."""
+    return shlex.quote(value)
 
 
 class FirewallManager:
@@ -39,19 +163,25 @@ class FirewallManager:
             ssh_executor: (server_id, command) -> (ok: bool, stdout: str, stderr: str)
         """
         self._exec_fn = ssh_executor
+        self._type_cache = {}  # server_id -> fw_type cache
 
     def _exec(self, server_id: str, command: str) -> tuple:
         """SSH ile komut çalıştır."""
         return self._exec_fn(server_id, command)
 
-    def _detect_type(self, server_id: str) -> str | None:
-        """Firewall tipini tespit et: 'ufw' | 'firewalld' | None"""
+    def _detect_type(self, server_id: str, force: bool = False) -> Optional[str]:
+        """Firewall tipini tespit et: 'ufw' | 'firewalld' | None (cache'li)"""
+        if not force and server_id in self._type_cache:
+            return self._type_cache[server_id]
         ok, out, _ = self._exec(server_id, "which ufw 2>/dev/null")
         if ok and out and "ufw" in out:
+            self._type_cache[server_id] = "ufw"
             return "ufw"
         ok, out, _ = self._exec(server_id, "which firewall-cmd 2>/dev/null")
         if ok and out and "firewall-cmd" in out:
+            self._type_cache[server_id] = "firewalld"
             return "firewalld"
+        self._type_cache[server_id] = None
         return None
 
     # ═══════════════════ DURUM ═══════════════════
@@ -218,14 +348,19 @@ class FirewallManager:
         fw = self._detect_type(server_id)
         if not fw:
             return False, "Desteklenen güvenlik duvarı bulunamadı."
-        port = (port or "").strip()
-        if not port:
-            return False, "Port belirtin."
+        try:
+            port = _validate_port(port)
+            protocol = _validate_protocol(protocol)
+            action = _validate_action(action)
+            if from_ip and from_ip.strip():
+                from_ip = _validate_ip(from_ip)
+        except ValueError as e:
+            return False, str(e)
 
         if fw == "ufw":
             spec = port if "/" in port else f"{port}/{protocol}"
-            from_part = f" from {from_ip.strip()}" if from_ip and from_ip.strip() else ""
-            ok, out, err = self._exec(server_id, f"sudo ufw {action} {spec}{from_part} 2>&1")
+            from_part = f" from {_sq(from_ip)}" if from_ip and from_ip.strip() else ""
+            ok, out, err = self._exec(server_id, f"sudo ufw {_sq(action)} {_sq(spec)}{from_part} 2>&1")
             msg = (out + " " + err).strip()
             if ok or "existing" in msg.lower() or "added" in msg.lower():
                 return True, msg or "Kural eklendi."
@@ -234,7 +369,7 @@ class FirewallManager:
         if fw == "firewalld":
             pp = port if "/" in port else f"{port}/{protocol}"
             ok, out, err = self._exec(server_id,
-                f"sudo firewall-cmd --permanent --add-port={pp} 2>&1")
+                f"sudo firewall-cmd --permanent --add-port={_sq(pp)} 2>&1")
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or "Kural eklendi."
@@ -243,16 +378,17 @@ class FirewallManager:
     def add_service(self, server_id: str, service: str) -> tuple:
         """Servis kuralı ekler. -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        service = (service or "").strip()
-        if not service:
-            return False, "Servis adı belirtin."
+        try:
+            service = _validate_service(service)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
-            ok, out, err = self._exec(server_id, f"sudo ufw allow {service} 2>&1")
+            ok, out, err = self._exec(server_id, f"sudo ufw allow {_sq(service)} 2>&1")
             msg = (out + " " + err).strip()
             return ok or "added" in msg.lower(), msg or "Servis eklendi."
         if fw == "firewalld":
             ok, out, err = self._exec(server_id,
-                f"sudo firewall-cmd --permanent --add-service={service} 2>&1")
+                f"sudo firewall-cmd --permanent --add-service={_sq(service)} 2>&1")
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or "Servis eklendi."
@@ -261,15 +397,16 @@ class FirewallManager:
     def remove_service(self, server_id: str, service: str) -> tuple:
         """Servis kuralını kaldırır. -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        service = (service or "").strip()
-        if not service:
-            return False, "Servis adı belirtin."
+        try:
+            service = _validate_service(service)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
-            ok, out, err = self._exec(server_id, f"sudo ufw delete allow {service} 2>&1")
+            ok, out, err = self._exec(server_id, f"sudo ufw delete allow {_sq(service)} 2>&1")
             return ok, (out + " " + err).strip() or "Servis kaldırıldı."
         if fw == "firewalld":
             ok, out, err = self._exec(server_id,
-                f"sudo firewall-cmd --permanent --remove-service={service} 2>&1")
+                f"sudo firewall-cmd --permanent --remove-service={_sq(service)} 2>&1")
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or "Servis kaldırıldı."
@@ -277,13 +414,14 @@ class FirewallManager:
 
     def delete_rule(self, server_id: str, rule_index: int) -> tuple:
         """İndeks bazlı kural siler. -> (ok, msg)"""
+        rule_index = int(rule_index)  # Tam sayı garantisi
         status = self.get_status(server_id)
         if not status["type"]:
             return False, status.get("message", "Durum bilinmiyor.")
 
         if status["type"] == "ufw":
             ok, out, err = self._exec(server_id,
-                f"echo 'y' | sudo ufw delete {rule_index} 2>&1")
+                f"echo 'y' | sudo ufw delete {int(rule_index)} 2>&1")
             msg = (out + " " + err).strip()
             return ok or "deleted" in msg.lower(), msg
 
@@ -297,15 +435,15 @@ class FirewallManager:
 
             if rule_type == "port" or "port " in rule_str:
                 pp = rule_str.replace("port", "").strip()
-                cmd = f"sudo firewall-cmd --permanent --remove-port={pp} 2>&1"
+                cmd = f"sudo firewall-cmd --permanent --remove-port={_sq(pp)} 2>&1"
             elif rule_type == "service" or "service " in rule_str:
                 svc = rule_str.replace("service", "").strip()
-                cmd = f"sudo firewall-cmd --permanent --remove-service={svc} 2>&1"
+                cmd = f"sudo firewall-cmd --permanent --remove-service={_sq(svc)} 2>&1"
             elif rule_type == "rich_rule":
-                cmd = f"sudo firewall-cmd --permanent --remove-rich-rule='{rule_str}' 2>&1"
+                cmd = f"sudo firewall-cmd --permanent --remove-rich-rule={_sq(rule_str)} 2>&1"
             elif rule_type == "forward" or "forward " in rule_str:
                 fwd = rule_str.replace("forward", "").strip()
-                cmd = f"sudo firewall-cmd --permanent --remove-forward-port='{fwd}' 2>&1"
+                cmd = f"sudo firewall-cmd --permanent --remove-forward-port={_sq(fwd)} 2>&1"
             else:
                 return False, "Bu kural tipi otomatik silinemez."
 
@@ -320,17 +458,18 @@ class FirewallManager:
     def block_ip(self, server_id: str, ip: str, reason: str = "") -> tuple:
         """IP adresini engeller (drop). -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        ip = (ip or "").strip()
-        if not ip:
-            return False, "IP adresi belirtin."
+        try:
+            ip = _validate_ip(ip)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
-            ok, out, err = self._exec(server_id, f"sudo ufw deny from {ip} 2>&1")
+            ok, out, err = self._exec(server_id, f"sudo ufw deny from {_sq(ip)} 2>&1")
             msg = (out + " " + err).strip()
             return ok or "added" in msg.lower(), msg or f"{ip} engellendi."
         if fw == "firewalld":
             rich = f"rule family='ipv4' source address='{ip}' drop"
             ok, out, err = self._exec(server_id,
-                f'sudo firewall-cmd --permanent --add-rich-rule="{rich}" 2>&1')
+                f'sudo firewall-cmd --permanent --add-rich-rule={_sq(rich)} 2>&1')
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or f"{ip} engellendi."
@@ -339,16 +478,17 @@ class FirewallManager:
     def unblock_ip(self, server_id: str, ip: str) -> tuple:
         """IP engelini kaldırır. -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        ip = (ip or "").strip()
-        if not ip:
-            return False, "IP adresi belirtin."
+        try:
+            ip = _validate_ip(ip)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
-            ok, out, err = self._exec(server_id, f"sudo ufw delete deny from {ip} 2>&1")
+            ok, out, err = self._exec(server_id, f"sudo ufw delete deny from {_sq(ip)} 2>&1")
             return ok, (out + " " + err).strip() or f"{ip} engeli kaldırıldı."
         if fw == "firewalld":
             rich = f"rule family='ipv4' source address='{ip}' drop"
             ok, out, err = self._exec(server_id,
-                f'sudo firewall-cmd --permanent --remove-rich-rule="{rich}" 2>&1')
+                f'sudo firewall-cmd --permanent --remove-rich-rule={_sq(rich)} 2>&1')
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or f"{ip} engeli kaldırıldı."
@@ -382,17 +522,22 @@ class FirewallManager:
                          to_addr: str = "", protocol: str = "tcp") -> tuple:
         """Port yönlendirme ekler. -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        port, to_port = (port or "").strip(), (to_port or "").strip()
-        if not port or not to_port:
-            return False, "Kaynak port ve hedef port belirtin."
+        try:
+            port = _validate_port(port)
+            to_port = _validate_port(to_port)
+            protocol = _validate_protocol(protocol)
+            if to_addr and to_addr.strip():
+                to_addr = _validate_ip(to_addr)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
             return False, "UFW ile port yönlendirme desteklenmiyor. firewalld kullanın."
         if fw == "firewalld":
             to_part = f":toport={to_port}"
             if to_addr and to_addr.strip():
-                to_part += f":toaddr={to_addr.strip()}"
-            cmd = (f"sudo firewall-cmd --permanent "
-                   f"--add-forward-port=port={port}:proto={protocol}{to_part} 2>&1")
+                to_part += f":toaddr={to_addr}"
+            fwd_spec = f"port={port}:proto={protocol}{to_part}"
+            cmd = f"sudo firewall-cmd --permanent --add-forward-port={_sq(fwd_spec)} 2>&1"
             ok, out, err = self._exec(server_id, cmd)
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --permanent --add-masquerade 2>&1")
@@ -406,11 +551,19 @@ class FirewallManager:
         fw = self._detect_type(server_id)
         if fw != "firewalld":
             return False, "Sadece firewalld destekleniyor."
+        try:
+            port = _validate_port(port)
+            to_port = _validate_port(to_port)
+            protocol = _validate_protocol(protocol)
+            if to_addr and to_addr.strip():
+                to_addr = _validate_ip(to_addr)
+        except ValueError as e:
+            return False, str(e)
         to_part = f":toport={to_port}"
         if to_addr and to_addr.strip():
-            to_part += f":toaddr={to_addr.strip()}"
-        cmd = (f"sudo firewall-cmd --permanent "
-               f"--remove-forward-port=port={port}:proto={protocol}{to_part} 2>&1")
+            to_part += f":toaddr={to_addr}"
+        fwd_spec = f"port={port}:proto={protocol}{to_part}"
+        cmd = f"sudo firewall-cmd --permanent --remove-forward-port={_sq(fwd_spec)} 2>&1"
         ok, out, err = self._exec(server_id, cmd)
         if ok:
             self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
@@ -443,11 +596,12 @@ class FirewallManager:
         fw = self._detect_type(server_id)
         if fw != "firewalld":
             return False, "Zone yönetimi sadece firewalld'de desteklenir."
-        zone = (zone or "").strip()
-        if not zone:
-            return False, "Zone adı belirtin."
+        try:
+            zone = _validate_zone(zone)
+        except ValueError as e:
+            return False, str(e)
         ok, out, err = self._exec(server_id,
-            f"sudo firewall-cmd --set-default-zone={zone} 2>&1")
+            f"sudo firewall-cmd --set-default-zone={_sq(zone)} 2>&1")
         return ok, (out + " " + err).strip() or f"Varsayılan zone: {zone}"
 
     def get_zone_detail(self, server_id: str, zone: str) -> dict:
@@ -455,8 +609,12 @@ class FirewallManager:
         fw = self._detect_type(server_id)
         if fw != "firewalld":
             return {"error": "Sadece firewalld desteklenir."}
+        try:
+            zone = _validate_zone(zone)
+        except ValueError:
+            return {"error": "Geçersiz zone adı."}
         ok, out, _ = self._exec(server_id,
-            f"firewall-cmd --zone={zone} --list-all 2>/dev/null")
+            f"firewall-cmd --zone={_sq(zone)} --list-all 2>/dev/null")
         if not ok or not out:
             return {"error": f"Zone '{zone}' bilgisi alınamadı."}
         detail = {"zone": zone, "services": [], "ports": [], "rich_rules": [],
@@ -486,14 +644,15 @@ class FirewallManager:
     def add_rich_rule(self, server_id: str, rule: str) -> tuple:
         """Rich rule ekler (firewalld). -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        rule = (rule or "").strip()
-        if not rule:
-            return False, "Kural belirtin."
+        try:
+            rule = _validate_rich_rule(rule)
+        except ValueError as e:
+            return False, str(e)
         if fw == "ufw":
             return False, "Rich rule sadece firewalld'de desteklenir."
         if fw == "firewalld":
             ok, out, err = self._exec(server_id,
-                f"sudo firewall-cmd --permanent --add-rich-rule='{rule}' 2>&1")
+                f"sudo firewall-cmd --permanent --add-rich-rule={_sq(rule)} 2>&1")
             if ok:
                 self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
             return ok, (out + " " + err).strip() or "Rich rule eklendi."
@@ -504,11 +663,12 @@ class FirewallManager:
         fw = self._detect_type(server_id)
         if fw != "firewalld":
             return False, "Rich rule sadece firewalld'de desteklenir."
-        rule = (rule or "").strip()
-        if not rule:
-            return False, "Kural belirtin."
+        try:
+            rule = _validate_rich_rule(rule)
+        except ValueError as e:
+            return False, str(e)
         ok, out, err = self._exec(server_id,
-            f"sudo firewall-cmd --permanent --remove-rich-rule='{rule}' 2>&1")
+            f"sudo firewall-cmd --permanent --remove-rich-rule={_sq(rule)} 2>&1")
         if ok:
             self._exec(server_id, "sudo firewall-cmd --reload 2>&1")
         return ok, (out + " " + err).strip() or "Rich rule kaldırıldı."
@@ -531,8 +691,9 @@ class FirewallManager:
             if m:
                 result["jails"] = [j.strip() for j in m.group(1).split(",") if j.strip()]
         for jail in result["jails"]:
+            safe_jail = _sq(jail)
             ok, out, _ = self._exec(server_id,
-                f"sudo fail2ban-client status {jail} 2>/dev/null")
+                f"sudo fail2ban-client status {safe_jail} 2>/dev/null")
             if ok and out:
                 info = {"currently_banned": 0, "total_banned": 0, "banned_list": []}
                 m1 = re.search(r"Currently banned:\s+(\d+)", out)
@@ -546,26 +707,31 @@ class FirewallManager:
 
     def fail2ban_ban(self, server_id: str, jail: str, ip: str) -> tuple:
         """Fail2ban ile IP ban eder. -> (ok, msg)"""
-        ip, jail = (ip or "").strip(), (jail or "").strip()
-        if not ip or not jail:
-            return False, "Jail ve IP belirtin."
+        try:
+            ip = _validate_ip(ip)
+            jail = _validate_jail(jail)
+        except ValueError as e:
+            return False, str(e)
         ok, out, err = self._exec(server_id,
-            f"sudo fail2ban-client set {jail} banip {ip} 2>&1")
+            f"sudo fail2ban-client set {_sq(jail)} banip {_sq(ip)} 2>&1")
         return ok, (out + " " + err).strip() or f"{ip} ban edildi."
 
     def fail2ban_unban(self, server_id: str, jail: str, ip: str) -> tuple:
         """Fail2ban'dan IP unban eder. -> (ok, msg)"""
-        ip, jail = (ip or "").strip(), (jail or "").strip()
-        if not ip or not jail:
-            return False, "Jail ve IP belirtin."
+        try:
+            ip = _validate_ip(ip)
+            jail = _validate_jail(jail)
+        except ValueError as e:
+            return False, str(e)
         ok, out, err = self._exec(server_id,
-            f"sudo fail2ban-client set {jail} unbanip {ip} 2>&1")
+            f"sudo fail2ban-client set {_sq(jail)} unbanip {_sq(ip)} 2>&1")
         return ok, (out + " " + err).strip() or f"{ip} unban edildi."
 
     # ═══════════════════ BAĞLANTI İZLEME ═══════════════════
 
     def get_connections(self, server_id: str, limit: int = 50) -> list:
         """Aktif ağ bağlantılarını listeler."""
+        limit = max(1, min(int(limit), 500))  # 1-500 arasında sınırla
         connections = []
         ok, out, _ = self._exec(server_id, f"ss -tunap 2>/dev/null | head -{limit + 1}")
         if not ok or not out:
@@ -621,7 +787,7 @@ class FirewallManager:
 
     def security_scan(self, server_id: str) -> dict:
         """Temel güvenlik taraması yapar."""
-        scan = {"timestamp": datetime.utcnow().isoformat(),
+        scan = {"timestamp": datetime.now(timezone.utc).isoformat(),
                 "score": 100, "findings": [], "recommendations": []}
 
         # 1. Firewall aktif mi?
@@ -703,21 +869,23 @@ class FirewallManager:
     def geo_block_country(self, server_id: str, country_code: str) -> tuple:
         """Ülke bazlı engelleme (ipset + firewalld). -> (ok, msg)"""
         fw = self._detect_type(server_id)
-        cc = (country_code or "").strip().upper()
-        if not cc or len(cc) != 2:
-            return False, "Geçerli 2 harfli ülke kodu girin (örn: CN, RU)."
+        try:
+            cc = _validate_country(country_code)
+        except ValueError as e:
+            return False, str(e)
         if fw != "firewalld":
             return False, "Geo-block şu an sadece firewalld'de destekleniyor."
+        ipset_name = f"geoblock_{cc}"
+        zone_url = f"https://www.ipdeny.com/ipblocks/data/countries/{cc.lower()}.zone"
         cmds = [
-            f"sudo ipset create geoblock_{cc} hash:net 2>/dev/null || true",
-            f"sudo wget -qO /tmp/{cc}.zone "
-            f"https://www.ipdeny.com/ipblocks/data/countries/{cc.lower()}.zone 2>/dev/null",
+            f"sudo ipset create {_sq(ipset_name)} hash:net 2>/dev/null || true",
+            f"sudo wget -qO /tmp/{_sq(cc)}.zone {_sq(zone_url)} 2>/dev/null",
             f"sudo bash -c 'for ip in $(cat /tmp/{cc}.zone 2>/dev/null); "
-            f"do ipset add geoblock_{cc} $ip 2>/dev/null; done'",
-            f'sudo firewall-cmd --permanent '
-            f'--add-rich-rule="rule source ipset=\'geoblock_{cc}\' drop" 2>&1',
+            f"do ipset add {_sq(ipset_name)} $ip 2>/dev/null; done'",
+            f"sudo firewall-cmd --permanent "
+            f"--add-rich-rule={_sq(f'rule source ipset={ipset_name} drop')} 2>&1",
             "sudo firewall-cmd --reload 2>&1",
         ]
         for cmd in cmds:
             self._exec(server_id, cmd)
-        return True, f"{cc} ülkesi engellendi (ipset: geoblock_{cc})."
+        return True, f"{cc} ülkesi engellendi (ipset: {ipset_name})."
