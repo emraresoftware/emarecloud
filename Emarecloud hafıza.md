@@ -3,9 +3,9 @@
 > 🔗 **Ortak Hafıza:** [`EMARE_ORTAK_HAFIZA.md`](/Users/emre/Desktop/Emare/EMARE_ORTAK_HAFIZA.md) — Tüm Emare ekosistemi, sunucu bilgileri, standartlar ve proje envanteri için bak.
 
 
-> **Son Güncelleme:** 8 Mart 2026  
+> **Son Güncelleme:** 9 Mart 2026  
 > **Versiyon:** v1.1.0 — Multi-Tenant Edition  
-> **Durum:** 37/37 özellik + Multi-Tenant izolasyonu tamamlandı, production'da çalışıyor (185.189.54.107)  
+> **Durum:** 37/37 özellik + Multi-Tenant izolasyonu tamamlandı, production'da çalışıyor (185.189.54.107). Ubuntu Dev sunucu hazır (172.17.0.16).  
 > **Bu dosya yazılımın tüm detaylarını içerir. Nerede kaldığımızı ve ne yaptığımızı unutmamak için referans dosyasıdır.**
 
 ---
@@ -1020,6 +1020,14 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 - [x] **Org bazlı kaynak kotası** — Org kartlarında progress bar (sunucu/üye/depolama/yedek), kota düzenleme modalı, `GET/PUT /api/organizations/<id>/quota` (commit `1721814`)
 - [x] **2FA (TOTP) UI** — Profil sayfasında QR kurulum, 6 haneli kod doğrulama, kurtarma kodları indirme, devre dışı bırakma (commit `ea12813`)
 - [x] **CI/CD pipeline** — GitHub Actions: lint (ruff) + test (pytest 3.10/3.11/3.12) + auto-deploy to 107 (SSH). Pipeline yeşil: run `22831206242` (commit `3d10cf9`)
+- [x] **Ubuntu Dev Sunucu (185.189.54.8 / 172.17.0.16)** — Debootstrap ile Ubuntu 24.04 LTS kurulumu:
+  - XFCE masaüstü ortamı + xRDP (port 3389)
+  - VS Code 1.110.1
+  - Python 3.12.3 + Node.js 18 + Docker 28.2.2 + Git 2.43
+  - RDP erişimi: 185.189.54.107:3389 → 172.17.0.16:3389 (port forward)
+  - SSH erişimi: `ssh -J root@185.189.54.107 root@172.17.0.16`
+  - emarecloud + emareapi clone edildi (~emre/Desktop/Emare/)
+  - Internet: Squid proxy 172.17.0.15:3128 üzerinden (9 Mart 2026)
 
 ### 🟢 Orta Vadeli
 7. [ ] **PostgreSQL'e geçiş** — SQLite → PostgreSQL (production DB ölçekleme)
@@ -1047,6 +1055,29 @@ Normal Kullanıcı: sadece kendi org_id'sine ait verileri görür
 ---
 
 ## 20. Diğer Sunucular & Altyapı
+
+### Emare Dev Sunucu (185.189.54.8 / 172.17.0.16 — emare-dev)
+| Özellik | Değer |
+|---------|-------|
+| Hostname | emare-dev |
+| Dış IP | 185.189.54.8 (portlar kapalı, 107 üzerinden erişim) |
+| İç IP | 172.17.0.16/24 |
+| OS | Ubuntu 24.04.4 LTS (Noble Numbat) |
+| Kernel | 6.8.0-101-generic |
+| CPU | Intel Xeon Gold 6242 @ 2.80GHz, 8 vCPU |
+| RAM | 16 GB |
+| Disk | 49GB ext4 (/dev/sda4), 44GB boş |
+| Masaüstü | XFCE4 + xRDP (port 3389) |
+| VS Code | 1.110.1 |
+| Python | 3.12.3 |
+| Node | 18.19.1 + NPM 9.2.0 |
+| Docker | 28.2.2 |
+| Git | 2.43.0 |
+| İnternet | Squid proxy → 172.17.0.15:3128 |
+| SSH | `ssh -J root@185.189.54.107 root@172.17.0.16` |
+| RDP | 185.189.54.107:3389 → 172.17.0.16:3389 |
+| Kullanıcı | emre (sudo, docker grubu), şifre: `As5327804227..` |
+| Repolar | ~/Desktop/Emare/emarecloud, ~/Desktop/Emare/emareapi |
 
 ### NAT Firewall Yapısı (77.92.152.3)
 ```
