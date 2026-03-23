@@ -1,11 +1,11 @@
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "emarefirewall"
-version = "1.0.0"
-description = "Bağımsız güvenlik duvarı yönetim paketi — UFW & firewalld & fail2ban"
+name = "emare-security-os"
+version = "1.13.0"
+description = "Birleşik güvenlik platformu — Firewall, L7 Koruma, Ağ Analizi, RMM, ITSM, 5651 Uyumluluk"
 readme = "README.md"
 license = {text = "Emare Collective License"}
 authors = [{name = "Emare Collective"}]
@@ -20,9 +20,11 @@ dependencies = []
 [project.optional-dependencies]
 ssh = ["paramiko>=2.12.0"]
 web = ["flask>=2.3.0"]
-all = ["paramiko>=2.12.0", "flask>=2.3.0"]
+isp = ["redis>=4.5.0", "psycopg2-binary>=2.9.0", "gunicorn>=21.2.0", "gevent>=23.9.0"]
+all = ["paramiko>=2.12.0", "flask>=2.3.0", "redis>=4.5.0", "psycopg2-binary>=2.9.0", "gunicorn>=21.2.0", "gevent>=23.9.0"]
 
 [project.scripts]
+emare-security-os = "emarefirewall.cli:main"
 emarefirewall = "emarefirewall.cli:main"
 
 [tool.setuptools.packages.find]

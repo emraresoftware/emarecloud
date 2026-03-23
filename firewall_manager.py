@@ -10,12 +10,10 @@ Bağımsız kullanım için: from emarefirewall import FirewallManager
 
 from typing import Any
 
-from emarefirewall.manager import FirewallManager
-
-
-def _make_fw(ssh_mgr) -> FirewallManager:
-    """ssh_mgr nesnesinden FirewallManager oluşturur."""
-    return FirewallManager(ssh_executor=lambda sid, cmd: ssh_mgr.execute_command(sid, cmd))
+try:
+    from emarefirewall.manager import FirewallManager as _FirewallManager
+except ImportError:
+    _FirewallManager = None
 
 
 def get_status(ssh_mgr, server_id: str) -> dict:

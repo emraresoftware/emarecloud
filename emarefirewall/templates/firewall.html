@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EmareFirewall — Güvenlik Duvarı Yönetimi</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Emare Security OS — Birleşik Güvenlik Platformu</title>
+    <link rel="stylesheet" href="/static/css/all.min.css">
+    <script src="/static/js/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #0f172a; --bg-card: #1e293b; --bg-input: #334155;
@@ -13,16 +14,54 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-               background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+               background: var(--bg); color: var(--text); line-height: 1.5; }
         a { color: #3b82f6; text-decoration: none; }
 
-        /* ─────────── EmareFirewall — Ana Layout ─────────── */
+        /* ─────────── Emare Security OS — Sidebar Layout ─────────── */
+        .fw-layout{display:flex;min-height:100vh}
+
+        /* Sidebar */
+        .fw-sidebar{width:260px;background:var(--bg-card);border-right:1px solid var(--border-color);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s}
+        .fw-sidebar-header{padding:18px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px}
+        .fw-sidebar-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0}
+        .fw-sidebar-brand{font-size:15px;font-weight:800;white-space:nowrap}
+        .fw-sidebar-brand small{display:block;font-size:10px;font-weight:400;color:var(--text-secondary)}
+        .fw-sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+        .fw-sidebar-nav::-webkit-scrollbar{width:4px}
+        .fw-sidebar-nav::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:4px}
+        .fw-nav-group{margin-bottom:4px}
+        .fw-nav-group-title{padding:8px 20px 4px;font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+        .fw-nav-group-title:hover{color:var(--text)}
+        .fw-nav-group-title .chevron{font-size:9px;transition:transform .2s}
+        .fw-nav-group-title.collapsed .chevron{transform:rotate(-90deg)}
+        .fw-nav-group-items{overflow:hidden;transition:max-height .25s ease}
+        .fw-nav-group-title.collapsed + .fw-nav-group-items{max-height:0 !important}
+        .fw-nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px 8px 24px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:.15s;border-left:3px solid transparent;white-space:nowrap}
+        .fw-nav-item:hover{color:var(--text);background:rgba(239,68,68,.04)}
+        .fw-nav-item.active{color:#ef4444;background:rgba(239,68,68,.06);border-left-color:#ef4444;font-weight:700}
+        .fw-nav-item i{width:18px;text-align:center;font-size:13px;opacity:.7}
+        .fw-nav-item.active i{opacity:1}
+
+        /* Sidebar footer — server select */
+        .fw-sidebar-footer{padding:14px 16px;border-top:1px solid var(--border-color)}
+        .fw-sidebar-footer select{width:100%;padding:8px 10px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text);font-size:12px;font-weight:600}
+
+        /* Mobile sidebar toggle */
+        .fw-sidebar-toggle{display:none;position:fixed;top:12px;left:12px;z-index:200;width:40px;height:40px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text);font-size:18px;cursor:pointer;align-items:center;justify-content:center}
+        .fw-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
+
+        /* Main content */
+        .fw-main{flex:1;margin-left:260px;padding:20px 28px;min-width:0}
+
+        @media(max-width:900px){
+            .fw-sidebar{transform:translateX(-100%)}
+            .fw-sidebar.open{transform:translateX(0)}
+            .fw-sidebar-toggle{display:flex}
+            .fw-sidebar.open ~ .fw-sidebar-overlay{display:block}
+            .fw-main{margin-left:0;padding:16px}
+        }
+
         .fw-container{max-width:1200px;margin:0 auto}
-        .fw-hero{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.06));border:1px solid var(--border-color);border-radius:20px;padding:24px 28px;margin-bottom:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-        .fw-hero-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#ef4444,#f97316);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;flex-shrink:0}
-        .fw-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
-        .fw-hero p{margin:0;color:var(--text-secondary);font-size:13px}
-        .fw-hero-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
         .fw-server-select{padding:8px 14px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-input);color:var(--text);font-size:13px;font-weight:600;min-width:180px}
         .fw-status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
         .fw-status-pill.active{background:rgba(34,197,94,.12);color:#22c55e}
@@ -32,11 +71,7 @@
         .fw-stat:hover{border-color:var(--primary);transform:translateY(-2px)}
         .fw-stat-val{font-size:28px;font-weight:800;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
         .fw-stat-lbl{font-size:11px;color:var(--text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
-        .fw-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
-        .fw-tab{padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary);display:flex;align-items:center;gap:6px}
-        .fw-tab:hover{border-color:#ef4444;color:#ef4444}
-        .fw-tab.active{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border-color:transparent}
-        .fw-panel{display:none;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px}
+        .fw-panel{display:none;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:24px;margin-bottom:20px}
         .fw-panel.active{display:block}
         .fw-panel h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
         .fw-table{width:100%;border-collapse:collapse}
@@ -63,8 +98,8 @@
         .fw-form-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end}
         .fw-form-group{display:flex;flex-direction:column;gap:4px}
         .fw-form-group label{font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
-        .fw-form-group input,.fw-form-group select{padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text);min-width:120px}
-        .fw-form-group input:focus,.fw-form-group select:focus{outline:none;border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08)}
+        .fw-form-group input,.fw-form-group select,.fw-form-group textarea{padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text);min-width:120px}
+        .fw-form-group input:focus,.fw-form-group select:focus,.fw-form-group textarea:focus{outline:none;border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08)}
         .fw-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
         .fw-search{padding:8px 14px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text);min-width:200px}
         .fw-score-ring{width:100px;height:100px;position:relative;margin:0 auto 10px}
@@ -107,28 +142,172 @@
         .fw-toast.show{transform:translateY(0);opacity:1}
         .fw-toast.success{background:#22c55e;color:#fff}
         .fw-toast.error{background:#ef4444;color:#fff}
+
+        /* ─────────── Dashboard Charts ─────────── */
+        .fw-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px;margin-bottom:20px}
+        .fw-chart-card{background:linear-gradient(135deg,var(--bg-input) 0%,rgba(30,41,59,.7) 100%);border:1px solid rgba(148,163,184,.12);border-radius:16px;padding:20px;position:relative;transition:transform .2s,box-shadow .2s;overflow:hidden}
+        .fw-chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+        .fw-chart-card:nth-child(1)::before{background:linear-gradient(90deg,#ef4444,#f97316)}
+        .fw-chart-card:nth-child(2)::before{background:linear-gradient(90deg,#3b82f6,#06b6d4)}
+        .fw-chart-card:nth-child(3)::before{background:linear-gradient(90deg,#8b5cf6,#a855f7)}
+        .fw-chart-card:nth-child(4)::before{background:linear-gradient(90deg,#f97316,#eab308)}
+        .fw-chart-card:nth-child(5)::before{background:linear-gradient(90deg,#a855f7,#ec4899)}
+        .fw-chart-card:nth-child(6)::before{background:linear-gradient(90deg,#22c55e,#06b6d4)}
+        .fw-chart-card:nth-child(7)::before{background:linear-gradient(90deg,#f97316,#ef4444)}
+        .fw-chart-card:nth-child(8)::before{background:linear-gradient(90deg,#3b82f6,#8b5cf6)}
+        .fw-chart-card:nth-child(9)::before{background:linear-gradient(90deg,#a855f7,#3b82f6)}
+        .fw-chart-card:nth-child(10)::before{background:linear-gradient(90deg,#ef4444,#eab308)}
+        .fw-chart-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.25)}
+        .fw-chart-card canvas{max-height:200px}
+        .fw-chart-card h4{margin:0 0 14px;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:8px}
+        .fw-chart-card h4 .fw-chart-icon{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+        .fw-dash-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+        .fw-kpi{background:linear-gradient(135deg,var(--bg-input) 0%,rgba(30,41,59,.7) 100%);border:1px solid rgba(148,163,184,.12);border-radius:14px;padding:18px 16px;text-align:center;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+        .fw-kpi:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.2)}
+        .fw-kpi::before{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+        .fw-kpi:nth-child(1)::before{background:linear-gradient(90deg,#ef4444,#f97316)}
+        .fw-kpi:nth-child(2)::before{background:#ef4444}
+        .fw-kpi:nth-child(3)::before{background:#f97316}
+        .fw-kpi:nth-child(4)::before{background:#eab308}
+        .fw-kpi:nth-child(5)::before{background:#3b82f6}
+        .fw-kpi:nth-child(6)::before{background:#22c55e}
+        .fw-kpi .ico{font-size:22px;margin-bottom:6px;opacity:.7}
+        .fw-kpi .val{font-size:30px;font-weight:800;margin-bottom:2px;background:linear-gradient(135deg,var(--text) 30%,var(--text-secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .fw-kpi .lbl{font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+        .fw-chart-full{grid-column:1 / -1}
+
+        /* ─────────── Log Viewer ─────────── */
+        .fw-log-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+        .fw-log-stat{background:var(--bg-input);border-radius:10px;padding:12px;text-align:center}
+        .fw-log-stat .val{font-size:22px;font-weight:800}
+        .fw-log-stat .lbl{font-size:10px;color:var(--text-secondary);text-transform:uppercase}
+
+        /* ─────────── ISP Management ─────────── */
+        .fw-isp-nav{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+        .fw-isp-nav-btn{padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);transition:.2s}
+        .fw-isp-nav-btn:hover{border-color:#ef4444;color:#ef4444}
+        .fw-isp-nav-btn.active{background:#ef4444;color:#fff;border-color:transparent}
+        .fw-isp-section{display:none}
+        .fw-isp-section.active{display:block}
+
+        /* ─────────── 5651 Compliance ─────────── */
+        .fw-5651-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+        .fw-5651-card{background:var(--bg-input);border-radius:10px;padding:14px;text-align:center}
+        .fw-5651-card .val{font-size:24px;font-weight:800}
+        .fw-5651-card .lbl{font-size:10px;color:var(--text-secondary);text-transform:uppercase;margin-top:2px}
+
+        /* ─────────── Network Management ─────────── */
+        .fw-net-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:16px}
+        .fw-net-card{background:var(--bg-input);border:1px solid var(--border-color);border-radius:14px;padding:18px;cursor:pointer;transition:.2s}
+        .fw-net-card:hover{border-color:#ef4444;transform:translateY(-2px)}
+        .fw-net-card h4{margin:0 0 6px;font-size:15px;font-weight:700}
+        .fw-net-card .desc{font-size:12px;color:var(--text-secondary);margin-bottom:8px}
+        .fw-net-card .meta{display:flex;gap:12px;font-size:11px;color:var(--text-secondary)}
+        .fw-net-detail{background:var(--bg-input);border-radius:14px;padding:20px;margin-bottom:16px}
+        .fw-net-members{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+        .fw-net-member{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(59,130,246,.08);border-radius:8px;font-size:12px;font-weight:600}
     </style>
 </head>
 <body>
-<div class="fw-container">
-    <!-- Hero -->
-    <div class="fw-hero">
-        <div class="fw-hero-icon"><i class="fas fa-shield-halved"></i></div>
-        <div>
-            <h2>🔥 EmareFirewall</h2>
-            <p>Güvenlik duvarı kuralları, IP engelleme, port yönlendirme, fail2ban ve güvenlik taraması — tek panelden.</p>
+
+<!-- Mobile toggle -->
+<button class="fw-sidebar-toggle" onclick="document.querySelector('.fw-sidebar').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+<div class="fw-sidebar-overlay" onclick="document.querySelector('.fw-sidebar').classList.remove('open')"></div>
+
+<div class="fw-layout">
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside class="fw-sidebar">
+        <div class="fw-sidebar-header">
+            <div class="fw-sidebar-logo"><i class="fas fa-shield-halved"></i></div>
+            <div class="fw-sidebar-brand">Emare Security OS<small>Birleşik Güvenlik Platformu</small></div>
         </div>
-        <div class="fw-hero-right">
-            <select class="fw-server-select" id="fwServerSelect" onchange="fwSwitchServer()">
-                <option value="">— Sunucu seçin —</option>
-                <!-- Sunucular JS ile veya server-side ile doldurulabilir -->
+        <nav class="fw-sidebar-nav">
+            <!-- Genel Bakış -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Genel Bakış <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:200px">
+                    <div class="fw-nav-item active" onclick="fwTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</div>
+                </div>
+            </div>
+            <!-- Güvenlik Duvarı -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Güvenlik Duvarı <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('rules')"><i class="fas fa-list"></i> Kurallar</div>
+                    <div class="fw-nav-item" onclick="fwTab('ip-block')"><i class="fas fa-ban"></i> IP Engelle</div>
+                    <div class="fw-nav-item" onclick="fwTab('port-fwd')"><i class="fas fa-right-left"></i> Port Yönlendirme</div>
+                    <div class="fw-nav-item" onclick="fwTab('zones')"><i class="fas fa-layer-group"></i> Zone'lar</div>
+                </div>
+            </div>
+            <!-- Koruma -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Koruma <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('l7')"><i class="fas fa-shield-virus"></i> L7 Koruma</div>
+                    <div class="fw-nav-item" onclick="fwTab('fail2ban')"><i class="fas fa-user-lock"></i> Fail2ban</div>
+                    <div class="fw-nav-item" onclick="fwTab('security')"><i class="fas fa-radar"></i> Güvenlik Taraması</div>
+                </div>
+            </div>
+            <!-- Ağ -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Ağ <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('connections')"><i class="fas fa-network-wired"></i> Bağlantılar</div>
+                    <div class="fw-nav-item" onclick="fwTab('network-analyser')"><i class="fas fa-magnifying-glass-chart"></i> Ağ Analizi</div>
+                    <div class="fw-nav-item" onclick="fwTab('networks')"><i class="fas fa-diagram-project"></i> Ağ Yönetimi</div>
+                </div>
+            </div>
+            <!-- Kayıtlar -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Kayıtlar <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('logs')"><i class="fas fa-scroll"></i> Loglar</div>
+                    <div class="fw-nav-item" onclick="fwTab('law5651')"><i class="fas fa-gavel"></i> 5651</div>
+                </div>
+            </div>
+            <!-- Yedekleme -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Yedekleme <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:200px">
+                    <div class="fw-nav-item" onclick="fwTab('backup')"><i class="fas fa-database"></i> Yedekleme</div>
+                </div>
+            </div>
+            <!-- Yönetim -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">Yönetim <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('isp')"><i class="fas fa-building"></i> ISP Yönetimi</div>
+                    <div class="fw-nav-item" onclick="fwTab('rmm')"><i class="fas fa-desktop"></i> RMM</div>
+                    <div class="fw-nav-item" onclick="fwTab('itsm')"><i class="fas fa-ticket"></i> ITSM</div>
+                </div>
+            </div>
+            <!-- SIEM -->
+            <div class="fw-nav-group">
+                <div class="fw-nav-group-title" onclick="this.classList.toggle('collapsed')">SIEM <i class="fas fa-chevron-down chevron"></i></div>
+                <div class="fw-nav-group-items" style="max-height:400px">
+                    <div class="fw-nav-item" onclick="fwTab('threat-intel')"><i class="fas fa-skull-crossbones"></i> Tehdit İstihbaratı</div>
+                    <div class="fw-nav-item" onclick="fwTab('correlation')"><i class="fas fa-project-diagram"></i> Korelasyon</div>
+                    <div class="fw-nav-item" onclick="fwTab('mitre')"><i class="fas fa-crosshairs"></i> MITRE ATT&CK</div>
+                    <div class="fw-nav-item" onclick="fwTab('risk')"><i class="fas fa-exclamation-triangle"></i> Risk Puanı</div>
+                </div>
+            </div>
+        </nav>
+        <div class="fw-sidebar-footer">
+            <select class="fw-server-select" id="fwServerSelect" onchange="fwSwitchServer()" style="width:100%">
+                <option value="emare-os" selected>Emare OS</option>
             </select>
-            <span class="fw-status-pill inactive" id="fwStatusPill">
-                <i class="fas fa-circle" style="font-size:8px"></i>
-                <span id="fwStatusText">Bekleniyor</span>
-            </span>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;justify-content:center">
+                <span class="fw-status-pill inactive" id="fwStatusPill" style="font-size:11px">
+                    <i class="fas fa-circle" style="font-size:7px"></i>
+                    <span id="fwStatusText">Bekleniyor</span>
+                </span>
+            </div>
         </div>
-    </div>
+    </aside>
+
+    <!-- ═══════════ MAIN CONTENT ═══════════ -->
+    <main class="fw-main">
+        <div class="fw-container">
 
     <!-- Stats -->
     <div class="fw-stats" id="fwStats">
@@ -140,19 +319,34 @@
         <div class="fw-stat"><div class="fw-stat-val" id="fwStatScore">-</div><div class="fw-stat-lbl">Güvenlik Skoru</div></div>
     </div>
 
-    <!-- Tabs -->
-    <div class="fw-tabs">
-        <div class="fw-tab active" onclick="fwTab('rules')"><i class="fas fa-list"></i> Kurallar</div>
-        <div class="fw-tab" onclick="fwTab('ip-block')"><i class="fas fa-ban"></i> IP Engelle</div>
-        <div class="fw-tab" onclick="fwTab('port-fwd')"><i class="fas fa-right-left"></i> Port Yönlendirme</div>
-        <div class="fw-tab" onclick="fwTab('zones')"><i class="fas fa-layer-group"></i> Zone'lar</div>
-        <div class="fw-tab" onclick="fwTab('fail2ban')"><i class="fas fa-user-lock"></i> Fail2ban</div>
-        <div class="fw-tab" onclick="fwTab('connections')"><i class="fas fa-network-wired"></i> Bağlantılar</div>
-        <div class="fw-tab" onclick="fwTab('security')"><i class="fas fa-radar"></i> Güvenlik Taraması</div>
+    <!-- ═══════════ TAB: Dashboard ═══════════ -->
+    <div class="fw-panel active" id="panel-dashboard">
+        <h3><i class="fas fa-chart-line" style="color:#3b82f6"></i> Dashboard
+            <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                <label style="font-size:11px;color:var(--text-secondary);font-weight:400"><input type="checkbox" id="dashLive" style="margin-right:4px"> Canlı</label>
+                <select id="dashInterval" style="padding:4px 8px;border:1px solid var(--border-color);border-radius:6px;font-size:11px;background:var(--bg-input);color:var(--text)">
+                    <option value="10">10s</option><option value="30" selected>30s</option><option value="60">60s</option>
+                </select>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwDashRefresh()"><i class="fas fa-sync"></i></button>
+            </span>
+        </h3>
+        <div class="fw-dash-kpi" id="dashKpi"></div>
+        <div class="fw-chart-grid">
+            <div class="fw-chart-card fw-chart-full"><h4><span class="fw-chart-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-chart-area"></i></span> Gerçek Zamanlı Trafik</h4><canvas id="chartTraffic" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="fas fa-circle-half-stroke"></i></span> HTTP Metotları</h4><canvas id="chartMethods" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(139,92,246,.15);color:#8b5cf6"><i class="fas fa-chart-bar"></i></span> Durum Kodları</h4><canvas id="chartStatus" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(249,115,22,.15);color:#f97316"><i class="fas fa-crosshairs"></i></span> Önem Seviyesi</h4><canvas id="chartSeverity" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(168,85,247,.15);color:#a855f7"><i class="fas fa-shield-halved"></i></span> L7 Koruma Dağılımı</h4><canvas id="chartL7" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(34,197,94,.15);color:#22c55e"><i class="fas fa-clock"></i></span> Saatlik Trafik</h4><canvas id="chartHourly" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(249,115,22,.15);color:#f97316"><i class="fas fa-ranking-star"></i></span> En Aktif IP'ler</h4><canvas id="chartTopIps" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="fas fa-folder-open"></i></span> En Çok İstenen Yollar</h4><canvas id="chartTopPaths" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(168,85,247,.15);color:#a855f7"><i class="fas fa-layer-group"></i></span> Kategoriler</h4><canvas id="chartCategories" height="200"></canvas></div>
+            <div class="fw-chart-card"><h4><span class="fw-chart-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-triangle-exclamation"></i></span> IP Risk Tablosu</h4><div id="dashIpRisk" style="max-height:260px;overflow-y:auto"></div></div>
+        </div>
     </div>
 
-    <!-- TAB: Kurallar -->
-    <div class="fw-panel active" id="panel-rules">
+    <!-- ═══════════ TAB: Kurallar ═══════════ -->
+    <div class="fw-panel" id="panel-rules">
         <h3><i class="fas fa-list" style="color:#ef4444"></i> Firewall Kuralları</h3>
         <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
             <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ KURAL EKLE</div>
@@ -184,7 +378,7 @@
         <table class="fw-table"><thead><tr><th>#</th><th>Tip</th><th>Kural</th><th>İşlem</th></tr></thead><tbody id="rulesBody"><tr><td colspan="4" class="fw-empty"><i class="fas fa-shield-halved"></i>Sunucu seçin</td></tr></tbody></table>
     </div>
 
-    <!-- TAB: IP Engelleme -->
+    <!-- ═══════════ TAB: IP Engelleme ═══════════ -->
     <div class="fw-panel" id="panel-ip-block">
         <h3><i class="fas fa-ban" style="color:#ef4444"></i> IP Engelleme</h3>
         <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
@@ -196,16 +390,17 @@
         </div>
         <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
             <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">🌍 GEO-BLOCK</div>
-            <div class="fw-form-row" style="margin-bottom:0">
-                <div class="fw-form-group"><label>Ülke</label><select id="geoCountry"><option value="">—</option><option value="CN">🇨🇳 Çin</option><option value="RU">🇷🇺 Rusya</option><option value="KP">🇰🇵 K.Kore</option><option value="IR">🇮🇷 İran</option><option value="BR">🇧🇷 Brezilya</option></select></div>
+            <div class="fw-form-row" style="margin-bottom:8px">
+                <div class="fw-form-group"><label>Ülke</label><select id="geoCountry"><option value="">—</option><option value="CN">🇨🇳 Çin</option><option value="RU">🇷🇺 Rusya</option><option value="KP">🇰🇵 K.Kore</option><option value="IR">🇮🇷 İran</option><option value="BR">🇧🇷 Brezilya</option><option value="IN">🇮🇳 Hindistan</option><option value="VN">🇻🇳 Vietnam</option><option value="PK">🇵🇰 Pakistan</option></select></div>
                 <button class="fw-btn fw-btn-danger" onclick="fwGeoBlock()"><i class="fas fa-earth-americas"></i> Ülkeyi Engelle</button>
             </div>
+            <div id="geoBlockedList" style="margin-top:8px"></div>
         </div>
         <h4 style="font-size:14px;margin:16px 0 10px">Engelli IP'ler</h4>
         <div id="blockedIpsList"><div class="fw-empty"><i class="fas fa-shield-halved"></i>Henüz yok</div></div>
     </div>
 
-    <!-- TAB: Port Yönlendirme -->
+    <!-- ═══════════ TAB: Port Yönlendirme ═══════════ -->
     <div class="fw-panel" id="panel-port-fwd">
         <h3><i class="fas fa-right-left" style="color:#f97316"></i> Port Yönlendirme</h3>
         <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
@@ -220,20 +415,20 @@
         <div id="forwardsList"><div class="fw-empty"><i class="fas fa-right-left"></i>Yönlendirme yok</div></div>
     </div>
 
-    <!-- TAB: Zones -->
+    <!-- ═══════════ TAB: Zones ═══════════ -->
     <div class="fw-panel" id="panel-zones">
         <h3><i class="fas fa-layer-group" style="color:#a855f7"></i> Firewall Zone'ları</h3>
         <div class="fw-zone-grid" id="zonesGrid"><div class="fw-empty" style="grid-column:1/-1"><i class="fas fa-layer-group"></i>Yükleniyor...</div></div>
         <div id="zoneDetail" style="display:none;background:var(--bg-input);border-radius:12px;padding:16px;margin-top:16px"><h4 id="zoneDetailTitle"></h4><div id="zoneDetailContent"></div></div>
     </div>
 
-    <!-- TAB: Fail2ban -->
+    <!-- ═══════════ TAB: Fail2ban ═══════════ -->
     <div class="fw-panel" id="panel-fail2ban">
         <h3><i class="fas fa-user-lock" style="color:#eab308"></i> Fail2ban</h3>
         <div id="fail2banContent"><div class="fw-empty"><i class="fas fa-user-lock"></i>Yükleniyor...</div></div>
     </div>
 
-    <!-- TAB: Bağlantılar -->
+    <!-- ═══════════ TAB: Bağlantılar ═══════════ -->
     <div class="fw-panel" id="panel-connections">
         <h3><i class="fas fa-network-wired" style="color:#3b82f6"></i> Aktif Bağlantılar</h3>
         <div class="fw-conn-grid" id="connStatsGrid"></div>
@@ -241,7 +436,7 @@
         <div style="overflow-x:auto"><table class="fw-table"><thead><tr><th>Proto</th><th>Durum</th><th>Yerel</th><th>Uzak</th><th>Process</th><th>İşlem</th></tr></thead><tbody id="connBody"><tr><td colspan="6" class="fw-empty">Yükleniyor...</td></tr></tbody></table></div>
     </div>
 
-    <!-- TAB: Güvenlik Taraması -->
+    <!-- ═══════════ TAB: Güvenlik Taraması ═══════════ -->
     <div class="fw-panel" id="panel-security">
         <h3><i class="fas fa-shield-halved" style="color:#22c55e"></i> Güvenlik Taraması</h3>
         <div style="text-align:center;margin-bottom:20px"><button class="fw-btn fw-btn-primary" onclick="fwRunScan()" id="btnScan"><i class="fas fa-radar"></i> Taramayı Başlat</button></div>
@@ -256,55 +451,603 @@
             <ul id="scanRecs" style="padding-left:20px;font-size:13px;line-height:1.8"></ul>
         </div>
     </div>
-</div>
+
+    <!-- ═══════════ TAB: L7 Koruma ═══════════ -->
+    <div class="fw-panel" id="panel-l7">
+        <h3><i class="fas fa-shield-virus" style="color:#a855f7"></i> L7 Koruma Motoru</h3>
+        <div class="fw-toolbar">
+            <button class="fw-btn fw-btn-primary" onclick="fwL7Scan()"><i class="fas fa-search"></i> Tehdit Tara</button>
+            <button class="fw-btn fw-btn-success" onclick="fwL7ApplyAll()"><i class="fas fa-shield-halved"></i> Tümünü Koru</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwL7Load()"><i class="fas fa-sync"></i> Yenile</button>
+        </div>
+        <div id="l7Status"><div class="fw-empty"><i class="fas fa-shield-virus"></i>Yükleniyor...</div></div>
+        <div id="l7ScanResult" style="display:none;margin-top:16px;background:var(--bg-input);border-radius:12px;padding:16px"></div>
+    </div>
+
+    <!-- ═══════════ TAB: Yedekleme ═══════════ -->
+    <div class="fw-panel" id="panel-backup">
+        <h3><i class="fas fa-database" style="color:#f97316"></i> Yedekleme / Geri Yükleme</h3>
+        <div class="fw-toolbar">
+            <button class="fw-btn fw-btn-primary" onclick="fwBackupCreate()"><i class="fas fa-plus"></i> Yeni Yedek Al</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwBackupLoad()"><i class="fas fa-sync"></i> Yenile</button>
+        </div>
+        <div id="backupList"><div class="fw-empty"><i class="fas fa-database"></i>Yükleniyor...</div></div>
+    </div>
+
+    <!-- ═══════════ TAB: Ağ Analizi ═══════════ -->
+    <div class="fw-panel" id="panel-network-analyser">
+        <h3><i class="fas fa-magnifying-glass-chart" style="color:#3b82f6"></i> Ağ Analiz Araçları</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+            <button class="fw-btn fw-btn-ghost" onclick="fwNetSummary()"><i class="fas fa-info-circle"></i> Ağ Özeti</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwNetBandwidth()"><i class="fas fa-gauge-high"></i> Bant Genişliği</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwNetListening()"><i class="fas fa-headphones"></i> Dinlenen Portlar</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwNetTopTalkers()"><i class="fas fa-ranking-star"></i> Top Talkers</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwNetSpeedTest()"><i class="fas fa-tachometer-alt"></i> Hız Testi</button>
+        </div>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">🛠️ ARAÇLAR</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Hedef</label><input type="text" id="netTarget" placeholder="8.8.8.8 veya google.com" style="min-width:200px"></div>
+                <div class="fw-form-group"><label>Paket</label><select id="netCount" style="min-width:110px"><option value="4" selected>4 paket</option><option value="10">10 paket</option><option value="50">50 paket</option><option value="100">100 paket</option><option value="500">500 paket</option><option value="0">Sınırsız</option></select></div>
+                <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwNetPing()"><i class="fas fa-satellite-dish"></i> Ping</button>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetTrace()"><i class="fas fa-route"></i> Traceroute</button>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetDns()"><i class="fas fa-globe"></i> DNS</button>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetWhois()"><i class="fas fa-address-card"></i> Whois</button>
+            </div>
+            <div class="fw-form-row" style="margin-bottom:0">
+                <div class="fw-form-group"><label>Port</label><input type="text" id="netPort" placeholder="443" style="min-width:80px"></div>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetPortCheck()"><i class="fas fa-plug"></i> Port Kontrol</button>
+            </div>
+        </div>
+        <div id="netResult" style="display:none;background:var(--bg-input);border-radius:12px;padding:16px"><pre id="netResultPre" style="white-space:pre-wrap;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);max-height:400px;overflow-y:auto"></pre></div>
+    </div>
+
+    <!-- ═══════════ TAB: Loglar ═══════════ -->
+    <div class="fw-panel" id="panel-logs">
+        <h3><i class="fas fa-scroll" style="color:#eab308"></i> Log Görüntüleyici</h3>
+        <div class="fw-log-stats" id="logStats"></div>
+        <div class="fw-toolbar">
+            <select id="logSeverity" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text)">
+                <option value="">Tüm Seviyeler</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option>
+            </select>
+            <select id="logCategory" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text)">
+                <option value="">Tüm Kategoriler</option><option value="firewall">Firewall</option><option value="l7">L7</option><option value="auth">Auth</option><option value="system">System</option>
+            </select>
+            <input class="fw-search" type="text" id="logSearch" placeholder="🔍 Log ara..." style="min-width:160px">
+            <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwLoadLogs()"><i class="fas fa-search"></i> Ara</button>
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwExportLogs()"><i class="fas fa-download"></i> Dışa Aktar</button>
+            <button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwClearLogs()"><i class="fas fa-trash"></i> Temizle</button>
+        </div>
+        <div style="overflow-x:auto"><table class="fw-table"><thead><tr><th>Zaman</th><th>Seviye</th><th>Kategori</th><th>Kaynak IP</th><th>Mesaj</th></tr></thead><tbody id="logBody"><tr><td colspan="5" class="fw-empty">Loglar yükleniyor...</td></tr></tbody></table></div>
+        <div id="logPagination" style="display:flex;justify-content:center;gap:8px;margin-top:12px"></div>
+        <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px"><h4 style="font-size:13px;margin-bottom:10px">🛡️ L7 Özet</h4><div id="logL7Summary">-</div></div>
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px"><h4 style="font-size:13px;margin-bottom:10px">🌐 IP Analizi</h4><div id="logIpAnalysis">-</div></div>
+        </div>
+        <div style="margin-top:16px;background:var(--bg-input);border-radius:12px;padding:16px"><h4 style="font-size:13px;margin-bottom:10px">💾 Veritabanı Bilgisi</h4><div id="logDbInfo">-</div></div>
+    </div>
+
+    <!-- ═══════════ TAB: ISP Yönetimi ═══════════ -->
+    <div class="fw-panel" id="panel-isp">
+        <h3><i class="fas fa-building" style="color:#6366f1"></i> ISP Yönetim Paneli</h3>
+        <div class="fw-isp-nav">
+            <button class="fw-isp-nav-btn active" onclick="fwIspNav('isp-dashboard')">Dashboard</button>
+            <button class="fw-isp-nav-btn" onclick="fwIspNav('isp-tenants')">Tenant'lar</button>
+            <button class="fw-isp-nav-btn" onclick="fwIspNav('isp-alerts')">Alarmlar</button>
+            <button class="fw-isp-nav-btn" onclick="fwIspNav('isp-cgnat')">CGNAT</button>
+            <button class="fw-isp-nav-btn" onclick="fwIspNav('isp-ipam')">IPAM</button>
+            <button class="fw-isp-nav-btn" onclick="fwIspNav('isp-audit')">Denetim</button>
+        </div>
+        <div class="fw-isp-section active" id="isp-dashboard"><div id="ispDashContent"><div class="fw-empty"><i class="fas fa-chart-pie"></i>Yükleniyor...</div></div></div>
+        <div class="fw-isp-section" id="isp-tenants">
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ TENANT</div>
+                <div class="fw-form-row" style="margin-bottom:0">
+                    <div class="fw-form-group"><label>Ad</label><input type="text" id="tenantName" placeholder="Müşteri adı" style="min-width:180px"></div>
+                    <div class="fw-form-group"><label>Plan</label><select id="tenantPlan"><option value="basic">Basic</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option></select></div>
+                    <div class="fw-form-group"><label>Max Sunucu</label><input type="number" id="tenantMax" value="5" min="1" max="100" style="width:70px"></div>
+                    <button class="fw-btn fw-btn-primary" onclick="fwCreateTenant()"><i class="fas fa-plus"></i> Oluştur</button>
+                </div>
+            </div>
+            <div id="tenantsList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+        <div class="fw-isp-section" id="isp-alerts"><div id="ispAlerts"><div class="fw-empty"><i class="fas fa-bell"></i>Yükleniyor...</div></div></div>
+        <div class="fw-isp-section" id="isp-cgnat"><div id="ispCgnat"><div class="fw-empty"><i class="fas fa-network-wired"></i>Yükleniyor...</div></div></div>
+        <div class="fw-isp-section" id="isp-ipam"><div id="ispIpam"><div class="fw-empty"><i class="fas fa-sitemap"></i>Yükleniyor...</div></div></div>
+        <div class="fw-isp-section" id="isp-audit"><div id="ispAudit"><div class="fw-empty"><i class="fas fa-clipboard-list"></i>Yükleniyor...</div></div></div>
+    </div>
+
+    <!-- ═══════════ TAB: 5651 ═══════════ -->
+    <div class="fw-panel" id="panel-law5651">
+        <h3><i class="fas fa-gavel" style="color:#eab308"></i> 5651 Sayılı Kanun Uyumluluğu</h3>
+        <div class="fw-5651-cards" id="law5651Cards"></div>
+        <div class="fw-toolbar">
+            <button class="fw-btn fw-btn-primary" onclick="fwVerify5651()"><i class="fas fa-check-double"></i> Doğrula</button>
+            <button class="fw-btn fw-btn-success" onclick="fwSeal5651()"><i class="fas fa-stamp"></i> Mühürle</button>
+            <button class="fw-btn fw-btn-ghost" onclick="fwLoad5651()"><i class="fas fa-sync"></i> Yenile</button>
+        </div>
+        <div id="law5651Detail" style="margin-top:16px"></div>
+    </div>
+
+    <!-- ═══════════ TAB: Ağ Yönetimi (Multi-Network) ═══════════ -->
+    <div class="fw-panel" id="panel-networks">
+        <h3><i class="fas fa-diagram-project" style="color:#06b6d4"></i> Çoklu Ağ Yönetimi</h3>
+
+        <!-- Create Form -->
+        <div id="netMgmtList">
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ AĞ OLUŞTUR</div>
+                <div class="fw-form-row">
+                    <div class="fw-form-group"><label>Ağ Adı</label><input type="text" id="nwName" placeholder="Üretim Ağı" style="min-width:180px"></div>
+                    <div class="fw-form-group"><label>Açıklama</label><input type="text" id="nwDesc" placeholder="opsiyonel" style="min-width:200px"></div>
+                    <div class="fw-form-group"><label>DNS (virgülle)</label><input type="text" id="nwDns" placeholder="8.8.8.8, 1.1.1.1" style="min-width:180px"></div>
+                    <button class="fw-btn fw-btn-primary" onclick="fwNetCreate()"><i class="fas fa-plus"></i> Oluştur</button>
+                </div>
+            </div>
+            <div class="fw-net-grid" id="nwGrid"><div class="fw-empty" style="grid-column:1/-1"><i class="fas fa-diagram-project"></i>Ağlar yükleniyor...</div></div>
+        </div>
+
+        <!-- Detail View (hidden by default) -->
+        <div id="netMgmtDetail" style="display:none">
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetBackToList()" style="margin-bottom:12px"><i class="fas fa-arrow-left"></i> Listeye Dön</button>
+            <div class="fw-net-detail" id="nwDetailInfo"></div>
+
+            <!-- Members -->
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">🖥️ Üye Sunucular</h4>
+                <div class="fw-net-members" id="nwMembers"></div>
+                <div class="fw-form-row" style="margin-top:10px;margin-bottom:0">
+                    <div class="fw-form-group"><label>Sunucu Ekle</label>
+                        <select id="nwAddMemberSelect" style="min-width:160px"></select>
+                    </div>
+                    <button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwNetAddMember()"><i class="fas fa-plus"></i> Ekle</button>
+                </div>
+            </div>
+
+            <!-- DNS Config -->
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">🌐 DNS Yapılandırması</h4>
+                <div class="fw-form-row" style="margin-bottom:0">
+                    <div class="fw-form-group"><label>DNS Sunucuları (virgülle)</label><input type="text" id="nwDnsEdit" placeholder="8.8.8.8, 1.1.1.1" style="min-width:300px"></div>
+                    <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwNetUpdateDns()"><i class="fas fa-save"></i> Kaydet</button>
+                </div>
+            </div>
+
+            <!-- Bulk Rule Apply -->
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">⚡ Toplu Kural Uygulama</h4>
+                <div class="fw-form-row">
+                    <div class="fw-form-group"><label>Aksiyon</label>
+                        <select id="nwRuleAction"><option value="add_rule">Kural Ekle</option><option value="delete_rule">Kural Sil</option><option value="block_ip">IP Engelle</option><option value="unblock_ip">IP Kaldır</option></select>
+                    </div>
+                    <div class="fw-form-group"><label>Port</label><input type="text" id="nwRulePort" placeholder="80" style="min-width:80px"></div>
+                    <div class="fw-form-group"><label>Protokol</label><select id="nwRuleProto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                    <div class="fw-form-group"><label>IP</label><input type="text" id="nwRuleIp" placeholder="opsiyonel" style="min-width:140px"></div>
+                    <button class="fw-btn fw-btn-primary" onclick="fwNetApplyRule()"><i class="fas fa-bolt"></i> Uygula</button>
+                </div>
+            </div>
+
+            <!-- Sync Check & Status -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                    <h4 style="font-size:13px;margin-bottom:10px">🔄 Senkronizasyon Durumu</h4>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetSyncCheck()" style="margin-bottom:10px"><i class="fas fa-sync"></i> Kontrol Et</button>
+                    <div id="nwSyncResult"></div>
+                </div>
+                <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                    <h4 style="font-size:13px;margin-bottom:10px">📊 Sunucu Durumları</h4>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwNetLoadStatuses()" style="margin-bottom:10px"><i class="fas fa-server"></i> Durumları Getir</button>
+                    <div id="nwStatuses"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ TAB: RMM ═══════════ -->
+    <div class="fw-panel" id="panel-rmm">
+        <h3><i class="fas fa-desktop" style="color:#8b5cf6"></i> Uzaktan İzleme ve Yönetim (RMM)</h3>
+
+        <!-- Alert Banner -->
+        <div id="rmmAlertBanner" style="display:none;background:linear-gradient(135deg,#991b1b,#b91c1c);border-radius:12px;padding:14px 18px;margin-bottom:16px;color:#fff;cursor:pointer" onclick="fwRmmShowAlerts()">
+            <div style="display:flex;align-items:center;gap:10px">
+                <i class="fas fa-bell" style="font-size:18px;animation:pulse 1.5s infinite"></i>
+                <div><b id="rmmAlertCount">0</b> aktif alarm</div>
+                <span style="margin-left:auto;font-size:11px;opacity:.8">Görüntüle →</span>
+            </div>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="rmmDashCards">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" id="rmmTotalDev">-</div><div class="fw-stat-lbl">Toplam Cihaz</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#22c55e" id="rmmOnline">-</div><div class="fw-stat-lbl">Çevrimiçi</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="rmmOffline">-</div><div class="fw-stat-lbl">Çevrimdışı</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#eab308" id="rmmPending">-</div><div class="fw-stat-lbl">Bekleyen Görev</div></div>
+        </div>
+
+        <!-- OS Distribution + Agent Command + Alert Config -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">🖥️ İşletim Sistemi Dağılımı</h4>
+                <div id="rmmOsDist"></div>
+            </div>
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">📋 Agent Kayıt Komutu</h4>
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">Symon agent'ı kaydettirmek için:</div>
+                <code style="display:block;background:var(--bg);border-radius:8px;padding:10px;font-size:11px;word-break:break-all;color:var(--accent)">curl -X POST <span id="rmmRegUrl"></span>/api/rmm/agent/register -H "Content-Type: application/json" -d '{"hostname":"PC-01","os_type":"windows","os_version":"11"}'</code>
+            </div>
+            <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                <h4 style="font-size:13px;margin-bottom:10px">⚙️ Alarm Eşikleri</h4>
+                <div id="rmmAlertConfig" style="font-size:11px">Yükleniyor...</div>
+            </div>
+        </div>
+
+        <!-- Alerts List (hidden) -->
+        <div id="rmmAlertsPanel" style="display:none;background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">🔔 Aktif Alarmlar</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="document.getElementById('rmmAlertsPanel').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="rmmAlertsList"></div>
+        </div>
+
+        <!-- Device Grid -->
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px" id="rmmDeviceGridWrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">🖥️ Kayıtlı Cihazlar</h4>
+                <div style="display:flex;gap:8px">
+                    <select id="rmmFilterStatus" onchange="fwRmmLoadDevices()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">
+                        <option value="">Tümü</option><option value="online">Çevrimiçi</option><option value="offline">Çevrimdışı</option>
+                    </select>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRmmLoadDevices()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+            <div id="rmmDeviceGrid"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+
+        <!-- Device Detail (hidden) -->
+        <div id="rmmDeviceDetail" style="display:none">
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRmmBackToList()" style="margin-bottom:12px"><i class="fas fa-arrow-left"></i> Listeye Dön</button>
+            <div id="rmmDevInfo"></div>
+            <div id="rmmDevExtra" style="margin-top:12px"></div>
+            <div id="rmmDevAlerts" style="margin-top:12px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+                <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                    <h4 style="font-size:13px;margin-bottom:10px">📊 Metrikler (Son 24 Saat)</h4>
+                    <canvas id="rmmMetricsChart" height="180"></canvas>
+                </div>
+                <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+                    <h4 style="font-size:13px;margin-bottom:10px">📋 Görevler</h4>
+                    <div id="rmmDevTasks"></div>
+                    <div class="fw-form-row" style="margin-top:10px;margin-bottom:0">
+                        <select id="rmmTaskType" style="font-size:11px;padding:4px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text);min-width:140px">
+                            <option value="shell_exec">Shell Exec</option>
+                            <option value="powershell_exec">PowerShell</option>
+                            <option value="sysinfo_collect">Sistem Bilgisi</option>
+                            <option value="event_log">Event Log</option>
+                            <option value="sysmon_collect">Sysmon</option>
+                            <option value="restart_service">Servis Yeniden Başlat</option>
+                            <option value="install_software">Yazılım Kur</option>
+                            <option value="update_agent">Agent Güncelle</option>
+                        </select>
+                        <input type="text" id="rmmTaskPayload" placeholder='ör: {"cmd":"systeminfo"}' style="min-width:200px;font-size:11px">
+                        <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwRmmSendTask()"><i class="fas fa-paper-plane"></i> Gönder</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Task Result Viewer -->
+            <div id="rmmTaskResult" style="display:none;margin-top:12px;background:var(--bg-input);border-radius:12px;padding:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <h4 style="font-size:13px;margin:0" id="rmmTaskResultTitle">📄 Görev Sonucu</h4>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="document.getElementById('rmmTaskResult').style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="rmmTaskResultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ TAB: ITSM ═══════════ -->
+    <div class="fw-panel" id="panel-itsm">
+        <h3><i class="fas fa-ticket" style="color:#f59e0b"></i> IT Servis Yönetimi (ITSM)</h3>
+
+        <!-- Stats -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px" id="itsmStatCards">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" id="itsmTotal">-</div><div class="fw-stat-lbl">Toplam</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="itsmOpen">-</div><div class="fw-stat-lbl">Açık</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#3b82f6" id="itsmInProgress">-</div><div class="fw-stat-lbl">Devam Eden</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#22c55e" id="itsmResolved">-</div><div class="fw-stat-lbl">Çözümlendi</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#6b7280" id="itsmClosed">-</div><div class="fw-stat-lbl">Kapatıldı</div></div>
+        </div>
+
+        <!-- Create Ticket -->
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ TİCKET OLUŞTUR</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Başlık</label><input type="text" id="itsmTitle" placeholder="Sorun açıklaması" style="min-width:250px"></div>
+                <div class="fw-form-group"><label>Öncelik</label>
+                    <select id="itsmPriority"><option value="low">Düşük</option><option value="medium" selected>Orta</option><option value="high">Yüksek</option><option value="critical">Kritik</option></select>
+                </div>
+                <div class="fw-form-group"><label>Kategori</label>
+                    <select id="itsmCategory"><option value="general">Genel</option><option value="incident">Arıza</option><option value="request">İstek</option><option value="change">Değişiklik</option><option value="problem">Problem</option></select>
+                </div>
+                <div class="fw-form-group"><label>Atanan</label><input type="text" id="itsmAssignee" placeholder="opsiyonel" style="min-width:120px"></div>
+                <button class="fw-btn fw-btn-primary" onclick="fwItsmCreate()"><i class="fas fa-plus"></i> Oluştur</button>
+            </div>
+            <div class="fw-form-row" style="margin-top:8px">
+                <div class="fw-form-group" style="flex:1"><label>Açıklama</label><textarea id="itsmDesc" placeholder="Detaylı açıklama (opsiyonel)" rows="2" style="width:100%;resize:vertical;padding:8px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px"></textarea></div>
+            </div>
+        </div>
+
+        <!-- Filter & List -->
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">📋 Ticket Listesi</h4>
+                <div style="display:flex;gap:8px">
+                    <select id="itsmFilterStatus" onchange="fwItsmLoad()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">
+                        <option value="">Tümü</option><option value="open">Açık</option><option value="in_progress">Devam Eden</option><option value="resolved">Çözümlendi</option><option value="closed">Kapatıldı</option>
+                    </select>
+                    <select id="itsmFilterPriority" onchange="fwItsmLoad()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">
+                        <option value="">Tüm Öncelik</option><option value="critical">Kritik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option>
+                    </select>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwItsmLoad()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+            <div id="itsmTicketList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+
+        <!-- Ticket Detail (hidden) -->
+        <div id="itsmTicketDetail" style="display:none;margin-top:16px">
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwItsmBackToList()" style="margin-bottom:12px"><i class="fas fa-arrow-left"></i> Listeye Dön</button>
+            <div id="itsmDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: Tehdit İstihbaratı ═══════ -->
+    <div class="fw-panel" id="panel-threat-intel">
+        <h3><i class="fas fa-skull-crossbones" style="color:#ef4444"></i> Tehdit İstihbaratı (Threat Intelligence)</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="tiStatCards">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" id="tiTotal">-</div><div class="fw-stat-lbl">Toplam</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="tiMalicious">-</div><div class="fw-stat-lbl">Zararlı</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#f59e0b" id="tiSuspicious">-</div><div class="fw-stat-lbl">Şüpheli</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#3b82f6" id="tiByType">-</div><div class="fw-stat-lbl">Tip Sayısı</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ TEHDİT GÖSTERGESİ EKLE</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Gösterge (IP/Domain/Hash)</label><input type="text" id="tiIndicator" placeholder="1.2.3.4 veya evil.com" style="min-width:200px"></div>
+                <div class="fw-form-group"><label>Tip</label>
+                    <select id="tiType"><option value="ip">IP</option><option value="domain">Domain</option><option value="hash">Hash</option><option value="url">URL</option><option value="email">E-posta</option></select>
+                </div>
+                <div class="fw-form-group"><label>Kaynak</label><input type="text" id="tiSource" placeholder="AbuseIPDB, VirusTotal..." value="manual" style="min-width:120px"></div>
+                <div class="fw-form-group"><label>İtibar</label>
+                    <select id="tiReputation"><option value="malicious">Zararlı</option><option value="suspicious">Şüpheli</option><option value="clean">Temiz</option><option value="unknown">Bilinmiyor</option></select>
+                </div>
+                <button class="fw-btn fw-btn-danger" onclick="fwThreatAdd()"><i class="fas fa-plus"></i> Ekle</button>
+            </div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">🔍 TEHDİT KONTROLÜ</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Gösterge</label><input type="text" id="tiCheckIndicator" placeholder="IP veya domain girin" style="min-width:200px"></div>
+                <div class="fw-form-group"><label>Tip</label>
+                    <select id="tiCheckType"><option value="ip">IP</option><option value="domain">Domain</option><option value="hash">Hash</option></select>
+                </div>
+                <button class="fw-btn fw-btn-primary" onclick="fwThreatCheck()"><i class="fas fa-search"></i> Kontrol Et</button>
+            </div>
+            <div id="tiCheckResult" style="margin-top:10px"></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">📋 Tehdit Listesi</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwThreatLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="tiList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: Korelasyon ═══════ -->
+    <div class="fw-panel" id="panel-correlation">
+        <h3><i class="fas fa-project-diagram" style="color:#8b5cf6"></i> Olay Korelasyonu</h3>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">➕ YENİ KORELASYON KURALI</div>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>İsim</label><input type="text" id="corrName" placeholder="Kural ismi" style="min-width:180px"></div>
+                <div class="fw-form-group"><label>Tip</label>
+                    <select id="corrType" onchange="fwCorrTypeChange()"><option value="frequency">Frekans (Alert sayısı)</option><option value="threshold">Eşik (Metrik)</option></select>
+                </div>
+                <div class="fw-form-group"><label>Seviye</label>
+                    <select id="corrSeverity"><option value="warning">Warning</option><option value="critical">Critical</option><option value="info">Info</option></select>
+                </div>
+                <button class="fw-btn fw-btn-primary" onclick="fwCorrCreate()"><i class="fas fa-plus"></i> Oluştur</button>
+            </div>
+            <div id="corrCondFields" style="margin-top:8px">
+                <div class="fw-form-row">
+                    <div class="fw-form-group"><label>Alert Tipi</label>
+                        <select id="corrAlertType"><option value="cpu">CPU</option><option value="ram">RAM</option><option value="disk">Disk</option></select>
+                    </div>
+                    <div class="fw-form-group"><label>Adet</label><input type="number" id="corrCount" value="5" min="2" max="100" style="width:80px"></div>
+                    <div class="fw-form-group"><label>Zaman Penceresi (dk)</label><input type="number" id="corrWindow" value="60" min="5" max="1440" style="width:100px"></div>
+                </div>
+            </div>
+            <div class="fw-form-row" style="margin-top:8px">
+                <div class="fw-form-group" style="flex:1"><label>Açıklama</label><input type="text" id="corrDesc" placeholder="Kural açıklaması (opsiyonel)" style="width:100%"></div>
+            </div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">📐 Kurallar</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCorrelationLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="corrRuleList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">🔔 Korelasyon Olayları</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCorrEventsLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="corrEventList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: MITRE ATT&CK ═══════ -->
+    <div class="fw-panel" id="panel-mitre">
+        <h3><i class="fas fa-crosshairs" style="color:#06b6d4"></i> MITRE ATT&CK Haritası</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px" id="mitreHeatmap">
+            <div class="fw-empty">Yükleniyor...</div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">🗂 Son Eşleşen Teknikler</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwMitreLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="mitreList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: Risk Puanı ═══════ -->
+    <div class="fw-panel" id="panel-risk">
+        <h3><i class="fas fa-exclamation-triangle" style="color:#f97316"></i> Risk Bazlı Değerlendirme (RBA)</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="riskStatCards">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="riskCritical">-</div><div class="fw-stat-lbl">Kritik</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#f97316" id="riskHigh">-</div><div class="fw-stat-lbl">Yüksek</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#f59e0b" id="riskMedium">-</div><div class="fw-stat-lbl">Orta</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#22c55e" id="riskLow">-</div><div class="fw-stat-lbl">Düşük</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">📊 Cihaz Risk Tablosu</h4>
+                <div style="display:flex;gap:8px">
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRiskDecay()" title="Risk çürümesi uygula"><i class="fas fa-clock"></i> Çürüme</button>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRiskLoad()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+            <div id="riskTable"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+</div><!-- /fw-container -->
+</main><!-- /fw-main -->
+</div><!-- /fw-layout -->
 
 <div class="fw-toast" id="fwToast"></div>
 
 <script>
 /*
- * EmareFirewall — Standalone UI JavaScript
- *
- * Bu script /api/servers/<id>/firewall/* endpoint'lerini kullanır.
- * API_BASE değişkenini değiştirerek farklı bir backend'e yönlendirebilirsiniz.
+ * Emare Security OS — Standalone UI JavaScript
+ * Tüm özellikler: Dashboard, Rules, IP Block, Port Fwd, Zones, Fail2ban,
+ * Connections, Security, L7, Backup, Network Analyser, Logs, ISP, 5651, Network Mgmt
  */
-const API_BASE = '';  // Aynı origin ise boş, farklıysa: 'https://api.example.com'
-
+const API_BASE = '';
 const FW = { serverId: null, status: null };
+let _dashTimer = null;
+const _dashCharts = {};
+let _currentNetwork = null;
 
 function fwToast(msg, type='success') {
     const t = document.getElementById('fwToast');
     t.textContent = msg; t.className = 'fw-toast ' + type + ' show';
     setTimeout(() => t.classList.remove('show'), 3000);
 }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── API Helpers ──
 
 async function fwApi(path, method='GET', body=null) {
     if (!FW.serverId) { fwToast('Sunucu seçin', 'error'); return null; }
     const url = `${API_BASE}/api/servers/${FW.serverId}/firewall/${path}`;
-    const opts = { method, headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-    }};
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }};
     if (body) opts.body = JSON.stringify(body);
     try {
         const r = await fetch(url, opts);
         if (r.status === 429) { fwToast('Çok fazla istek, lütfen bekleyin', 'error'); return null; }
         if (r.status === 403) { fwToast('Erişim reddedildi', 'error'); return null; }
         return await r.json();
-    }
-    catch(e) { fwToast('API hatası: ' + e.message, 'error'); return null; }
+    } catch(e) { fwToast('API hatası: ' + e.message, 'error'); return null; }
 }
 
+async function fwNetApi(path, method='GET', body=null) {
+    if (!FW.serverId) { fwToast('Sunucu seçin', 'error'); return null; }
+    const url = `${API_BASE}/api/servers/${FW.serverId}/network/${path}`;
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }};
+    if (body) opts.body = JSON.stringify(body);
+    try {
+        const r = await fetch(url, opts);
+        return await r.json();
+    } catch(e) { fwToast('Ağ API hatası: ' + e.message, 'error'); return null; }
+}
+
+async function fwGlobalApi(path, method='GET', body=null) {
+    const url = `${API_BASE}/api/${path}`;
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }};
+    if (body) opts.body = JSON.stringify(body);
+    try {
+        const r = await fetch(url, opts);
+        return await r.json();
+    } catch(e) { fwToast('API hatası: ' + e.message, 'error'); return null; }
+}
+
+async function fwNwApi(path, method='GET', body=null) {
+    const url = `${API_BASE}/api/networks${path ? '/' + path : ''}`;
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }};
+    if (body) opts.body = JSON.stringify(body);
+    try {
+        const r = await fetch(url, opts);
+        return await r.json();
+    } catch(e) { fwToast('Ağ yönetimi API hatası: ' + e.message, 'error'); return null; }
+}
+
+async function fwCachedApi(path) {
+    return await fwApi(path);
+}
+
+// ── Tab System ──
+
 function fwTab(name) {
-    document.querySelectorAll('.fw-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.fw-nav-item').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.fw-panel').forEach(p => p.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    document.getElementById('panel-' + name).classList.add('active');
+    // Sidebar'daki aktif menü öğesini bul
+    const items = document.querySelectorAll('.fw-nav-item');
+    items.forEach(item => {
+        if (item.getAttribute('onclick') && item.getAttribute('onclick').includes("'" + name + "'"))
+            item.classList.add('active');
+    });
+    const panel = document.getElementById('panel-' + name);
+    if (panel) panel.classList.add('active');
+    // Mobilde sidebar'ı kapat
+    document.querySelector('.fw-sidebar')?.classList.remove('open');
+
+    if (name === 'dashboard') fwDashRefresh();
+    if (name === 'rules' && FW.serverId) fwRefresh();
     if (name === 'fail2ban') fwLoadFail2ban();
     if (name === 'connections') fwLoadConnections();
     if (name === 'zones') fwLoadZones();
-    if (name === 'ip-block') fwLoadBlocked();
+    if (name === 'ip-block') { fwLoadBlocked(); fwLoadGeoBlocked(); }
     if (name === 'port-fwd') fwLoadForwards();
+    if (name === 'l7') fwL7Load();
+    if (name === 'backup') fwBackupLoad();
+    if (name === 'network-analyser') fwNetSummary();
+    if (name === 'logs') { fwLoadLogStats(); fwLoadLogs(); fwLoadL7Summary(); fwLoadDbInfo(); }
+    if (name === 'isp') fwLoadIspDashboard();
+    if (name === 'law5651') fwLoad5651();
+    if (name === 'networks') fwNetLoadAll();
+    if (name === 'rmm') fwRmmDashboard();
+    if (name === 'itsm') fwItsmLoad();
+    if (name === 'threat-intel') fwThreatLoad();
+    if (name === 'correlation') fwCorrelationLoad();
+    if (name === 'mitre') fwMitreLoad();
+    if (name === 'risk') fwRiskLoad();
 }
+
+// ── Server Switch ──
 
 function fwSwitchServer() {
     FW.serverId = document.getElementById('fwServerSelect').value;
@@ -334,15 +1077,16 @@ function fwUpdateUI() {
     tbody.innerHTML = fw.rules.map((r, ri) => {
         const tl = {port:'Port',service:'Servis',rich_rule:'Rich',forward:'Fwd',ip_block:'IP',other:'Diğer'}[r.type]||r.type;
         let acts = `<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteRule(${r.index})" title="Sil"><i class="fas fa-trash"></i></button>`;
-        if (r.type==='service') { const sn=(r.rule||'').replace('service','').trim(); acts+=` <button class="fw-btn fw-btn-sm" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2)" onclick="fwRemoveService('${sn}')" title="Servisi kaldır"><i class="fas fa-times"></i></button>`; }
+        if (r.type==='service') { const sn=(r.rule||'').replace('service','').trim(); acts+=` <button class="fw-btn fw-btn-sm" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2)" onclick="fwRemoveService('${escAttr(sn)}')" title="Servisi kaldır"><i class="fas fa-times"></i></button>`; }
         if (r.type==='rich_rule') { acts+=` <button class="fw-btn fw-btn-sm" style="background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.2)" onclick="fwDeleteRichRuleByIdx(${ri})" title="Rich rule kaldır"><i class="fas fa-times"></i></button>`; }
         return `<tr data-rule="${(r.rule||'').toLowerCase()}"><td style="font-weight:700;color:var(--text-secondary)">${r.index}</td><td><span class="fw-badge ${r.type||'other'}">${tl}</span></td><td style="font-family:monospace;font-size:12px">${esc(r.rule)}</td><td style="white-space:nowrap">${acts}</td></tr>`;
     }).join('');
     fwLoadBlockedCount(); fwLoadConnStats(); fwLoadForwards();
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fwFilterRules() { const q = document.getElementById('ruleSearch').value.toLowerCase(); document.querySelectorAll('#rulesBody tr').forEach(tr => { tr.style.display = (tr.getAttribute('data-rule')||'').includes(q) ? '' : 'none'; }); }
+
+// ── Rules CRUD ──
 
 async function fwAddRule() {
     const p = document.getElementById('rulePort').value.trim(); if (!p) { fwToast('Port girin','error'); return; }
@@ -355,92 +1099,1350 @@ async function fwAddService() {
 }
 async function fwDeleteRule(i) { if (!confirm(`Kural #${i} silinecek?`)) return; const d = await fwApi(`rules/${i}`,'DELETE'); if (d?.success) { fwToast('Silindi'); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
 async function fwToggleFirewall(e) { if (!confirm(e?'Etkinleştirilecek?':'DİKKAT! Devre dışı bırakılacak!')) return; const d = await fwApi(e?'enable':'disable','POST'); if (d?.success) { fwToast(d.message); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
-async function fwBlockIp() { const ip = document.getElementById('blockIp').value.trim(); if (!ip) { fwToast('IP girin','error'); return; } const d = await fwApi('block-ip','POST',{ip,reason:document.getElementById('blockReason').value.trim()}); if (d?.success) { fwToast(`${ip} engellendi`); document.getElementById('blockIp').value=''; fwLoadBlocked(); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
-async function fwUnblockIp(ip) { if (!confirm(`${ip} kaldırılsın?`)) return; const d = await fwApi('unblock-ip','POST',{ip}); if (d?.success) { fwToast('Kaldırıldı'); fwLoadBlocked(); fwRefresh(); } else fwToast(d?.message||'Hata','error'); }
-async function fwLoadBlocked() { const d = await fwApi('blocked-ips'); const el = document.getElementById('blockedIpsList'); if (!d?.success||!d.blocked?.length) { el.innerHTML='<div class="fw-empty">Engelli IP yok</div>'; return; } el.innerHTML='<table class="fw-table"><thead><tr><th>#</th><th>IP</th><th>İşlem</th></tr></thead><tbody>'+d.blocked.map(b=>`<tr><td>${b.index}</td><td style="font-family:monospace">${esc(b.ip)}</td><td><button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwUnblockIp('${b.ip}')"><i class="fas fa-unlock"></i></button></td></tr>`).join('')+'</tbody></table>'; }
-async function fwLoadBlockedCount() { const d = await fwApi('blocked-ips'); document.getElementById('fwStatBlocked').textContent = d?.blocked?.length||0; }
-async function fwGeoBlock() { const cc = document.getElementById('geoCountry').value; if (!cc) { fwToast('Ülke seçin','error'); return; } if (!confirm(`${cc} engellenecek?`)) return; fwToast('İndiriliyor...'); const d = await fwApi('geo-block','POST',{country:cc}); if (d?.success) fwToast(d.message); else fwToast(d?.message||'Hata','error'); }
+async function fwAddRichRule() { const rule=document.getElementById('richRuleText').value.trim(); if(!rule){fwToast('Rich rule girin','error');return;} const d=await fwApi('rich-rules','POST',{rule}); if(d?.success){fwToast(d.message||'Rich rule eklendi');document.getElementById('richRuleText').value='';fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwDeleteRichRuleByIdx(arrIdx) { const r=FW.status?.rules?.[arrIdx]; if(!r||!confirm('Rich rule silinecek?'))return; const d=await fwApi('rich-rules','DELETE',{rule:r.rule}); if(d?.success){fwToast('Rich rule silindi');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwRemoveService(svc) { if(!svc||!confirm(`'${svc}' servisi kaldırılsın?`))return; const d=await fwApi(`services/${svc}`,'DELETE'); if(d?.success){fwToast(d.message||'Servis kaldırıldı');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+
+// ── IP Block ──
+
+async function fwBlockIp() { const ip=document.getElementById('blockIp').value.trim(); if(!ip){fwToast('IP girin','error');return;} const d=await fwApi('block-ip','POST',{ip,reason:document.getElementById('blockReason').value.trim()}); if(d?.success){fwToast(`${ip} engellendi`);document.getElementById('blockIp').value='';fwLoadBlocked();fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwUnblockIp(ip) { if(!confirm(`${ip} kaldırılsın?`))return; const d=await fwApi('unblock-ip','POST',{ip}); if(d?.success){fwToast('Kaldırıldı');fwLoadBlocked();fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwLoadBlocked() { const d=await fwApi('blocked-ips'); const el=document.getElementById('blockedIpsList'); if(!d?.success||!d.blocked?.length){el.innerHTML='<div class="fw-empty">Engelli IP yok</div>';return;} el.innerHTML='<table class="fw-table"><thead><tr><th>#</th><th>IP</th><th>İşlem</th></tr></thead><tbody>'+d.blocked.map(b=>`<tr><td>${b.index}</td><td style="font-family:monospace">${esc(b.ip)}</td><td><button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwUnblockIp('${escAttr(b.ip)}')"><i class="fas fa-unlock"></i></button></td></tr>`).join('')+'</tbody></table>'; }
+async function fwLoadBlockedCount() { const d=await fwApi('blocked-ips'); document.getElementById('fwStatBlocked').textContent=d?.blocked?.length||0; }
+async function fwGeoBlock() { const cc=document.getElementById('geoCountry').value; if(!cc){fwToast('Ülke seçin','error');return;} if(!confirm(`${cc} engellenecek?`))return; fwToast('İndiriliyor...'); const d=await fwApi('geo-block','POST',{country:cc}); if(d?.success){fwToast(d.message);fwLoadGeoBlocked();}else fwToast(d?.message||'Hata','error'); }
+async function fwGeoUnblock(cc) { if(!confirm(`${cc} engeli kaldırılsın?`))return; const d=await fwApi('geo-block','DELETE',{country:cc}); if(d?.success){fwToast('Kaldırıldı');fwLoadGeoBlocked();}else fwToast(d?.message||'Hata','error'); }
+async function fwLoadGeoBlocked() { const d=await fwApi('geo-block'); const el=document.getElementById('geoBlockedList'); if(!d?.success||!d.blocked?.length){el.innerHTML='<div style="font-size:12px;color:var(--text-secondary)">Engelli ülke yok</div>';return;} el.innerHTML=d.blocked.map(b=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border-color);border-radius:8px;padding:4px 10px;margin:2px 4px;font-size:12px"><strong>${esc(b.country)}</strong> <span style="color:var(--text-secondary)">${b.count} CIDR</span><button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#22c55e;border:none" onclick="fwGeoUnblock('${escAttr(b.country)}')"><i class="fas fa-unlock"></i></button></span>`).join(''); }
+
+// ── Port Forward ──
+
 async function fwAddForward() { const p=document.getElementById('fwdPort').value.trim(),tp=document.getElementById('fwdToPort').value.trim(); if(!p||!tp){fwToast('Port girin','error');return;} const d=await fwApi('port-forward','POST',{port:p,to_port:tp,to_addr:document.getElementById('fwdToAddr').value.trim(),protocol:document.getElementById('fwdProto').value}); if(d?.success){fwToast(d.message||'Eklendi');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
-async function fwLoadZones() { const d = await fwApi('zones'); const g = document.getElementById('zonesGrid'); if (!d?.success||!d.zones?.length) { g.innerHTML='<div class="fw-empty" style="grid-column:1/-1">Zone yok</div>'; return; } g.innerHTML=d.zones.map(z=>`<div class="fw-zone-card ${z===d.active?'active':''}" onclick="fwShowZone('${z}')"><div class="name">${z}</div><div class="info">${z===d.active?'✅ Aktif':''}${z===d.default?' ⭐ Varsayılan':''}</div></div>`).join(''); }
-async function fwShowZone(zone) { document.querySelectorAll('.fw-zone-card').forEach(c=>c.classList.remove('active')); event.currentTarget.classList.add('active'); const d=await fwApi(`zones/${zone}`); const el=document.getElementById('zoneDetail'); el.style.display='block'; document.getElementById('zoneDetailTitle').innerHTML=`Zone: ${zone} <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwSetDefaultZone('${zone}')" style="margin-left:12px"><i class="fas fa-star"></i> Varsayılan Yap</button>`; if(!d?.success){document.getElementById('zoneDetailContent').innerHTML='<p>Alınamadı</p>';return;} const det=d.detail; document.getElementById('zoneDetailContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div><b>Servisler:</b> ${(det.services||[]).join(', ')||'-'}</div><div><b>Portlar:</b> ${(det.ports||[]).join(', ')||'-'}</div><div><b>Arayüzler:</b> ${(det.interfaces||[]).join(', ')||'-'}</div><div><b>Masquerade:</b> ${det.masquerade?'Evet':'Hayır'}</div><div style="grid-column:1/-1"><b>Rich:</b> ${(det.rich_rules||[]).join('<br>')||'-'}</div></div>`; }
-async function fwLoadFail2ban() { const d=await fwApi('fail2ban'); const el=document.getElementById('fail2banContent'); if(!d?.success){el.innerHTML='<div class="fw-empty">Alınamadı</div>';return;} const f=d.fail2ban; if(!f.installed){el.innerHTML='<div class="fw-empty">Fail2ban kurulu değil</div>';return;} let h=`<div style="margin-bottom:12px"><span class="fw-status-pill ${f.active?'active':'inactive'}"><i class="fas fa-circle" style="font-size:8px"></i> ${f.active?'Aktif':'Kapalı'}</span> <strong>${f.jails.length} Jail</strong></div>`; for(const j of f.jails){const i=f.banned_ips[j]||{}; h+=`<div class="fw-jail"><h4><i class="fas fa-lock" style="color:#eab308"></i> ${j}</h4><div class="fw-jail-stats"><div class="fw-jail-stat">Anlık: <span>${i.currently_banned||0}</span></div><div class="fw-jail-stat">Toplam: <span>${i.total_banned||0}</span></div></div>`; if(i.banned_list?.length){h+=`<div class="fw-banned-list">`+i.banned_list.map(ip=>`<span class="fw-banned-ip">${ip} <button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#22c55e;border:none" onclick="fwF2bUnban('${j}','${ip}')"><i class="fas fa-unlock"></i></button></span>`).join('')+`</div>`;} h+=`<div class="fw-form-row" style="margin-top:8px;margin-bottom:0"><input type="text" class="f2b-ban-input" placeholder="IP ban et..." style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;width:160px;background:var(--bg);color:var(--text)" data-jail="${j}"><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwF2bBan('${j}')"><i class="fas fa-ban"></i> Ban</button></div></div>`;} el.innerHTML=h; }
-async function fwF2bUnban(j,ip) { const d=await fwApi('fail2ban/unban','POST',{jail:j,ip}); if(d?.success){fwToast('Unban');fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
-async function fwF2bBan(j) { const inp=document.querySelector(`.f2b-ban-input[data-jail="${j}"]`); const ip=inp?.value?.trim(); if(!ip){fwToast('IP girin','error');return;} const d=await fwApi('fail2ban/ban','POST',{jail:j,ip}); if(d?.success){fwToast('Ban edildi');inp.value='';fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
-async function fwLoadConnections() { fwLoadConnStats(); const d=await fwApi('connections?limit=50'); const tb=document.getElementById('connBody'); if(!d?.success||!d.connections?.length){tb.innerHTML='<tr><td colspan="6" class="fw-empty">Veri yok</td></tr>';return;} tb.innerHTML=d.connections.map(c=>`<tr><td><span class="fw-badge port">${c.proto}</span></td><td>${c.state}</td><td style="font-family:monospace;font-size:11px">${esc(c.local)}</td><td style="font-family:monospace;font-size:11px">${esc(c.peer)}</td><td style="font-size:11px">${esc(c.process||'-')}</td><td>${c.peer&&!c.peer.includes('*')?`<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwBlockConnIp('${c.peer}')"><i class="fas fa-ban"></i></button>`:''}</td></tr>`).join(''); }
-function fwBlockConnIp(p) { const ip=p.split(':')[0].replace(/[\[\]]/g,''); if(!ip||ip==='*') return; document.getElementById('blockIp').value=ip; document.querySelector('.fw-tab:nth-child(2)').click(); }
-async function fwLoadConnStats() { const d=await fwApi('connection-stats'); if(!d?.success)return; const s=d.stats; document.getElementById('fwStatConns').textContent=s.established||0; const g=document.getElementById('connStatsGrid'); g.innerHTML=`<div class="fw-conn-card"><h4>Durum Dağılımı</h4>${bar('ESTABLISHED',s.established,s.total,'#22c55e')}${bar('LISTENING',s.listening,s.total,'#3b82f6')}${bar('TIME_WAIT',s.time_wait,s.total,'#eab308')}${bar('CLOSE_WAIT',s.close_wait,s.total,'#ef4444')}</div><div class="fw-conn-card"><h4>Top IP'ler</h4>${(s.top_ips||[]).slice(0,6).map(([ip,c])=>bar(ip,c,s.total,'#a855f7')).join('')}</div>`; }
-function bar(l,v,t,c) { const p=t>0?Math.round(v/t*100):0; return `<div class="fw-conn-bar"><div class="fw-conn-bar-label">${l}</div><div style="flex:1;background:var(--border-color);border-radius:3px;height:6px"><div style="width:${p}%;background:${c};border-radius:3px;height:100%"></div></div><div class="fw-conn-bar-val">${v}</div></div>`; }
-async function fwRunScan() { document.getElementById('btnScan').disabled=true; document.getElementById('btnScan').innerHTML='<i class="fas fa-spinner fa-spin"></i> Taranıyor...'; document.getElementById('securityResult').style.display='block'; const d=await fwApi('security-scan'); document.getElementById('btnScan').disabled=false; document.getElementById('btnScan').innerHTML='<i class="fas fa-radar"></i> Tekrar Tara'; if(!d?.success){fwToast(d?.message||'Hata','error');return;} const sc=d.scan,s=sc.score||0; document.getElementById('fwStatScore').textContent=s; const ci=document.getElementById('scoreCircle'); ci.style.strokeDashoffset=264-264*s/100; ci.style.stroke=s>=80?'#22c55e':s>=50?'#eab308':'#ef4444'; document.getElementById('scoreVal').textContent=s; document.getElementById('scoreLabel').textContent=s>=90?'🛡️ Mükemmel':s>=70?'⚠️ İyi':s>=50?'🟡 Orta':'🔴 Riskli'; const fe=document.getElementById('scanFindings'); if(!sc.findings?.length){fe.innerHTML='<div class="fw-finding low"><i class="fas fa-check-circle" style="color:#22c55e;font-size:18px"></i><div><b>Sorun yok!</b></div></div>';}else{fe.innerHTML=sc.findings.map(f=>`<div class="fw-finding ${f.severity}"><i class="fas fa-${f.severity==='critical'?'skull-crossbones':f.severity==='high'?'exclamation-triangle':'exclamation-circle'}" style="font-size:16px;margin-top:2px"></i><div><b>${esc(f.title)}</b><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(f.detail)}</div></div></div>`).join('');} document.getElementById('scanRecs').innerHTML=(sc.recommendations||[]).map(r=>`<li>${esc(r)}</li>`).join(''); }
-
-// ── Rich Rule Ekle/Sil ──
-async function fwAddRichRule() {
-    const rule = document.getElementById('richRuleText').value.trim();
-    if (!rule) { fwToast('Rich rule girin', 'error'); return; }
-    const d = await fwApi('rich-rules', 'POST', { rule });
-    if (d?.success) { fwToast(d.message || 'Rich rule eklendi'); document.getElementById('richRuleText').value = ''; fwRefresh(); }
-    else fwToast(d?.message || 'Hata', 'error');
-}
-async function fwDeleteRichRuleByIdx(arrIdx) {
-    const r = FW.status?.rules?.[arrIdx];
-    if (!r || !confirm('Rich rule silinecek?')) return;
-    const d = await fwApi('rich-rules', 'DELETE', { rule: r.rule });
-    if (d?.success) { fwToast('Rich rule silindi'); fwRefresh(); }
-    else fwToast(d?.message || 'Hata', 'error');
-}
-
-// ── Servis Kaldır ──
-async function fwRemoveService(svc) {
-    if (!svc || !confirm(`'${svc}' servisi kaldırılsın?`)) return;
-    const d = await fwApi(`services/${svc}`, 'DELETE');
-    if (d?.success) { fwToast(d.message || 'Servis kaldırıldı'); fwRefresh(); }
-    else fwToast(d?.message || 'Hata', 'error');
-}
-
-// ── Port Forward Listele/Sil ──
 function fwLoadForwards() {
-    const fw = FW.status;
-    const el = document.getElementById('forwardsList');
-    if (!el) return;
-    if (!fw || !fw.forward_ports || !fw.forward_ports.length) {
-        el.innerHTML = '<div class="fw-empty"><i class="fas fa-right-left"></i> Yönlendirme yok</div>';
-        return;
-    }
-    el.innerHTML = '<table class="fw-table"><thead><tr><th>#</th><th>Yönlendirme</th><th>İşlem</th></tr></thead><tbody>' +
-        fw.forward_ports.map((fp, i) => `<tr><td>${i+1}</td><td style="font-family:monospace;font-size:12px">${esc(fp)}</td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteForward(${i})" title="Kaldır"><i class="fas fa-trash"></i></button></td></tr>`).join('') +
-        '</tbody></table>';
+    const fw=FW.status; const el=document.getElementById('forwardsList'); if(!el)return;
+    if(!fw||!fw.forward_ports||!fw.forward_ports.length){el.innerHTML='<div class="fw-empty"><i class="fas fa-right-left"></i> Yönlendirme yok</div>';return;}
+    el.innerHTML='<table class="fw-table"><thead><tr><th>#</th><th>Yönlendirme</th><th>İşlem</th></tr></thead><tbody>'+fw.forward_ports.map((fp,i)=>`<tr><td>${i+1}</td><td style="font-family:monospace;font-size:12px">${esc(fp)}</td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteForward(${i})" title="Kaldır"><i class="fas fa-trash"></i></button></td></tr>`).join('')+'</tbody></table>';
 }
 async function fwDeleteForward(idx) {
-    const fp = FW.status?.forward_ports?.[idx];
-    if (!fp || !confirm('Port yönlendirme silinecek?')) return;
-    const pm = fp.match(/port=(\d+)/), prm = fp.match(/proto=(\w+)/);
-    const tpm = fp.match(/toport=(\d+)/), tam = fp.match(/toaddr=([\d.]+)/);
-    const d = await fwApi('port-forward', 'DELETE', {
-        port: pm ? pm[1] : '', protocol: prm ? prm[1] : 'tcp',
-        to_port: tpm ? tpm[1] : '', to_addr: tam ? tam[1] : ''
+    const fp=FW.status?.forward_ports?.[idx]; if(!fp||!confirm('Port yönlendirme silinecek?'))return;
+    const pm=fp.match(/port=(\d+)/),prm=fp.match(/proto=(\w+)/),tpm=fp.match(/toport=(\d+)/),tam=fp.match(/toaddr=([\d.]+)/);
+    const d=await fwApi('port-forward','DELETE',{port:pm?pm[1]:'',protocol:prm?prm[1]:'tcp',to_port:tpm?tpm[1]:'',to_addr:tam?tam[1]:''});
+    if(d?.success){fwToast('Port yönlendirme silindi');fwRefresh();}else fwToast(d?.message||'Hata','error');
+}
+
+// ── Zones ──
+
+async function fwLoadZones() { const d=await fwApi('zones'); const g=document.getElementById('zonesGrid'); if(!d?.success||!d.zones?.length){g.innerHTML='<div class="fw-empty" style="grid-column:1/-1">Zone yok</div>';return;} g.innerHTML=d.zones.map(z=>`<div class="fw-zone-card ${z===d.active?'active':''}" onclick="fwShowZone('${escAttr(z)}')"><div class="name">${esc(z)}</div><div class="info">${z===d.active?'✅ Aktif':''}${z===d.default?' ⭐ Varsayılan':''}</div></div>`).join(''); }
+async function fwShowZone(zone) { document.querySelectorAll('.fw-zone-card').forEach(c=>c.classList.remove('active')); if(event&&event.currentTarget)event.currentTarget.classList.add('active'); const d=await fwApi(`zones/${zone}`); const el=document.getElementById('zoneDetail'); el.style.display='block'; document.getElementById('zoneDetailTitle').innerHTML=`Zone: ${esc(zone)} <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwSetDefaultZone('${escAttr(zone)}')" style="margin-left:12px"><i class="fas fa-star"></i> Varsayılan Yap</button>`; if(!d?.success){document.getElementById('zoneDetailContent').innerHTML='<p>Alınamadı</p>';return;} const det=d.detail; document.getElementById('zoneDetailContent').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div><b>Servisler:</b> ${(det.services||[]).map(s=>esc(s)).join(', ')||'-'}</div><div><b>Portlar:</b> ${(det.ports||[]).map(s=>esc(s)).join(', ')||'-'}</div><div><b>Arayüzler:</b> ${(det.interfaces||[]).map(s=>esc(s)).join(', ')||'-'}</div><div><b>Masquerade:</b> ${det.masquerade?'Evet':'Hayır'}</div><div style="grid-column:1/-1"><b>Rich:</b> ${(det.rich_rules||[]).map(s=>esc(s)).join('<br>')||'-'}</div></div>`; }
+async function fwSetDefaultZone(zone) { if(!confirm(`'${zone}' varsayılan zone yapılsın?`))return; const d=await fwApi('zones/default','POST',{zone}); if(d?.success){fwToast(d.message||'Varsayılan zone değiştirildi');fwLoadZones();}else fwToast(d?.message||'Hata','error'); }
+
+// ── Fail2ban ──
+
+async function fwLoadFail2ban() { const d=await fwApi('fail2ban'); const el=document.getElementById('fail2banContent'); if(!d?.success){el.innerHTML='<div class="fw-empty">Alınamadı</div>';return;} const f=d.fail2ban; if(!f.installed){el.innerHTML='<div class="fw-empty">Fail2ban kurulu değil</div>';return;} let h=`<div style="margin-bottom:12px"><span class="fw-status-pill ${f.active?'active':'inactive'}"><i class="fas fa-circle" style="font-size:8px"></i> ${f.active?'Aktif':'Kapalı'}</span> <strong>${f.jails.length} Jail</strong></div>`; for(const j of f.jails){const i=f.banned_ips[j]||{}; h+=`<div class="fw-jail"><h4><i class="fas fa-lock" style="color:#eab308"></i> ${esc(j)}</h4><div class="fw-jail-stats"><div class="fw-jail-stat">Anlık: <span>${i.currently_banned||0}</span></div><div class="fw-jail-stat">Toplam: <span>${i.total_banned||0}</span></div></div>`; if(i.banned_list?.length){h+=`<div class="fw-banned-list">`+i.banned_list.map(ip=>`<span class="fw-banned-ip">${esc(ip)} <button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#22c55e;border:none" onclick="fwF2bUnban('${escAttr(j)}','${escAttr(ip)}')"><i class="fas fa-unlock"></i></button></span>`).join('')+`</div>`;} h+=`<div class="fw-form-row" style="margin-top:8px;margin-bottom:0"><input type="text" class="f2b-ban-input" placeholder="IP ban et..." style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;width:160px;background:var(--bg);color:var(--text)" data-jail="${escAttr(j)}"><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwF2bBan('${escAttr(j)}')"><i class="fas fa-ban"></i> Ban</button></div></div>`;} el.innerHTML=h; }
+async function fwF2bUnban(j,ip) { const d=await fwApi('fail2ban/unban','POST',{jail:j,ip}); if(d?.success){fwToast('Unban');fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
+async function fwF2bBan(j) { const inp=document.querySelector(`.f2b-ban-input[data-jail="${j}"]`); const ip=inp?.value?.trim(); if(!ip){fwToast('IP girin','error');return;} const d=await fwApi('fail2ban/ban','POST',{jail:j,ip}); if(d?.success){fwToast('Ban edildi');inp.value='';fwLoadFail2ban();}else fwToast(d?.message||'Hata','error'); }
+
+// ── Connections ──
+
+async function fwLoadConnections() { fwLoadConnStats(); const d=await fwApi('connections?limit=50'); const tb=document.getElementById('connBody'); if(!d?.success||!d.connections?.length){tb.innerHTML='<tr><td colspan="6" class="fw-empty">Veri yok</td></tr>';return;} tb.innerHTML=d.connections.map(c=>`<tr><td><span class="fw-badge port">${c.proto}</span></td><td>${c.state}</td><td style="font-family:monospace;font-size:11px">${esc(c.local)}</td><td style="font-family:monospace;font-size:11px">${esc(c.peer)}</td><td style="font-size:11px">${esc(c.process||'-')}</td><td>${c.peer&&!c.peer.includes('*')?`<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwBlockConnIp('${escAttr(c.peer)}')"><i class="fas fa-ban"></i></button>`:''}</td></tr>`).join(''); }
+function fwBlockConnIp(p) { const ip=p.split(':')[0].replace(/[\[\]]/g,''); if(!ip||ip==='*') return; document.getElementById('blockIp').value=ip; document.querySelector('.fw-tab:nth-child(3)').click(); }
+async function fwLoadConnStats() { const d=await fwApi('connection-stats'); if(!d?.success)return; const s=d.stats; document.getElementById('fwStatConns').textContent=s.established||0; const g=document.getElementById('connStatsGrid'); g.innerHTML=`<div class="fw-conn-card"><h4>Durum Dağılımı</h4>${_bar('ESTABLISHED',s.established,s.total,'#22c55e')}${_bar('LISTENING',s.listening,s.total,'#3b82f6')}${_bar('TIME_WAIT',s.time_wait,s.total,'#eab308')}${_bar('CLOSE_WAIT',s.close_wait,s.total,'#ef4444')}</div><div class="fw-conn-card"><h4>Top IP'ler</h4>${(s.top_ips||[]).slice(0,6).map(([ip,c])=>_bar(ip,c,s.total,'#a855f7')).join('')}</div>`; }
+function _bar(l,v,t,c) { const p=t>0?Math.round(v/t*100):0; return `<div class="fw-conn-bar"><div class="fw-conn-bar-label">${l}</div><div style="flex:1;background:var(--border-color);border-radius:3px;height:6px"><div style="width:${p}%;background:${c};border-radius:3px;height:100%"></div></div><div class="fw-conn-bar-val">${v}</div></div>`; }
+
+// ── Security Scan ──
+
+async function fwRunScan() { document.getElementById('btnScan').disabled=true; document.getElementById('btnScan').innerHTML='<i class="fas fa-spinner fa-spin"></i> Taranıyor...'; document.getElementById('securityResult').style.display='block'; const d=await fwApi('security-scan'); document.getElementById('btnScan').disabled=false; document.getElementById('btnScan').innerHTML='<i class="fas fa-radar"></i> Tekrar Tara'; if(!d?.success){fwToast(d?.message||'Hata','error');return;} const sc=d.scan,s=sc.score||0; document.getElementById('fwStatScore').textContent=s; const ci=document.getElementById('scoreCircle'); ci.style.strokeDashoffset=264-264*s/100; ci.style.stroke=s>=80?'#22c55e':s>=50?'#eab308':'#ef4444'; document.getElementById('scoreVal').textContent=s; document.getElementById('scoreLabel').textContent=s>=90?'🛡️ Mükemmel':s>=70?'⚠️ İyi':s>=50?'🟡 Orta':'🔴 Riskli'; const fe=document.getElementById('scanFindings'); if(!sc.findings?.length){fe.innerHTML='<div class="fw-finding low"><i class="fas fa-check-circle" style="color:#22c55e;font-size:18px"></i><div><b>Sorun yok!</b></div></div>';}else{fe.innerHTML=sc.findings.map(f=>`<div class="fw-finding ${f.severity}"><i class="fas fa-${f.severity==='critical'?'skull-crossbones':f.severity==='high'?'exclamation-triangle':'exclamation-circle'}" style="font-size:16px;margin-top:2px"></i><div><b>${esc(f.title)}</b><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(f.detail)}</div></div></div>`).join('');} document.getElementById('scanRecs').innerHTML=(sc.recommendations||[]).map(r=>`<li>${esc(r)}</li>`).join(''); }
+
+// ── L7 Protection ──
+
+async function fwL7Load() {
+    const d = await fwApi('protection/status');
+    const el = document.getElementById('l7Status');
+    if (!d?.success) { el.innerHTML = '<div class="fw-empty">L7 durumu alınamadı</div>'; return; }
+    const prot = d.protections || [];
+    if (!prot.length) { el.innerHTML = '<div class="fw-empty">Koruma tanımlı değil</div>'; return; }
+    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">' + prot.map(p => {
+        const st = p.enabled ? '<span style="color:#22c55e;font-weight:700">✅ Aktif</span>' : '<span style="color:var(--text-secondary)">⬜ Kapalı</span>';
+        return `<div style="background:var(--bg-input);border-radius:10px;padding:12px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">${esc(p.name||p.type)}</div><div style="font-size:11px;margin-bottom:6px">${st}</div><div style="display:flex;gap:4px">${p.enabled?`<button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwL7Remove('${escAttr(p.type)}')"><i class="fas fa-times"></i></button>`:`<button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwL7Apply('${escAttr(p.type)}')"><i class="fas fa-shield-halved"></i></button>`}</div></div>`;
+    }).join('') + '</div>';
+}
+async function fwL7Apply(type) { const d=await fwApi('protection/apply','POST',{protections:[type]}); if(d?.success){fwToast('Koruma uygulandı');fwL7Load();}else fwToast(d?.message||'Hata','error'); }
+async function fwL7Remove(type) { const d=await fwApi('protection/remove','POST',{protection:type}); if(d?.success){fwToast('Koruma kaldırıldı');fwL7Load();}else fwToast(d?.message||'Hata','error'); }
+async function fwL7Scan() { const el=document.getElementById('l7ScanResult'); el.style.display='block'; el.innerHTML='<i class="fas fa-spinner fa-spin"></i> Taranıyor...'; const d=await fwApi('protection/scan'); if(!d?.success){el.innerHTML='Tarama başarısız.';return;} const sc=d.scan||{}; el.innerHTML=`<h4 style="margin-bottom:10px">Tehdit Tarama Sonucu</h4><div style="font-size:13px"><div>Toplam kontrol: <b>${sc.total_checks||0}</b></div><div>Tespit edilen: <b style="color:#ef4444">${sc.threats_found||0}</b></div><div>Korunan: <b style="color:#22c55e">${sc.protected||0}</b></div></div>`; if(sc.details?.length){el.innerHTML+='<div style="margin-top:10px">'+sc.details.map(t=>`<div class="fw-finding ${t.severity||'medium'}"><div><b>${esc(t.name||t.type)}</b> — ${esc(t.description||'')}</div></div>`).join('')+'</div>';} }
+async function fwL7ApplyAll() { if(!confirm('Tüm L7 korumaları uygulanacak?'))return; const d=await fwApi('protection/apply-all','POST'); if(d?.success){fwToast('Tüm korumalar uygulandı');fwL7Load();}else fwToast(d?.message||'Hata','error'); }
+
+// ── Backup ──
+
+async function fwBackupLoad() {
+    const d = await fwApi('backups');
+    const el = document.getElementById('backupList');
+    if (!d?.success || !d.backups?.length) { el.innerHTML = '<div class="fw-empty"><i class="fas fa-database"></i>Yedek yok</div>'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>ID</th><th>Tarih</th><th>Boyut</th><th>İşlem</th></tr></thead><tbody>' +
+        d.backups.map(b => `<tr><td style="font-family:monospace;font-size:11px">${esc(b.id||b.backup_id)}</td><td>${esc(b.created_at||b.date||'-')}</td><td>${b.size||'-'}</td><td><button class="fw-btn fw-btn-success fw-btn-sm" onclick="fwBackupRestore('${escAttr(b.id||b.backup_id)}')"><i class="fas fa-undo"></i> Geri Yükle</button> <button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwBackupDelete('${escAttr(b.id||b.backup_id)}')"><i class="fas fa-trash"></i></button></td></tr>`).join('') +
+        '</tbody></table>';
+}
+async function fwBackupCreate() { fwToast('Yedek alınıyor...'); const d=await fwApi('backups','POST'); if(d?.success){fwToast('Yedek alındı');fwBackupLoad();}else fwToast(d?.message||'Hata','error'); }
+async function fwBackupRestore(id) { if(!confirm('Bu yedek geri yüklenecek?'))return; const d=await fwApi('backups/restore','POST',{backup_id:id}); if(d?.success){fwToast('Geri yüklendi');fwRefresh();}else fwToast(d?.message||'Hata','error'); }
+async function fwBackupDelete(id) { if(!confirm('Yedek silinecek?'))return; const d=await fwApi(`backups/${id}`,'DELETE'); if(d?.success){fwToast('Yedek silindi');fwBackupLoad();}else fwToast(d?.message||'Hata','error'); }
+
+// ── Network Analyser ──
+
+function _showNetResult(txt) { document.getElementById('netResult').style.display='block'; document.getElementById('netResultPre').textContent=txt; }
+async function fwNetSummary() { const d=await fwNetApi('summary'); if(d?.success) _showNetResult(JSON.stringify(d.summary||d,null,2)); else fwToast('Hata','error'); }
+async function fwNetBandwidth() { const d=await fwNetApi('bandwidth'); if(d?.success) _showNetResult(JSON.stringify(d.bandwidth||d,null,2)); else fwToast('Hata','error'); }
+async function fwNetListening() { const d=await fwNetApi('listening-ports'); if(d?.success) _showNetResult(JSON.stringify(d.ports||d,null,2)); else fwToast('Hata','error'); }
+async function fwNetTopTalkers() { const d=await fwNetApi('top-talkers'); if(d?.success) _showNetResult(JSON.stringify(d.talkers||d,null,2)); else fwToast('Hata','error'); }
+async function fwNetSpeedTest() { fwToast('Hız testi başlatılıyor...'); const d=await fwNetApi('speed-test','POST'); if(d?.success) _showNetResult(JSON.stringify(d.result||d,null,2)); else fwToast(d?.message||'Hata','error'); }
+async function fwNetPing() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const c=parseInt(document.getElementById('netCount').value)||0; fwToast('Ping gönderiliyor...'); const d=await fwNetApi('ping','POST',{target:t,count:c}); if(d?.success&&d.data){const r=d.data;const lc=r.packet_loss===0?'#22c55e':'#ef4444';const el=document.getElementById('netResult');el.style.display='block';el.innerHTML='<div id="netPingStats"></div><pre id="netResultPre" style="white-space:pre-wrap;font-size:12px;font-family:monospace;color:var(--text);max-height:400px;overflow-y:auto;margin-top:12px"></pre>';document.getElementById('netPingStats').innerHTML='<div style="margin-bottom:12px"><strong>'+r.target+'</strong> — <span style="color:'+lc+'">'+r.packets_received+'/'+r.packets_sent+' paket, kayıp: %'+r.packet_loss+'</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Min</div><div style="font-weight:700">'+r.rtt_min+' ms</div></div><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Ort</div><div style="font-weight:700">'+r.rtt_avg+' ms</div></div><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Maks</div><div style="font-weight:700">'+r.rtt_max+' ms</div></div></div>';document.getElementById('netResultPre').textContent=r.output;} else fwToast(d?.message||'Hata','error'); }
+async function fwNetTrace() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const d=await fwNetApi('traceroute','POST',{target:t}); if(d?.success) _showNetResult(d.data?.output||JSON.stringify(d.data||d,null,2)); else fwToast(d?.message||'Hata','error'); }
+async function fwNetDns() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const d=await fwNetApi('dns-lookup','POST',{domain:t}); if(d?.success) _showNetResult(d.data?.output||JSON.stringify(d.data||d,null,2)); else fwToast(d?.message||'Hata','error'); }
+async function fwNetWhois() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const d=await fwNetApi('whois','POST',{target:t}); if(d?.success) _showNetResult(d.data?.output||JSON.stringify(d.data||d,null,2)); else fwToast(d?.message||'Hata','error'); }
+async function fwNetPortCheck() { const t=document.getElementById('netTarget').value.trim(),p=document.getElementById('netPort').value.trim(); if(!t||!p){fwToast('Hedef ve port girin','error');return;} const d=await fwNetApi('port-check','POST',{target:t,port:parseInt(p)}); if(d?.success) _showNetResult(JSON.stringify(d,null,2)); else fwToast(d?.message||'Hata','error'); }
+
+// ── Log Viewer ──
+
+let _logPage = 1;
+async function fwLoadLogs(page) {
+    _logPage = page || 1;
+    const sev = document.getElementById('logSeverity').value;
+    const cat = document.getElementById('logCategory').value;
+    const q = document.getElementById('logSearch').value.trim();
+    let qs = `firewall/logs?page=${_logPage}&per_page=50`;
+    if (sev) qs += `&severity=${sev}`;
+    if (cat) qs += `&category=${cat}`;
+    if (q) qs += `&q=${encodeURIComponent(q)}`;
+    const d = await fwGlobalApi(qs);
+    const tb = document.getElementById('logBody');
+    if (!d?.success || !d.entries?.length) { tb.innerHTML = '<tr><td colspan="5" class="fw-empty">Log bulunamadı</td></tr>'; return; }
+    tb.innerHTML = d.entries.map(e => {
+        const sc = {critical:'#ef4444',high:'#f97316',medium:'#eab308',low:'#3b82f6',info:'#22c55e'}[e.severity] || 'var(--text-secondary)';
+        return `<tr><td style="font-size:11px;white-space:nowrap">${esc(e.timestamp||'-')}</td><td><span style="color:${sc};font-weight:700;font-size:11px">${esc(e.severity||'-')}</span></td><td><span class="fw-badge other">${esc(e.category||'-')}</span></td><td style="font-family:monospace;font-size:11px">${esc(e.source_ip||'-')}</td><td style="font-size:12px">${esc(e.message||'-')}</td></tr>`;
+    }).join('');
+    // Pagination
+    const pg = document.getElementById('logPagination');
+    const total = d.total || 0; const pages = Math.ceil(total / 50);
+    if (pages > 1) {
+        let btns = '';
+        for (let i = 1; i <= Math.min(pages, 10); i++) btns += `<button class="fw-btn fw-btn-sm ${i===_logPage?'fw-btn-primary':'fw-btn-ghost'}" onclick="fwLoadLogs(${i})">${i}</button>`;
+        pg.innerHTML = btns;
+    } else pg.innerHTML = '';
+}
+
+async function fwLoadLogStats() {
+    const d = await fwGlobalApi('firewall/logs/stats');
+    const el = document.getElementById('logStats');
+    if (!d?.success) { el.innerHTML = ''; return; }
+    const s = d.stats || d;
+    el.innerHTML = `
+        <div class="fw-log-stat"><div class="val" style="color:#ef4444">${s.total||0}</div><div class="lbl">Toplam</div></div>
+        <div class="fw-log-stat"><div class="val" style="color:#ef4444">${s.by_severity?.critical||0}</div><div class="lbl">Critical</div></div>
+        <div class="fw-log-stat"><div class="val" style="color:#f97316">${s.by_severity?.high||0}</div><div class="lbl">High</div></div>
+        <div class="fw-log-stat"><div class="val" style="color:#eab308">${s.by_severity?.medium||0}</div><div class="lbl">Medium</div></div>
+        <div class="fw-log-stat"><div class="val" style="color:#3b82f6">${s.by_severity?.low||0}</div><div class="lbl">Low</div></div>
+        <div class="fw-log-stat"><div class="val" style="color:#22c55e">${s.by_severity?.info||0}</div><div class="lbl">Info</div></div>`;
+}
+
+async function fwExportLogs() { window.open(`${API_BASE}/api/firewall/logs/export?format=csv`, '_blank'); }
+async function fwClearLogs() { if(!confirm('Tüm loglar silinecek!'))return; const d=await fwGlobalApi('firewall/logs/clear','POST'); if(d?.success){fwToast('Loglar temizlendi');fwLoadLogs();fwLoadLogStats();}else fwToast(d?.message||'Hata','error'); }
+
+async function fwLoadL7Summary() {
+    const d = await fwGlobalApi('firewall/logs/l7-summary');
+    const el = document.getElementById('logL7Summary');
+    if (!d?.success) { el.innerHTML = '-'; return; }
+    const s = d.summary || {};
+    if (!s.by_type || !Object.keys(s.by_type).length) { el.innerHTML = 'L7 olayı yok'; return; }
+    el.innerHTML = Object.entries(s.by_type).map(([k,v]) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${esc(k)}</span><span style="font-weight:700;color:#ef4444">${v}</span></div>`).join('');
+}
+
+async function fwLoadIpAnalysis() {
+    const d = await fwGlobalApi('firewall/logs/ips');
+    const el = document.getElementById('logIpAnalysis');
+    if (!d?.success || !d.ips?.length) { el.innerHTML = 'IP verisi yok'; return; }
+    el.innerHTML = d.ips.slice(0, 10).map(ip => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-family:monospace">${esc(ip.ip)}</span><span style="font-weight:700">${ip.count}</span></div>`).join('');
+}
+
+async function fwLoadDbInfo() {
+    const d = await fwGlobalApi('firewall/logs/db-info');
+    const el = document.getElementById('logDbInfo');
+    if (!d?.success) { el.innerHTML = '-'; return; }
+    const info = d.info || d;
+    el.innerHTML = `<div style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div>Backend: <b>${esc(info.backend||'-')}</b></div><div>Kayıt: <b>${info.total_entries||0}</b></div><div>Boyut: <b>${info.size||'-'}</b></div><div>5651: <b>${info.law5651_enabled?'✅ Aktif':'⬜ Kapalı'}</b></div></div>`;
+    fwLoadIpAnalysis();
+}
+
+// ── ISP Management ──
+
+function fwIspNav(id) {
+    document.querySelectorAll('.fw-isp-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.fw-isp-section').forEach(s => s.classList.remove('active'));
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+    const sec = document.getElementById(id);
+    if (sec) sec.classList.add('active');
+    if (id === 'isp-dashboard') fwLoadIspDashboard();
+    if (id === 'isp-tenants') fwLoadTenants();
+    if (id === 'isp-alerts') fwLoadIspAlerts();
+    if (id === 'isp-cgnat') fwLoadIspCgnat();
+    if (id === 'isp-ipam') fwLoadIspIpam();
+    if (id === 'isp-audit') fwLoadIspAudit();
+}
+
+async function fwLoadIspDashboard() {
+    const d = await fwGlobalApi('isp/dashboard');
+    const el = document.getElementById('ispDashContent');
+    if (!d?.success) { el.innerHTML = '<div class="fw-empty">Dashboard yüklenemedi</div>'; return; }
+    const db = d.dashboard || d;
+    el.innerHTML = `<div class="fw-dash-kpi">
+        <div class="fw-kpi"><div class="val" style="color:#3b82f6">${db.total_tenants||0}</div><div class="lbl">Tenant</div></div>
+        <div class="fw-kpi"><div class="val" style="color:#22c55e">${db.active_tenants||0}</div><div class="lbl">Aktif</div></div>
+        <div class="fw-kpi"><div class="val" style="color:#f97316">${db.total_servers||0}</div><div class="lbl">Sunucu</div></div>
+        <div class="fw-kpi"><div class="val" style="color:#a855f7">${db.total_rules||0}</div><div class="lbl">Kural</div></div>
+    </div>`;
+}
+
+async function fwLoadTenants() {
+    const d = await fwGlobalApi('isp/tenants');
+    const el = document.getElementById('tenantsList');
+    if (!d?.success || !d.tenants?.length) { el.innerHTML = '<div class="fw-empty">Tenant yok</div>'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>ID</th><th>Ad</th><th>Plan</th><th>Sunucu</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>' +
+        d.tenants.map(t => `<tr><td>${esc(String(t.id))}</td><td><b>${esc(t.name)}</b></td><td><span class="fw-badge service">${esc(t.plan||'-')}</span></td><td>${t.server_count||0}/${t.max_servers||'-'}</td><td><span class="fw-status-pill ${t.active!==false?'active':'inactive'}" style="padding:3px 8px;font-size:10px"><i class="fas fa-circle" style="font-size:6px"></i> ${t.active!==false?'Aktif':'Pasif'}</span></td><td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwDeleteTenant('${escAttr(String(t.id))}')"><i class="fas fa-trash"></i></button></td></tr>`).join('') +
+        '</tbody></table>';
+}
+
+async function fwCreateTenant() {
+    const name = document.getElementById('tenantName').value.trim();
+    if (!name) { fwToast('Ad girin', 'error'); return; }
+    const d = await fwGlobalApi('isp/tenants', 'POST', {
+        name, plan: document.getElementById('tenantPlan').value,
+        max_servers: parseInt(document.getElementById('tenantMax').value) || 5
     });
-    if (d?.success) { fwToast('Port yönlendirme silindi'); fwRefresh(); }
+    if (d?.success) { fwToast('Tenant oluşturuldu'); document.getElementById('tenantName').value = ''; fwLoadTenants(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
 
-// ── Zone Varsayılan Yap ──
-async function fwSetDefaultZone(zone) {
-    if (!confirm(`'${zone}' varsayılan zone yapılsın?`)) return;
-    const d = await fwApi('zones/default', 'POST', { zone });
-    if (d?.success) { fwToast(d.message || 'Varsayılan zone değiştirildi'); fwLoadZones(); }
+async function fwDeleteTenant(id) { if(!confirm('Bu tenant silinecek?'))return; const d=await fwGlobalApi(`isp/tenants/${encodeURIComponent(id)}`,'DELETE'); if(d?.success){fwToast('Silindi');fwLoadTenants();}else fwToast(d?.message||'Hata','error'); }
+
+async function fwLoadIspAlerts() {
+    const el = document.getElementById('ispAlerts');
+    el.innerHTML = '<div class="fw-empty"><i class="fas fa-bell"></i>Alarm yükleniyor...</div>';
+    // Needs tenant_id — show general info
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;padding:20px">Alarmları görmek için bir tenant seçin (tenant detay sayfasından).</div>';
+}
+
+async function fwLoadIspCgnat() {
+    const el = document.getElementById('ispCgnat');
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;padding:20px">CGNAT havuz yönetimi için bir tenant seçin.</div>';
+}
+
+async function fwLoadIspIpam() {
+    const el = document.getElementById('ispIpam');
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;padding:20px">IPAM blok yönetimi için bir tenant seçin.</div>';
+}
+
+async function fwLoadIspAudit() {
+    const d = await fwGlobalApi('isp/audit?limit=50');
+    const el = document.getElementById('ispAudit');
+    if (!d?.success || !d.audit_logs?.length) { el.innerHTML = '<div class="fw-empty">Denetim kaydı yok</div>'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>Zaman</th><th>İşlem</th><th>Hedef</th><th>Sonuç</th></tr></thead><tbody>' +
+        d.audit_logs.map(a => `<tr><td style="font-size:11px;white-space:nowrap">${esc(a.timestamp||'-')}</td><td>${esc(a.action||'-')}</td><td>${esc(a.target_type||'')} ${esc(a.target_id||'')}</td><td>${a.success?'<span style="color:#22c55e">✅</span>':'<span style="color:#ef4444">❌</span>'}</td></tr>`).join('') +
+        '</tbody></table>';
+}
+
+// ── 5651 Compliance ──
+
+async function fwLoad5651() {
+    const d = await fwGlobalApi('firewall/logs/5651/status');
+    const el = document.getElementById('law5651Cards');
+    if (!d?.success) { el.innerHTML = '<div class="fw-empty">5651 durumu alınamadı</div>'; return; }
+    const s = d.data || {};
+    el.innerHTML = `
+        <div class="fw-5651-card"><div class="val" style="color:#22c55e">${s.enabled?'✅':'⬜'}</div><div class="lbl">Durum</div></div>
+        <div class="fw-5651-card"><div class="val" style="color:#3b82f6">${s.total_stamped||0}</div><div class="lbl">Mühürlü</div></div>
+        <div class="fw-5651-card"><div class="val" style="color:#f97316">${s.total_pending||0}</div><div class="lbl">Bekleyen</div></div>
+        <div class="fw-5651-card"><div class="val" style="color:#a855f7">${s.chain_length||0}</div><div class="lbl">Zincir Uzunluğu</div></div>
+        <div class="fw-5651-card"><div class="val" style="color:#eab308">${s.last_seal||'-'}</div><div class="lbl">Son Mühür</div></div>
+        <div class="fw-5651-card"><div class="val" style="color:#22c55e">${s.integrity_ok?'✅':'❌'}</div><div class="lbl">Bütünlük</div></div>`;
+}
+
+async function fwVerify5651() {
+    fwToast('Doğrulanıyor...');
+    const d = await fwGlobalApi('firewall/logs/5651/verify');
+    const el = document.getElementById('law5651Detail');
+    if (!d?.success) { el.innerHTML = '<div class="fw-finding critical"><b>Doğrulama başarısız</b></div>'; return; }
+    const v = d.data || {};
+    el.innerHTML = `<div class="fw-finding ${v.valid?'low':'critical'}"><div><b>${v.valid?'✅ Zincir bütünlüğü doğrulandı':'❌ Zincir bozuk!'}</b><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Kontrol edilen: ${v.checked||0} | Geçerli: ${v.valid_count||0} | Hatalı: ${v.invalid_count||0}</div></div></div>`;
+}
+
+async function fwSeal5651() {
+    if (!confirm('Mevcut loglar mühürlenecek?')) return;
+    const d = await fwGlobalApi('firewall/logs/5651/seal', 'POST', { note: 'manual-seal-from-ui' });
+    if (d?.success) { fwToast('Mühürlendi'); fwLoad5651(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
 
-// Sunucu ekleme fonksiyonu (standalone kullanım için)
+// ── Dashboard Charts ──
+
+async function fwDashRefresh() {
+    const d = await fwGlobalApi('firewall/logs/stats');
+    if (!d?.success) return;
+    const s = d.stats || {};
+
+    // KPI
+    const kpi = document.getElementById('dashKpi');
+    kpi.innerHTML = `
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-fire" style="color:#ef4444"></i></div><div class="val" style="-webkit-text-fill-color:#ef4444">${s.total||0}</div><div class="lbl">Toplam Olay</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-skull-crossbones" style="color:#ef4444"></i></div><div class="val" style="-webkit-text-fill-color:#ef4444">${s.by_severity?.critical||0}</div><div class="lbl">Critical</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-triangle" style="color:#f97316"></i></div><div class="val" style="-webkit-text-fill-color:#f97316">${s.by_severity?.high||0}</div><div class="lbl">High</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-circle" style="color:#eab308"></i></div><div class="val" style="-webkit-text-fill-color:#eab308">${s.by_severity?.medium||0}</div><div class="lbl">Medium</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-info-circle" style="color:#3b82f6"></i></div><div class="val" style="-webkit-text-fill-color:#3b82f6">${s.by_severity?.low||0}</div><div class="lbl">Low</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-check-circle" style="color:#22c55e"></i></div><div class="val" style="-webkit-text-fill-color:#22c55e">${s.by_severity?.info||0}</div><div class="lbl">Info</div></div>`;
+
+    const _c = (id, type, cfg) => {
+        if (_dashCharts[id]) { _dashCharts[id].data = cfg.data; _dashCharts[id].update(); return; }
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        const _ctx2d = ctx.getContext('2d');
+        _dashCharts[id] = new Chart(ctx, { type, data: cfg.data, options: { ...cfg.options, responsive: true, maintainAspectRatio: true,
+            animation: { duration: 800, easing: 'easeInOutQuart' },
+            plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11, weight: '600' }, padding: 14, usePointStyle: true, pointStyle: 'circle' } },
+                tooltip: { backgroundColor: 'rgba(15,23,42,.92)', titleColor: '#f1f5f9', bodyColor: '#cbd5e1', borderColor: 'rgba(148,163,184,.2)', borderWidth: 1, padding: 12, cornerRadius: 10, titleFont: { size: 12, weight: '700' }, bodyFont: { size: 11 }, displayColors: true, boxPadding: 4 }
+            },
+            scales: cfg.options?.scales ? Object.fromEntries(Object.entries(cfg.options.scales).map(([k, v]) => [k, { ...v, ticks: { ...v.ticks, color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,.06)', drawBorder: false } }])) : undefined
+        }});
+    };
+
+    // Gradient helpers
+    const _mkGrad = (ctx, c1, c2) => { const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, ctx.height); g.addColorStop(0, c1); g.addColorStop(1, c2); return g; };
+    const _mkGradH = (ctx, c1, c2) => { const g = ctx.getContext('2d').createLinearGradient(0, 0, ctx.width, 0); g.addColorStop(0, c1); g.addColorStop(1, c2); return g; };
+
+    // Traffic (line - simulated from hourly)
+    const hourly = s.by_hour || {};
+    const hours = Object.keys(hourly).sort();
+    const trafficCanvas = document.getElementById('chartTraffic');
+    const trafficGrad = trafficCanvas ? _mkGrad(trafficCanvas, 'rgba(239,68,68,.25)', 'rgba(239,68,68,.01)') : 'rgba(239,68,68,.1)';
+    _c('chartTraffic', 'line', { data: { labels: hours, datasets: [{ label: 'Olay', data: hours.map(h => hourly[h]), borderColor: '#ef4444', backgroundColor: trafficGrad, fill: true, tension: .4, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#ef4444', pointBorderColor: '#1e293b', pointBorderWidth: 2, pointHoverRadius: 6 }] }, options: { scales: { x: {}, y: { beginAtZero: true } } } });
+
+    // Methods (doughnut)
+    const methods = s.by_method || {};
+    _c('chartMethods', 'doughnut', { data: { labels: Object.keys(methods), datasets: [{ data: Object.values(methods), backgroundColor: ['#ef4444','#3b82f6','#22c55e','#f97316','#a855f7','#06b6d4'], borderColor: 'rgba(15,23,42,.6)', borderWidth: 2, hoverOffset: 8 }] }, options: { cutout: '62%' } });
+
+    // Status codes (bar)
+    const statuses = s.by_status || {};
+    const statusCanvas = document.getElementById('chartStatus');
+    const statusGrad = statusCanvas ? _mkGrad(statusCanvas, 'rgba(139,92,246,.8)', 'rgba(59,130,246,.6)') : '#3b82f6';
+    _c('chartStatus', 'bar', { data: { labels: Object.keys(statuses), datasets: [{ label: 'İstek', data: Object.values(statuses), backgroundColor: statusGrad, borderRadius: 6, borderSkipped: false }] }, options: { scales: { x: {}, y: { beginAtZero: true } } } });
+
+    // Severity (polar)
+    const sev = s.by_severity || {};
+    _c('chartSeverity', 'polarArea', { data: { labels: Object.keys(sev), datasets: [{ data: Object.values(sev), backgroundColor: ['rgba(239,68,68,.7)','rgba(249,115,22,.7)','rgba(234,179,8,.7)','rgba(59,130,246,.7)','rgba(34,197,94,.7)'], borderColor: 'rgba(15,23,42,.5)', borderWidth: 2 }] }, options: {} });
+
+    // L7 (radar)
+    const l7 = s.by_l7_type || {};
+    _c('chartL7', 'radar', { data: { labels: Object.keys(l7).slice(0, 10), datasets: [{ label: 'L7', data: Object.values(l7).slice(0, 10), borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,.12)', borderWidth: 2, pointBackgroundColor: '#a855f7', pointBorderColor: '#1e293b', pointBorderWidth: 2, pointRadius: 3 }] }, options: {} });
+
+    // Hourly (bar)
+    const hourlyCanvas = document.getElementById('chartHourly');
+    const hourlyGrad = hourlyCanvas ? _mkGrad(hourlyCanvas, 'rgba(34,197,94,.8)', 'rgba(6,182,212,.5)') : '#22c55e';
+    _c('chartHourly', 'bar', { data: { labels: hours, datasets: [{ label: 'Olay/saat', data: hours.map(h => hourly[h]), backgroundColor: hourlyGrad, borderRadius: 6, borderSkipped: false }] }, options: { scales: { x: {}, y: { beginAtZero: true } } } });
+
+    // Top IPs
+    const ips = s.top_ips || [];
+    _c('chartTopIps', 'bar', { data: { labels: ips.map(i => i.ip || i[0]), datasets: [{ label: 'İstek', data: ips.map(i => i.count || i[1]), backgroundColor: ['rgba(239,68,68,.75)','rgba(249,115,22,.75)','rgba(234,179,8,.75)','rgba(59,130,246,.75)','rgba(168,85,247,.75)','rgba(34,197,94,.75)','rgba(6,182,212,.75)','rgba(236,72,153,.75)'], borderRadius: 6, borderSkipped: false }] }, options: { indexAxis: 'y', scales: { x: { beginAtZero: true }, y: {} } } });
+
+    // Top Paths
+    const paths = s.top_paths || [];
+    _c('chartTopPaths', 'bar', { data: { labels: paths.map(p => p.path || p[0]), datasets: [{ label: 'İstek', data: paths.map(p => p.count || p[1]), backgroundColor: ['rgba(59,130,246,.75)','rgba(139,92,246,.75)','rgba(168,85,247,.75)','rgba(6,182,212,.75)','rgba(34,197,94,.75)','rgba(234,179,8,.75)','rgba(249,115,22,.75)','rgba(239,68,68,.75)'], borderRadius: 6, borderSkipped: false }] }, options: { indexAxis: 'y', scales: { x: { beginAtZero: true }, y: {} } } });
+
+    // Categories
+    const cats = s.by_category || {};
+    const catCanvas = document.getElementById('chartCategories');
+    const catGrad = catCanvas ? _mkGrad(catCanvas, 'rgba(168,85,247,.8)', 'rgba(236,72,153,.5)') : '#a855f7';
+    _c('chartCategories', 'bar', { data: { labels: Object.keys(cats), datasets: [{ label: 'Olay', data: Object.values(cats), backgroundColor: catGrad, borderRadius: 6, borderSkipped: false }] }, options: { scales: { x: {}, y: { beginAtZero: true } } } });
+
+    // IP Risk Table
+    const riskEl = document.getElementById('dashIpRisk');
+    if (ips.length) {
+        riskEl.innerHTML = '<table class="fw-table"><thead><tr><th>IP</th><th>İstek</th><th>Risk</th></tr></thead><tbody>' +
+            ips.slice(0, 15).map(i => {
+                const cnt = i.count || i[1]; const ip = i.ip || i[0];
+                const risk = cnt > 100 ? '<span style="color:#ef4444;font-weight:700">Yüksek</span>' : cnt > 30 ? '<span style="color:#f97316;font-weight:700">Orta</span>' : '<span style="color:#22c55e">Düşük</span>';
+                return `<tr><td style="font-family:monospace;font-size:11px">${esc(ip)}</td><td style="font-weight:700">${cnt}</td><td>${risk}</td></tr>`;
+            }).join('') + '</tbody></table>';
+    } else riskEl.innerHTML = '<div class="fw-empty">IP verisi yok</div>';
+
+    // Live mode
+    if (document.getElementById('dashLive').checked) {
+        const interval = parseInt(document.getElementById('dashInterval').value) * 1000;
+        if (_dashTimer) clearInterval(_dashTimer);
+        _dashTimer = setInterval(fwDashRefresh, interval);
+    } else { if (_dashTimer) { clearInterval(_dashTimer); _dashTimer = null; } }
+}
+
+// ── Network Management (Multi-Network) ──
+
+async function fwNetLoadAll() {
+    const d = await fwNwApi('');
+    const el = document.getElementById('nwGrid');
+    if (!d?.success || !d.networks?.length) { el.innerHTML = '<div class="fw-empty" style="grid-column:1/-1"><i class="fas fa-diagram-project"></i>Henüz ağ yok, yeni ağ oluşturun.</div>'; return; }
+    el.innerHTML = d.networks.map(n => `<div class="fw-net-card" onclick="fwNetDetail('${escAttr(String(n.id))}')">
+        <h4>${esc(n.name)}</h4>
+        <div class="desc">${esc(n.description || '-')}</div>
+        <div class="meta"><span><i class="fas fa-server"></i> ${(n.server_ids||[]).length} sunucu</span><span><i class="fas fa-globe"></i> ${(n.dns_servers||[]).length} DNS</span></div>
+    </div>`).join('');
+}
+
+async function fwNetCreate() {
+    const name = document.getElementById('nwName').value.trim();
+    if (!name) { fwToast('Ağ adı girin', 'error'); return; }
+    const dnsRaw = document.getElementById('nwDns').value.trim();
+    const dns = dnsRaw ? dnsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const d = await fwNwApi('', 'POST', {
+        name, description: document.getElementById('nwDesc').value.trim(),
+        dns_servers: dns, server_ids: []
+    });
+    if (d?.success) { fwToast('Ağ oluşturuldu'); document.getElementById('nwName').value = ''; document.getElementById('nwDesc').value = ''; document.getElementById('nwDns').value = ''; fwNetLoadAll(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetDelete(id) {
+    if (!confirm('Bu ağ silinecek?')) return;
+    const d = await fwNwApi(id, 'DELETE');
+    if (d?.success) { fwToast('Ağ silindi'); fwNetBackToList(); fwNetLoadAll(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetDetail(id) {
+    const d = await fwNwApi(id);
+    if (!d?.success) { fwToast('Ağ bulunamadı', 'error'); return; }
+    _currentNetwork = d.network;
+
+    document.getElementById('netMgmtList').style.display = 'none';
+    document.getElementById('netMgmtDetail').style.display = 'block';
+
+    const info = document.getElementById('nwDetailInfo');
+    const n = _currentNetwork;
+    info.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0"><i class="fas fa-diagram-project" style="color:#06b6d4"></i> ${esc(n.name)}</h3>
+        <button class="fw-btn fw-btn-danger fw-btn-sm" onclick="fwNetDelete('${escAttr(String(n.id))}')"><i class="fas fa-trash"></i> Sil</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">${esc(n.description || '-')}</div>
+    <div style="font-size:12px;display:flex;gap:16px">
+        <span><b>DNS:</b> ${(n.dns_servers||[]).map(s=>esc(s)).join(', ') || '-'}</span>
+        <span><b>Politika:</b> ${esc(n.routing_policy || '-')}</span>
+        <span><b>Oluşturulma:</b> ${esc(n.created_at || '-')}</span>
+    </div>`;
+
+    _netRenderMembers(n);
+    document.getElementById('nwDnsEdit').value = (n.dns_servers || []).join(', ');
+
+    // Populate add-member select from FW server list
+    const sel = document.getElementById('nwAddMemberSelect');
+    sel.innerHTML = '<option value="">— Sunucu seçin —</option>';
+    document.querySelectorAll('#fwServerSelect option').forEach(opt => {
+        if (opt.value && !n.server_ids.includes(opt.value)) {
+            sel.innerHTML += `<option value="${opt.value}">${opt.textContent}</option>`;
+        }
+    });
+}
+
+function fwNetBackToList() {
+    document.getElementById('netMgmtList').style.display = 'block';
+    document.getElementById('netMgmtDetail').style.display = 'none';
+    _currentNetwork = null;
+}
+
+function _netRenderMembers(n) {
+    const el = document.getElementById('nwMembers');
+    if (!n.server_ids?.length) { el.innerHTML = '<span style="color:var(--text-secondary);font-size:12px">Üye sunucu yok</span>'; return; }
+    el.innerHTML = n.server_ids.map(sid => `<div class="fw-net-member"><i class="fas fa-server"></i> ${esc(sid)} <button class="fw-btn fw-btn-sm" style="padding:2px 6px;font-size:10px;background:transparent;color:#ef4444;border:none" onclick="fwNetRemoveMember('${escAttr(sid)}')"><i class="fas fa-times"></i></button></div>`).join('');
+}
+
+async function fwNetAddMember() {
+    if (!_currentNetwork) return;
+    const sid = document.getElementById('nwAddMemberSelect').value;
+    if (!sid) { fwToast('Sunucu seçin', 'error'); return; }
+    const d = await fwNwApi(`${_currentNetwork.id}/members`, 'POST', { server_id: sid });
+    if (d?.success) { fwToast('Sunucu eklendi'); fwNetDetail(_currentNetwork.id); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetRemoveMember(sid) {
+    if (!_currentNetwork || !confirm(`${sid} ağdan çıkarılsın?`)) return;
+    const d = await fwNwApi(`${_currentNetwork.id}/members/${sid}`, 'DELETE');
+    if (d?.success) { fwToast('Sunucu çıkarıldı'); fwNetDetail(_currentNetwork.id); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetUpdateDns() {
+    if (!_currentNetwork) return;
+    const raw = document.getElementById('nwDnsEdit').value.trim();
+    const dns = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const d = await fwNwApi(`${_currentNetwork.id}/dns`, 'PUT', { dns_servers: dns });
+    if (d?.success) { fwToast('DNS güncellendi'); fwNetDetail(_currentNetwork.id); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetApplyRule() {
+    if (!_currentNetwork) return;
+    const action = document.getElementById('nwRuleAction').value;
+    const params = {};
+    const port = document.getElementById('nwRulePort').value.trim();
+    const proto = document.getElementById('nwRuleProto').value;
+    const ip = document.getElementById('nwRuleIp').value.trim();
+    if (action === 'add_rule' || action === 'delete_rule') {
+        if (!port) { fwToast('Port girin', 'error'); return; }
+        params.port = port; params.protocol = proto; params.action = 'allow';
+    } else if (action === 'block_ip' || action === 'unblock_ip') {
+        if (!ip) { fwToast('IP girin', 'error'); return; }
+        params.ip = ip;
+    }
+    if (!confirm(`Bu kural tüm üye sunuculara uygulanacak?`)) return;
+    const d = await fwNwApi(`${_currentNetwork.id}/apply-rule`, 'POST', { action, params });
+    if (d?.success) { fwToast(`Uygulandı: ${d.succeeded||0} başarılı, ${d.failed||0} hatalı`); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwNetSyncCheck() {
+    if (!_currentNetwork) return;
+    const el = document.getElementById('nwSyncResult');
+    el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kontrol ediliyor...';
+    const d = await fwNwApi(`${_currentNetwork.id}/sync-check`);
+    if (!d?.success) { el.innerHTML = 'Kontrol başarısız'; return; }
+    const color = d.sync_status === 'synced' ? '#22c55e' : '#ef4444';
+    el.innerHTML = `<div style="font-size:13px"><div style="margin-bottom:6px">Durum: <b style="color:${color}">${d.sync_status === 'synced' ? '✅ Senkron' : '⚠️ Farklılık var'}</b></div>
+        <div>Ortak kural: <b>${d.common_rules||0}</b></div>
+        <div>Farklı kural: <b style="color:#ef4444">${d.diverged_rules||0}</b></div></div>`;
+}
+
+async function fwNetLoadStatuses() {
+    if (!_currentNetwork) return;
+    const el = document.getElementById('nwStatuses');
+    el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yükleniyor...';
+    const d = await fwNwApi(`${_currentNetwork.id}/statuses`);
+    if (!d?.success || !d.statuses?.length) { el.innerHTML = 'Durum alınamadı'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>Sunucu</th><th>Durum</th><th>Kural</th></tr></thead><tbody>' +
+        d.statuses.map(st => `<tr><td style="font-family:monospace;font-size:11px">${esc(st.server_id)}</td><td>${st.success ? '<span style="color:#22c55e">✅ Aktif</span>' : '<span style="color:#ef4444">❌ Hata</span>'}</td><td>${st.firewall?.rules?.length || 0}</td></tr>`).join('') +
+        '</tbody></table>';
+}
+
+// ── Server System ──
+
 function fwAddServer(id, name) {
     const sel = document.getElementById('fwServerSelect');
+    if ([...sel.options].some(o => o.value === id)) return;
     const opt = document.createElement('option');
     opt.value = id; opt.textContent = name;
     sel.appendChild(opt);
 }
 
+// ── RMM ──
+
+let _rmmMetricsChart = null;
+let _rmmCurrentDevice = null;
+const _rmmTaskTypeLabels = {
+    shell_exec:'Shell',powershell_exec:'PowerShell',file_collect:'Dosya',
+    update_agent:'Agent Güncelle',restart_service:'Servis Yeniden Başlat',
+    install_software:'Yazılım Kur',uninstall_software:'Yazılım Kaldır',
+    registry_query:'Registry',event_log:'Event Log',sysinfo_collect:'Sistem Bilgisi',
+    sysmon_collect:'Sysmon',custom:'Özel'
+};
+
+function fwRmmApi(path, method, body) {
+    const opts = { method: method || 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    return fetch(`${API_BASE}/api/rmm/${path}`, opts).then(r => r.json()).catch(() => null);
+}
+
+async function fwRmmDashboard() {
+    const d = await fwRmmApi('dashboard');
+    if (!d?.success) return;
+    document.getElementById('rmmTotalDev').textContent = d.devices?.total ?? '-';
+    document.getElementById('rmmOnline').textContent = d.devices?.online ?? '-';
+    document.getElementById('rmmOffline').textContent = d.devices?.offline ?? '-';
+    document.getElementById('rmmPending').textContent = d.pending_tasks ?? '-';
+    const dist = d.os_distribution || {};
+    const osKeys = Object.keys(dist);
+    document.getElementById('rmmOsDist').innerHTML = osKeys.length
+        ? osKeys.map(k => `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>${esc(k)}</span><b>${dist[k]}</b></div>`).join('')
+        : '<div style="font-size:12px;color:var(--text-secondary)">Cihaz yok</div>';
+    document.getElementById('rmmRegUrl').textContent = location.origin;
+    fwRmmLoadDevices();
+    fwRmmLoadAlertBanner();
+    fwRmmLoadAlertConfig();
+}
+
+async function fwRmmLoadAlertBanner() {
+    const d = await fwRmmApi('alerts?acknowledged=0');
+    if (!d?.success) return;
+    const banner = document.getElementById('rmmAlertBanner');
+    const stats = d.stats || {};
+    if (stats.total > 0) {
+        banner.style.display = 'block';
+        const label = stats.critical > 0
+            ? `${stats.critical} kritik, ${stats.warning} uyarı`
+            : `${stats.warning} uyarı`;
+        document.getElementById('rmmAlertCount').textContent = stats.total;
+        banner.querySelector('div > div').innerHTML = `<b>${stats.total}</b> aktif alarm (${label})`;
+    } else {
+        banner.style.display = 'none';
+    }
+}
+
+async function fwRmmShowAlerts() {
+    const panel = document.getElementById('rmmAlertsPanel');
+    panel.style.display = 'block';
+    const d = await fwRmmApi('alerts?acknowledged=0');
+    const el = document.getElementById('rmmAlertsList');
+    if (!d?.success || !d.alerts?.length) {
+        el.innerHTML = '<div class="fw-empty">Aktif alarm yok</div>';
+        return;
+    }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>Cihaz</th><th>Tip</th><th>Mesaj</th><th>Seviye</th><th>Tarih</th><th>İşlem</th></tr></thead><tbody>' +
+        d.alerts.map(a => {
+            const sevC = a.severity === 'critical' ? '#ef4444' : '#eab308';
+            const sevL = a.severity === 'critical' ? 'Kritik' : 'Uyarı';
+            return `<tr>
+                <td><b>${esc(a.hostname || a.device_id)}</b></td>
+                <td>${esc(a.alert_type.toUpperCase())}</td>
+                <td style="font-size:11px">${esc(a.message)}</td>
+                <td><span style="color:${sevC};font-weight:700;font-size:11px">● ${sevL}</span></td>
+                <td style="font-size:10px">${new Date(a.created_at).toLocaleString('tr-TR')}</td>
+                <td><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRmmAckAlert(${a.id})" title="Onayla"><i class="fas fa-check"></i></button></td>
+            </tr>`;
+        }).join('') + '</tbody></table>';
+}
+
+async function fwRmmAckAlert(id) {
+    const d = await fwRmmApi(`alerts/${id}/ack`, 'PUT');
+    if (d?.success) { fwToast('Alarm onaylandı'); fwRmmShowAlerts(); fwRmmLoadAlertBanner(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwRmmLoadAlertConfig() {
+    const d = await fwRmmApi('alert-config');
+    const el = document.getElementById('rmmAlertConfig');
+    if (!d?.success) { el.innerHTML = '<span style="color:var(--text-secondary)">Yüklenemedi</span>'; return; }
+    const c = d.config;
+    el.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+            <div>CPU Uyarı: <input type="number" id="rmmCfgCpuW" value="${c.cpu_warning}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+            <div>CPU Kritik: <input type="number" id="rmmCfgCpuC" value="${c.cpu_critical}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+            <div>RAM Uyarı: <input type="number" id="rmmCfgRamW" value="${c.ram_warning}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+            <div>RAM Kritik: <input type="number" id="rmmCfgRamC" value="${c.ram_critical}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+            <div>Disk Uyarı: <input type="number" id="rmmCfgDiskW" value="${c.disk_warning}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+            <div>Disk Kritik: <input type="number" id="rmmCfgDiskC" value="${c.disk_critical}" min="0" max="100" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">%</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <label style="font-size:11px"><input type="checkbox" id="rmmCfgEnabled" ${c.enabled?'checked':''}> Aktif</label>
+            <span style="font-size:11px">Bekleme: <input type="number" id="rmmCfgCooldown" value="${c.cooldown_minutes}" min="1" max="1440" style="width:48px;font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)"> dk</span>
+        </div>
+        <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwRmmSaveAlertConfig()" style="width:100%"><i class="fas fa-save"></i> Kaydet</button>`;
+}
+
+async function fwRmmSaveAlertConfig() {
+    const body = {
+        cpu_warning: +document.getElementById('rmmCfgCpuW').value,
+        cpu_critical: +document.getElementById('rmmCfgCpuC').value,
+        ram_warning: +document.getElementById('rmmCfgRamW').value,
+        ram_critical: +document.getElementById('rmmCfgRamC').value,
+        disk_warning: +document.getElementById('rmmCfgDiskW').value,
+        disk_critical: +document.getElementById('rmmCfgDiskC').value,
+        enabled: document.getElementById('rmmCfgEnabled').checked,
+        cooldown_minutes: +document.getElementById('rmmCfgCooldown').value
+    };
+    const d = await fwRmmApi('alert-config', 'POST', body);
+    if (d?.success) fwToast('Alarm yapılandırması kaydedildi');
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwRmmLoadDevices() {
+    const status = document.getElementById('rmmFilterStatus').value;
+    const d = await fwRmmApi('devices' + (status ? `?status=${status}` : ''));
+    const el = document.getElementById('rmmDeviceGrid');
+    if (!d?.success || !d.devices?.length) { el.innerHTML = '<div class="fw-empty">Kayıtlı cihaz yok</div>'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>Hostname</th><th>Etiket</th><th>İS</th><th>IP</th><th>CPU</th><th>RAM</th><th>Disk</th><th>Durum</th><th>Son İletişim</th><th>İşlem</th></tr></thead><tbody>' +
+        d.devices.map(dev => {
+            const st = dev.status === 'online';
+            const label = dev.extra?.label || '';
+            return `<tr style="cursor:pointer" onclick="fwRmmDeviceDetail('${escAttr(dev.id)}')">
+                <td><b>${esc(dev.hostname)}</b></td>
+                <td style="font-size:11px;color:var(--text-secondary)">${esc(label)}</td>
+                <td><span class="fw-badge service">${esc(dev.os_type||'-')} ${esc(dev.os_version||'')}</span></td>
+                <td style="font-family:monospace;font-size:11px">${esc(dev.ip_address||'-')}</td>
+                <td><div style="background:var(--bg);border-radius:4px;height:6px;width:60px"><div style="width:${Math.min(dev.cpu_usage||0,100)}%;height:100%;border-radius:4px;background:${(dev.cpu_usage||0)>80?'#ef4444':'#22c55e'}"></div></div> ${(dev.cpu_usage||0).toFixed(0)}%</td>
+                <td><div style="background:var(--bg);border-radius:4px;height:6px;width:60px"><div style="width:${Math.min(dev.ram_usage||0,100)}%;height:100%;border-radius:4px;background:${(dev.ram_usage||0)>80?'#ef4444':'#3b82f6'}"></div></div> ${(dev.ram_usage||0).toFixed(0)}%</td>
+                <td>${(dev.disk_usage||0).toFixed(0)}%</td>
+                <td><span class="fw-status-pill ${st?'active':'inactive'}" style="padding:3px 8px;font-size:10px"><i class="fas fa-circle" style="font-size:6px"></i> ${st?'Çevrimiçi':'Çevrimdışı'}</span></td>
+                <td style="font-size:10px">${dev.last_heartbeat ? new Date(dev.last_heartbeat).toLocaleString('tr-TR') : '-'}</td>
+                <td><button class="fw-btn fw-btn-danger fw-btn-sm" onclick="event.stopPropagation();fwRmmDeleteDevice('${escAttr(dev.id)}')"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+        }).join('') + '</tbody></table>';
+}
+
+async function fwRmmDeleteDevice(id) {
+    if (!confirm('Bu cihaz silinecek?')) return;
+    const d = await fwRmmApi(`devices/${encodeURIComponent(id)}`, 'DELETE');
+    if (d?.success) { fwToast('Cihaz silindi'); fwRmmDashboard(); } else fwToast(d?.message || 'Hata', 'error');
+}
+
+function fwRmmBackToList() {
+    document.getElementById('rmmDeviceDetail').style.display = 'none';
+    document.getElementById('rmmDeviceGridWrap').style.display = '';
+    document.getElementById('rmmDashCards').style.display = '';
+    document.getElementById('rmmAlertBanner').style.display && fwRmmLoadAlertBanner();
+    _rmmCurrentDevice = null;
+}
+
+async function fwRmmDeviceDetail(id) {
+    const d = await fwRmmApi(`devices/${encodeURIComponent(id)}?hours=24`);
+    if (!d?.success || !d.device) { fwToast('Cihaz bulunamadı', 'error'); return; }
+    _rmmCurrentDevice = d.device;
+    document.getElementById('rmmDeviceGridWrap').style.display = 'none';
+    document.getElementById('rmmDashCards').style.display = 'none';
+    document.getElementById('rmmAlertBanner').style.display = 'none';
+    document.getElementById('rmmAlertsPanel').style.display = 'none';
+    document.getElementById('rmmDeviceDetail').style.display = 'block';
+    document.getElementById('rmmTaskResult').style.display = 'none';
+
+    const dev = d.device;
+    const st = dev.status === 'online';
+    const extra = dev.extra || {};
+    const label = extra.label || '';
+    document.getElementById('rmmDevInfo').innerHTML = `
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                    <h3 style="margin:0 0 6px"><i class="fas fa-desktop" style="color:#8b5cf6"></i> ${esc(dev.hostname)}
+                        <span class="fw-status-pill ${st?'active':'inactive'}" style="padding:3px 8px;font-size:10px;margin-left:8px"><i class="fas fa-circle" style="font-size:6px"></i> ${st?'Çevrimiçi':'Çevrimdışı'}</span></h3>
+                    <div style="font-size:12px;color:var(--text-secondary);display:flex;gap:16px;flex-wrap:wrap">
+                        <span><b>İS:</b> ${esc(dev.os_type)} ${esc(dev.os_version)}</span>
+                        <span><b>IP:</b> ${esc(dev.ip_address||'-')}</span>
+                        <span><b>Agent:</b> ${esc(dev.agent_version||'-')}</span>
+                        <span><b>Kayıt:</b> ${new Date(dev.created_at).toLocaleString('tr-TR')}</span>
+                        ${dev.tenant_id ? `<span><b>Tenant:</b> ${esc(dev.tenant_id)}</span>` : ''}
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px">
+                        <span style="color:var(--text-secondary)">Etiket:</span>
+                        <input type="text" id="rmmDevLabel" value="${escAttr(label)}" placeholder="Cihaz etiketi (ör: Emre'nin PC'si)" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text);width:220px">
+                        <span style="color:var(--text-secondary)">Tenant:</span>
+                        <input type="text" id="rmmDevTenant" value="${escAttr(dev.tenant_id||'')}" placeholder="Tenant ID" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text);width:120px">
+                        <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwRmmUpdateDevice('${escAttr(dev.id)}')"><i class="fas fa-save"></i></button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;font-size:13px">
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${(dev.cpu_usage||0)>80?'#ef4444':'#22c55e'}">${(dev.cpu_usage||0).toFixed(1)}%</div><div style="font-size:10px;color:var(--text-secondary)">CPU</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${(dev.ram_usage||0)>80?'#ef4444':'#3b82f6'}">${(dev.ram_usage||0).toFixed(1)}%</div><div style="font-size:10px;color:var(--text-secondary)">RAM</div></div>
+                    <div style="text-align:center"><div style="font-size:20px;font-weight:800">${(dev.disk_usage||0).toFixed(1)}%</div><div style="font-size:10px;color:var(--text-secondary)">Disk</div></div>
+                </div>
+            </div>
+        </div>`;
+
+    // Extra fields (Windows agent sends: cpu_name, cpu_cores, mem_total_gb, etc.)
+    const extraKeys = Object.keys(extra).filter(k => k !== 'label');
+    const extraEl = document.getElementById('rmmDevExtra');
+    if (extraKeys.length) {
+        const extraLabels = {
+            cpu_name:'İşlemci',cpu_cores:'Çekirdek',mem_total_gb:'Toplam RAM (GB)',
+            disk_volumes:'Disk Bölümü',connections:'Bağlantı',uptime_hours:'Çalışma Süresi (saat)',
+            os_build:'İS Build',domain:'Domain',logged_user:'Oturum Açan'
+        };
+        extraEl.innerHTML = `<div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <h4 style="font-size:13px;margin-bottom:10px">🔧 Donanım & Sistem Detayları</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+            ${extraKeys.map(k => `<div style="background:var(--bg);border-radius:8px;padding:8px 12px">
+                <div style="font-size:10px;color:var(--text-secondary)">${esc(extraLabels[k]||k)}</div>
+                <div style="font-size:13px;font-weight:600">${esc(String(extra[k]))}</div>
+            </div>`).join('')}
+            </div></div>`;
+    } else {
+        extraEl.innerHTML = '';
+    }
+
+    // Device alerts
+    const alertD = await fwRmmApi(`alerts?device_id=${encodeURIComponent(id)}&acknowledged=0`);
+    const alertEl = document.getElementById('rmmDevAlerts');
+    if (alertD?.success && alertD.alerts?.length) {
+        alertEl.innerHTML = `<div style="background:var(--bg-input);border-radius:12px;padding:16px;border-left:4px solid #ef4444">
+            <h4 style="font-size:13px;margin-bottom:10px">🔔 Aktif Alarmlar (${alertD.alerts.length})</h4>
+            ${alertD.alerts.map(a => {
+                const sevC = a.severity === 'critical' ? '#ef4444' : '#eab308';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:12px">
+                    <span><span style="color:${sevC};font-weight:700">●</span> ${esc(a.message)}</span>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <span style="font-size:10px;color:var(--text-secondary)">${new Date(a.created_at).toLocaleString('tr-TR')}</span>
+                        <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRmmAckAlert(${a.id});this.closest('div').parentElement.remove()" title="Onayla"><i class="fas fa-check"></i></button>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    } else {
+        alertEl.innerHTML = '';
+    }
+
+    // Metrics chart
+    const metrics = d.metrics || [];
+    const labels = metrics.map(m => new Date(m.ts).toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}));
+    if (_rmmMetricsChart) _rmmMetricsChart.destroy();
+    const ctx = document.getElementById('rmmMetricsChart').getContext('2d');
+    _rmmMetricsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'CPU %', data: metrics.map(m => m.cpu), borderColor: '#22c55e', tension: 0.3, pointRadius: 0 },
+                { label: 'RAM %', data: metrics.map(m => m.ram), borderColor: '#3b82f6', tension: 0.3, pointRadius: 0 },
+                { label: 'Disk %', data: metrics.map(m => m.disk), borderColor: '#eab308', tension: 0.3, pointRadius: 0 },
+            ]
+        },
+        options: { responsive: true, scales: { y: { min: 0, max: 100 } }, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } } }
+    });
+
+    // Tasks — with clickable result viewing
+    const tasks = d.tasks || [];
+    document.getElementById('rmmDevTasks').innerHTML = tasks.length
+        ? '<table class="fw-table" style="font-size:11px"><thead><tr><th>Tip</th><th>Durum</th><th>Tarih</th><th>Sonuç</th></tr></thead><tbody>' +
+          tasks.map(t => {
+              const sc = t.status === 'completed' ? '#22c55e' : t.status === 'failed' ? '#ef4444' : t.status === 'running' ? '#3b82f6' : '#eab308';
+              const hasResult = t.result && t.status !== 'pending' && t.status !== 'running';
+              return `<tr>
+                  <td>${esc(_rmmTaskTypeLabels[t.task_type]||t.task_type)}</td>
+                  <td style="color:${sc}">${esc(t.status)}</td>
+                  <td>${new Date(t.created_at).toLocaleString('tr-TR')}</td>
+                  <td>${hasResult ? `<button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwRmmShowTaskResult('${escAttr(t.task_type)}',${JSON.stringify(JSON.stringify(t.result))})"><i class="fas fa-eye"></i></button>` : '-'}</td>
+              </tr>`;
+          }).join('') + '</tbody></table>'
+        : '<div style="font-size:11px;color:var(--text-secondary)">Görev yok</div>';
+}
+
+function fwRmmShowTaskResult(taskType, rawResult) {
+    const panel = document.getElementById('rmmTaskResult');
+    panel.style.display = 'block';
+    const titleEl = document.getElementById('rmmTaskResultTitle');
+    const contentEl = document.getElementById('rmmTaskResultContent');
+
+    const typeLabels = {
+        sysmon_collect: '🛡️ Sysmon Olayları',
+        event_log: '📋 Event Log',
+        sysinfo_collect: '🖥️ Sistem Bilgisi',
+        shell_exec: '💻 Shell Çıktısı',
+        powershell_exec: '💻 PowerShell Çıktısı',
+        registry_query: '🗂️ Registry Sorgusu'
+    };
+    titleEl.textContent = typeLabels[taskType] || '📄 Görev Sonucu';
+
+    // Try to parse as JSON for structured display
+    let parsed = null;
+    try { parsed = JSON.parse(rawResult); } catch {}
+
+    if (parsed && taskType === 'sysmon_collect' && Array.isArray(parsed)) {
+        contentEl.innerHTML = _rmmFormatSysmon(parsed);
+    } else if (parsed && taskType === 'event_log' && Array.isArray(parsed)) {
+        contentEl.innerHTML = _rmmFormatEventLog(parsed);
+    } else if (parsed && taskType === 'sysinfo_collect' && typeof parsed === 'object') {
+        contentEl.innerHTML = _rmmFormatSysinfo(parsed);
+    } else if (parsed && typeof parsed === 'object') {
+        contentEl.innerHTML = `<pre style="background:var(--bg);border-radius:8px;padding:12px;font-size:11px;max-height:400px;overflow:auto;white-space:pre-wrap;color:var(--text)">${esc(JSON.stringify(parsed, null, 2))}</pre>`;
+    } else {
+        contentEl.innerHTML = `<pre style="background:var(--bg);border-radius:8px;padding:12px;font-size:11px;max-height:400px;overflow:auto;white-space:pre-wrap;color:var(--text)">${esc(rawResult)}</pre>`;
+    }
+    panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+function _rmmFormatSysmon(events) {
+    const sysmonTypeLabels = {
+        1:'Process Create',2:'File Creation Time',3:'Network Connection',
+        5:'Process Terminated',7:'Image Loaded',8:'CreateRemoteThread',
+        10:'ProcessAccess',11:'FileCreate',12:'RegistryEvent',13:'RegistryValueSet',
+        15:'FileCreateStreamHash',22:'DNSEvent',23:'FileDelete'
+    };
+    if (!events.length) return '<div class="fw-empty">Sysmon olayı yok</div>';
+    return `<div style="max-height:400px;overflow:auto">
+        <table class="fw-table" style="font-size:11px">
+        <thead><tr><th>Event ID</th><th>Tip</th><th>Zaman</th><th>Detay</th></tr></thead><tbody>` +
+        events.slice(0, 200).map(ev => {
+            const eId = ev.id || ev.EventID || ev.event_id || '-';
+            const detail = ev.message || ev.Message || ev.details || JSON.stringify(ev).substring(0, 200);
+            const ts = ev.timestamp || ev.TimeCreated || ev.ts || '';
+            return `<tr>
+                <td><b>${esc(String(eId))}</b></td>
+                <td style="font-size:10px">${esc(sysmonTypeLabels[eId] || '')}</td>
+                <td style="font-size:10px">${ts ? new Date(ts).toLocaleString('tr-TR') : '-'}</td>
+                <td style="font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(detail)}">${esc(detail.substring(0, 120))}</td>
+            </tr>`;
+        }).join('') + '</tbody></table>' +
+        (events.length > 200 ? `<div style="text-align:center;padding:8px;font-size:11px;color:var(--text-secondary)">+${events.length - 200} olay daha...</div>` : '') +
+        '</div>';
+}
+
+function _rmmFormatEventLog(events) {
+    if (!events.length) return '<div class="fw-empty">Event log kaydı yok</div>';
+    const levelColors = { Error: '#ef4444', Warning: '#eab308', Information: '#3b82f6', Critical: '#dc2626' };
+    return `<div style="max-height:400px;overflow:auto">
+        <table class="fw-table" style="font-size:11px">
+        <thead><tr><th>ID</th><th>Seviye</th><th>Kaynak</th><th>Mesaj</th><th>Zaman</th></tr></thead><tbody>` +
+        events.slice(0, 200).map(ev => {
+            const level = ev.level || ev.Level || ev.LevelDisplayName || 'Info';
+            const lc = levelColors[level] || '#6b7280';
+            const msg = ev.message || ev.Message || '';
+            const src = ev.source || ev.ProviderName || ev.Source || '';
+            return `<tr>
+                <td><b>${esc(String(ev.id || ev.Id || '-'))}</b></td>
+                <td style="color:${lc};font-weight:600">${esc(level)}</td>
+                <td style="font-size:10px">${esc(src)}</td>
+                <td style="font-size:10px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(msg)}">${esc(msg.substring(0, 120))}</td>
+                <td style="font-size:10px">${ev.timestamp || ev.TimeCreated ? new Date(ev.timestamp || ev.TimeCreated).toLocaleString('tr-TR') : '-'}</td>
+            </tr>`;
+        }).join('') + '</tbody></table>' +
+        (events.length > 200 ? `<div style="text-align:center;padding:8px;font-size:11px;color:var(--text-secondary)">+${events.length - 200} kayıt daha...</div>` : '') +
+        '</div>';
+}
+
+function _rmmFormatSysinfo(data) {
+    const sections = Object.keys(data);
+    if (!sections.length) return '<div class="fw-empty">Sistem bilgisi yok</div>';
+    return `<div style="max-height:400px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">` +
+        sections.map(s => {
+            const val = data[s];
+            const inner = typeof val === 'object' && val !== null
+                ? Object.entries(val).map(([k,v]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-color)"><span style="color:var(--text-secondary)">${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('')
+                : `<div style="font-size:12px">${esc(String(val))}</div>`;
+            return `<div style="background:var(--bg);border-radius:8px;padding:10px">
+                <div style="font-size:11px;font-weight:700;margin-bottom:6px;color:var(--accent)">${esc(s)}</div>
+                ${inner}
+            </div>`;
+        }).join('') + '</div>';
+}
+
+async function fwRmmUpdateDevice(id) {
+    const label = document.getElementById('rmmDevLabel').value.trim();
+    const tenant = document.getElementById('rmmDevTenant').value.trim();
+    const d = await fwRmmApi(`devices/${encodeURIComponent(id)}`, 'PUT', { label, tenant_id: tenant });
+    if (d?.success) fwToast('Cihaz güncellendi');
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwRmmSendTask() {
+    if (!_rmmCurrentDevice) return;
+    const taskType = document.getElementById('rmmTaskType').value;
+    let payload = {};
+    const raw = document.getElementById('rmmTaskPayload').value.trim();
+    if (raw) { try { payload = JSON.parse(raw); } catch { fwToast('Payload geçerli JSON olmalı', 'error'); return; } }
+    const d = await fwRmmApi(`devices/${encodeURIComponent(_rmmCurrentDevice.id)}/task`, 'POST', { task_type: taskType, payload });
+    if (d?.success) { fwToast('Görev gönderildi'); document.getElementById('rmmTaskPayload').value = ''; fwRmmDeviceDetail(_rmmCurrentDevice.id); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ── ITSM ──
+
+const _itsmPriorityColors = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#6b7280' };
+const _itsmPriorityLabels = { critical: 'Kritik', high: 'Yüksek', medium: 'Orta', low: 'Düşük' };
+const _itsmStatusLabels = { open: 'Açık', in_progress: 'Devam Eden', resolved: 'Çözümlendi', closed: 'Kapatıldı' };
+const _itsmStatusColors = { open: '#ef4444', in_progress: '#3b82f6', resolved: '#22c55e', closed: '#6b7280' };
+const _itsmCategoryLabels = { general: 'Genel', incident: 'Arıza', request: 'İstek', change: 'Değişiklik', problem: 'Problem' };
+
+async function fwItsmLoad() {
+    const status = document.getElementById('itsmFilterStatus').value;
+    const priority = document.getElementById('itsmFilterPriority').value;
+    let qs = '';
+    if (status) qs += `status=${status}&`;
+    if (priority) qs += `priority=${priority}&`;
+    const d = await fwRmmApi('tickets?' + qs);
+    if (!d?.success) return;
+
+    // Stats
+    const s = d.stats || {};
+    document.getElementById('itsmTotal').textContent = s.total ?? '-';
+    document.getElementById('itsmOpen').textContent = s.open ?? '-';
+    document.getElementById('itsmInProgress').textContent = s.in_progress ?? '-';
+    document.getElementById('itsmResolved').textContent = s.resolved ?? '-';
+    document.getElementById('itsmClosed').textContent = s.closed ?? '-';
+
+    // List
+    const el = document.getElementById('itsmTicketList');
+    if (!d.tickets?.length) { el.innerHTML = '<div class="fw-empty">Ticket yok</div>'; return; }
+    el.innerHTML = '<table class="fw-table"><thead><tr><th>#</th><th>Başlık</th><th>Öncelik</th><th>Kategori</th><th>Durum</th><th>Atanan</th><th>Tarih</th></tr></thead><tbody>' +
+        d.tickets.map(t => `<tr style="cursor:pointer" onclick="fwItsmDetail(${t.id})">
+            <td><b>#${t.id}</b></td>
+            <td>${esc(t.title)}</td>
+            <td><span style="color:${_itsmPriorityColors[t.priority]||'#6b7280'};font-weight:700;font-size:11px">● ${esc(_itsmPriorityLabels[t.priority]||t.priority)}</span></td>
+            <td><span class="fw-badge service">${esc(_itsmCategoryLabels[t.category]||t.category)}</span></td>
+            <td><span style="color:${_itsmStatusColors[t.status]||'#6b7280'};font-weight:600;font-size:11px">${esc(_itsmStatusLabels[t.status]||t.status)}</span></td>
+            <td>${esc(t.assignee||'-')}</td>
+            <td style="font-size:10px">${new Date(t.created_at).toLocaleString('tr-TR')}</td>
+        </tr>`).join('') + '</tbody></table>';
+}
+
+async function fwItsmCreate() {
+    const title = document.getElementById('itsmTitle').value.trim();
+    if (!title) { fwToast('Başlık girin', 'error'); return; }
+    const d = await fwRmmApi('tickets', 'POST', {
+        title,
+        description: document.getElementById('itsmDesc').value.trim(),
+        priority: document.getElementById('itsmPriority').value,
+        category: document.getElementById('itsmCategory').value,
+        assignee: document.getElementById('itsmAssignee').value.trim()
+    });
+    if (d?.success) {
+        fwToast('Ticket oluşturuldu');
+        document.getElementById('itsmTitle').value = '';
+        document.getElementById('itsmDesc').value = '';
+        document.getElementById('itsmAssignee').value = '';
+        fwItsmLoad();
+    } else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwItsmDetail(id) {
+    const d = await fwRmmApi(`tickets/${id}`);
+    if (!d?.success || !d.ticket) { fwToast('Ticket bulunamadı', 'error'); return; }
+    const t = d.ticket;
+    const det = document.getElementById('itsmTicketDetail');
+    det.style.display = 'block';
+    const notes = t.notes || [];
+    document.getElementById('itsmDetailContent').innerHTML = `
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                    <h3 style="margin:0 0 6px">#${t.id} — ${esc(t.title)}</h3>
+                    <div style="font-size:12px;color:var(--text-secondary);display:flex;gap:12px;flex-wrap:wrap">
+                        <span>Öncelik: <b style="color:${_itsmPriorityColors[t.priority]}">${esc(_itsmPriorityLabels[t.priority]||t.priority)}</b></span>
+                        <span>Durum: <b style="color:${_itsmStatusColors[t.status]}">${esc(_itsmStatusLabels[t.status]||t.status)}</b></span>
+                        <span>Kategori: <b>${esc(_itsmCategoryLabels[t.category]||t.category)}</b></span>
+                        <span>Atanan: <b>${esc(t.assignee||'-')}</b></span>
+                        <span>Oluşturan: ${esc(t.created_by||'-')}</span>
+                        <span>Tarih: ${new Date(t.created_at).toLocaleString('tr-TR')}</span>
+                    </div>
+                </div>
+            </div>
+            ${t.description ? `<div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;font-size:12px">${esc(t.description)}</div>` : ''}
+        </div>
+
+        <!-- Notes -->
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:12px">
+            <h4 style="font-size:13px;margin-bottom:10px">💬 Notlar & Geçmiş (${notes.length})</h4>
+            ${notes.length ? notes.map(n => `<div style="padding:8px;margin-bottom:6px;background:var(--bg);border-radius:8px;font-size:12px">
+                <div style="display:flex;justify-content:space-between;color:var(--text-secondary);font-size:10px;margin-bottom:4px">
+                    <span>${esc(n.by||'-')}</span><span>${n.ts ? new Date(n.ts).toLocaleString('tr-TR') : ''}</span>
+                </div>${esc(n.text)}</div>`).join('') : '<div style="font-size:11px;color:var(--text-secondary)">Henüz not yok</div>'}
+        </div>
+
+        <!-- Actions -->
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <h4 style="font-size:13px;margin-bottom:10px">⚡ İşlemler</h4>
+            <div class="fw-form-row">
+                <div class="fw-form-group"><label>Durum Değiştir</label>
+                    <select id="itsmUpdateStatus" style="font-size:11px;padding:4px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg);color:var(--text)">
+                        <option value="">— Değiştirme —</option><option value="open">Açık</option><option value="in_progress">Devam Eden</option><option value="resolved">Çözümlendi</option><option value="closed">Kapatıldı</option>
+                    </select>
+                </div>
+                <div class="fw-form-group"><label>Not Ekle</label>
+                    <input type="text" id="itsmUpdateNote" placeholder="Not yazın..." style="min-width:250px;font-size:11px">
+                </div>
+                <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwItsmUpdate(${t.id})"><i class="fas fa-save"></i> Güncelle</button>
+            </div>
+        </div>`;
+}
+
+async function fwItsmUpdate(id) {
+    const st = document.getElementById('itsmUpdateStatus').value;
+    const note = document.getElementById('itsmUpdateNote').value.trim();
+    if (!st && !note) { fwToast('Durum veya not girin', 'error'); return; }
+    const body = {};
+    if (st) body.status = st;
+    if (note) body.note = note;
+    const d = await fwRmmApi(`tickets/${id}`, 'PUT', body);
+    if (d?.success) { fwToast('Ticket güncellendi'); fwItsmDetail(id); fwItsmLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+function fwItsmBackToList() {
+    document.getElementById('itsmTicketDetail').style.display = 'none';
+}
+
+// ══════════════ SIEM: Threat Intelligence ══════════════
+
+async function fwThreatLoad() {
+    const r = await fetch(fwApi('rmm/threats'), {headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (!d?.success) return;
+    const s = d.stats || {};
+    document.getElementById('tiTotal').textContent = s.total || 0;
+    document.getElementById('tiMalicious').textContent = s.malicious || 0;
+    document.getElementById('tiSuspicious').textContent = s.suspicious || 0;
+    document.getElementById('tiByType').textContent = Object.keys(s.by_type || {}).length;
+
+    const threats = d.threats || [];
+    if (!threats.length) {
+        document.getElementById('tiList').innerHTML = '<div class="fw-empty">Henüz tehdit göstergesi yok.</div>';
+        return;
+    }
+    const repColors = {malicious:'#ef4444', suspicious:'#f59e0b', clean:'#22c55e', unknown:'#6b7280'};
+    const repLabels = {malicious:'Zararlı', suspicious:'Şüpheli', clean:'Temiz', unknown:'Bilinmiyor'};
+    let html = '<table class="fw-tbl"><thead><tr><th>Gösterge</th><th>Tip</th><th>Kaynak</th><th>İtibar</th><th>İlk Görülme</th><th></th></tr></thead><tbody>';
+    threats.forEach(t => {
+        const color = repColors[t.reputation] || '#6b7280';
+        const label = repLabels[t.reputation] || t.reputation;
+        html += `<tr><td><code>${esc(t.indicator)}</code></td><td>${esc(t.indicator_type)}</td><td>${esc(t.source)}</td>`;
+        html += `<td><span style="color:${color};font-weight:600">${label}</span></td>`;
+        html += `<td style="font-size:11px">${esc(t.first_seen?.slice(0,16)||'')}</td>`;
+        html += `<td><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwThreatDel(${t.id})" title="Sil"><i class="fas fa-trash" style="color:#ef4444"></i></button></td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('tiList').innerHTML = html;
+}
+
+async function fwThreatAdd() {
+    const indicator = document.getElementById('tiIndicator').value.trim();
+    if (!indicator) return fwToast('Gösterge boş olamaz', 'error');
+    const body = {
+        indicator,
+        indicator_type: document.getElementById('tiType').value,
+        source: document.getElementById('tiSource').value.trim() || 'manual',
+        reputation: document.getElementById('tiReputation').value,
+    };
+    const r = await fetch(fwApi('rmm/threats'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
+    const d = await r.json();
+    if (d?.success) { fwToast('Tehdit göstergesi eklendi'); document.getElementById('tiIndicator').value=''; fwThreatLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwThreatCheck() {
+    const indicator = document.getElementById('tiCheckIndicator').value.trim();
+    if (!indicator) return fwToast('Gösterge girin', 'error');
+    const body = { indicator, indicator_type: document.getElementById('tiCheckType').value };
+    const r = await fetch(fwApi('rmm/threats/check'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
+    const d = await r.json();
+    const el = document.getElementById('tiCheckResult');
+    if (d?.found) {
+        const t = d.threat;
+        const repColors = {malicious:'#ef4444', suspicious:'#f59e0b', clean:'#22c55e', unknown:'#6b7280'};
+        el.innerHTML = `<div style="padding:10px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid ${repColors[t.reputation]||'#6b7280'}">
+            <strong style="color:${repColors[t.reputation]||'#6b7280'}">⚠️ BULUNDU:</strong> ${esc(t.indicator)} — ${esc(t.reputation)} (Kaynak: ${esc(t.source)})
+        </div>`;
+    } else {
+        el.innerHTML = '<div style="padding:10px;border-radius:8px;background:rgba(34,197,94,0.1);border:1px solid #22c55e"><strong style="color:#22c55e">✅ TEMİZ:</strong> Tehdit veritabanında bulunamadı.</div>';
+    }
+}
+
+async function fwThreatDel(id) {
+    if (!confirm('Bu göstergeyi silmek istediğinize emin misiniz?')) return;
+    const r = await fetch(fwApi('rmm/threats/' + id), {method:'DELETE', headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (d?.success) { fwToast('Gösterge silindi'); fwThreatLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ══════════════ SIEM: Correlation ══════════════
+
+function fwCorrTypeChange() {
+    const type = document.getElementById('corrType').value;
+    let html = '<div class="fw-form-row">';
+    if (type === 'frequency') {
+        html += `<div class="fw-form-group"><label>Alert Tipi</label>
+            <select id="corrAlertType"><option value="cpu">CPU</option><option value="ram">RAM</option><option value="disk">Disk</option></select></div>
+            <div class="fw-form-group"><label>Adet</label><input type="number" id="corrCount" value="5" min="2" max="100" style="width:80px"></div>
+            <div class="fw-form-group"><label>Zaman Penceresi (dk)</label><input type="number" id="corrWindow" value="60" min="5" max="1440" style="width:100px"></div>`;
+    } else {
+        html += `<div class="fw-form-group"><label>Metrik</label>
+            <select id="corrMetric"><option value="cpu">CPU</option><option value="ram">RAM</option><option value="disk">Disk</option></select></div>
+            <div class="fw-form-group"><label>Operatör</label>
+            <select id="corrOperator"><option value=">=">≥</option><option value=">">></option></select></div>
+            <div class="fw-form-group"><label>Değer</label><input type="number" id="corrValue" value="95" min="1" max="100" style="width:80px"></div>
+            <div class="fw-form-group"><label>Sayı</label><input type="number" id="corrCount" value="3" min="1" max="100" style="width:80px"></div>
+            <div class="fw-form-group"><label>Pencere (dk)</label><input type="number" id="corrWindow" value="10" min="1" max="1440" style="width:80px"></div>`;
+    }
+    html += '</div>';
+    document.getElementById('corrCondFields').innerHTML = html;
+}
+
+async function fwCorrCreate() {
+    const name = document.getElementById('corrName').value.trim();
+    if (!name) return fwToast('İsim gerekli', 'error');
+    const rule_type = document.getElementById('corrType').value;
+    let conditions = {};
+    if (rule_type === 'frequency') {
+        conditions = {
+            alert_type: document.getElementById('corrAlertType').value,
+            count: parseInt(document.getElementById('corrCount').value) || 5,
+            window_minutes: parseInt(document.getElementById('corrWindow').value) || 60,
+        };
+    } else {
+        conditions = {
+            metric: document.getElementById('corrMetric')?.value || 'cpu',
+            operator: document.getElementById('corrOperator')?.value || '>=',
+            value: parseInt(document.getElementById('corrValue')?.value) || 95,
+            count: parseInt(document.getElementById('corrCount').value) || 3,
+            window_minutes: parseInt(document.getElementById('corrWindow').value) || 10,
+        };
+    }
+    const body = {
+        name,
+        description: document.getElementById('corrDesc').value.trim(),
+        rule_type,
+        conditions,
+        severity: document.getElementById('corrSeverity').value,
+    };
+    const r = await fetch(fwApi('rmm/correlation/rules'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
+    const d = await r.json();
+    if (d?.success) { fwToast('Korelasyon kuralı oluşturuldu'); document.getElementById('corrName').value=''; fwCorrelationLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwCorrelationLoad() {
+    const r = await fetch(fwApi('rmm/correlation/rules'), {headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (!d?.success) return;
+    const rules = d.rules || [];
+    if (!rules.length) {
+        document.getElementById('corrRuleList').innerHTML = '<div class="fw-empty">Henüz korelasyon kuralı yok.</div>';
+    } else {
+        const sevColors = {critical:'#ef4444', warning:'#f59e0b', info:'#3b82f6'};
+        let html = '<table class="fw-tbl"><thead><tr><th>İsim</th><th>Tip</th><th>Seviye</th><th>Durum</th><th>Oluşturulma</th><th></th></tr></thead><tbody>';
+        rules.forEach(r => {
+            const sColor = sevColors[r.severity] || '#6b7280';
+            html += `<tr><td><strong>${esc(r.name)}</strong><br><span style="font-size:11px;color:var(--text-secondary)">${esc(r.description||'')}</span></td>`;
+            html += `<td>${esc(r.rule_type)}</td>`;
+            html += `<td><span style="color:${sColor};font-weight:600">${esc(r.severity)}</span></td>`;
+            html += `<td>${r.enabled ? '<span style="color:#22c55e">Aktif</span>' : '<span style="color:#6b7280">Pasif</span>'}</td>`;
+            html += `<td style="font-size:11px">${esc(r.created_at?.slice(0,16)||'')}</td>`;
+            html += `<td style="display:flex;gap:4px">
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCorrToggle(${r.id},${!r.enabled})" title="${r.enabled?'Devre dışı':'Etkinleştir'}"><i class="fas fa-${r.enabled?'pause':'play'}"></i></button>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCorrDel(${r.id})" title="Sil"><i class="fas fa-trash" style="color:#ef4444"></i></button>
+            </td></tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('corrRuleList').innerHTML = html;
+    }
+    fwCorrEventsLoad();
+}
+
+async function fwCorrToggle(id, enabled) {
+    const r = await fetch(fwApi('rmm/correlation/rules/' + id), {method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify({enabled})});
+    const d = await r.json();
+    if (d?.success) { fwToast('Kural güncellendi'); fwCorrelationLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwCorrDel(id) {
+    if (!confirm('Bu kuralı silmek istediğinize emin misiniz?')) return;
+    const r = await fetch(fwApi('rmm/correlation/rules/' + id), {method:'DELETE', headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (d?.success) { fwToast('Kural silindi'); fwCorrelationLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
+async function fwCorrEventsLoad() {
+    const r = await fetch(fwApi('rmm/correlation/events'), {headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (!d?.success) return;
+    const events = d.events || [];
+    if (!events.length) {
+        document.getElementById('corrEventList').innerHTML = '<div class="fw-empty">Henüz korelasyon olayı yok.</div>';
+        return;
+    }
+    const sevColors = {critical:'#ef4444', warning:'#f59e0b', info:'#3b82f6'};
+    let html = '<table class="fw-tbl"><thead><tr><th>Kural</th><th>Cihaz</th><th>Seviye</th><th>Detay</th><th>Zaman</th></tr></thead><tbody>';
+    events.forEach(ev => {
+        const sColor = sevColors[ev.severity] || '#6b7280';
+        const det = ev.details || {};
+        let detailStr = Object.entries(det).map(([k,v]) => `${k}: ${v}`).join(', ');
+        html += `<tr><td>${esc(ev.rule_name)}</td><td>${esc(ev.hostname||ev.device_id)}</td>`;
+        html += `<td><span style="color:${sColor};font-weight:600">${esc(ev.severity)}</span></td>`;
+        html += `<td style="font-size:11px">${esc(detailStr)}</td>`;
+        html += `<td style="font-size:11px">${esc(ev.created_at?.slice(0,16)||'')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('corrEventList').innerHTML = html;
+}
+
+// ══════════════ SIEM: MITRE ATT&CK ══════════════
+
+async function fwMitreLoad() {
+    const r = await fetch(fwApi('rmm/mitre/summary'), {headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (!d?.success) return;
+    const tactics = d.tactics || [];
+    const maxCount = Math.max(1, ...tactics.map(t => t.count));
+
+    let heatHtml = '';
+    tactics.forEach(t => {
+        const intensity = t.count > 0 ? Math.max(0.2, t.count / maxCount) : 0;
+        const bg = t.count > 0 ? `rgba(239,68,68,${intensity})` : 'var(--bg-input)';
+        const border = t.count > 0 ? `rgba(239,68,68,${Math.min(1, intensity+0.3)})` : 'var(--border-color)';
+        heatHtml += `<div style="padding:12px;border-radius:8px;text-align:center;background:${bg};border:1px solid ${border};cursor:default" title="${t.name}">
+            <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px">${esc(t.name)}</div>
+            <div style="font-size:18px;font-weight:700;color:${t.count > 0 ? '#fff' : 'var(--text-secondary)'}">${t.count}</div>
+        </div>`;
+    });
+    document.getElementById('mitreHeatmap').innerHTML = heatHtml;
+
+    const techniques = d.top_techniques || [];
+    if (!techniques.length) {
+        document.getElementById('mitreList').innerHTML = '<div class="fw-empty">Henüz eşleşen teknik yok — Sysmon verisi gerekli.</div>';
+        return;
+    }
+    let html = '<table class="fw-tbl"><thead><tr><th>Event ID</th><th>Taktik</th><th>Teknik</th><th>Açıklama</th><th>Mesaj</th></tr></thead><tbody>';
+    techniques.forEach(t => {
+        html += `<tr><td><code>${t.event_id}</code></td><td><span style="color:#ef4444;font-weight:600">${esc(t.tactic)}</span></td>`;
+        html += `<td><code>${esc(t.technique)}</code></td><td>${esc(t.technique_desc)}</td>`;
+        html += `<td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis" title="${escAttr(t.event_message)}">${esc(t.event_message?.slice(0,80)||'')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('mitreList').innerHTML = html;
+}
+
+// ══════════════ SIEM: Risk Score ══════════════
+
+async function fwRiskLoad() {
+    const r = await fetch(fwApi('rmm/risk'), {headers:{'X-CSRF-Token':FW.csrf}});
+    const d = await r.json();
+    if (!d?.success) return;
+    const summary = d.summary || {};
+    document.getElementById('riskCritical').textContent = summary.critical || 0;
+    document.getElementById('riskHigh').textContent = summary.high || 0;
+    document.getElementById('riskMedium').textContent = summary.medium || 0;
+    document.getElementById('riskLow').textContent = summary.low || 0;
+
+    const scores = d.scores || [];
+    if (!scores.length) {
+        document.getElementById('riskTable').innerHTML = '<div class="fw-empty">Henüz risk puanı yok.</div>';
+        return;
+    }
+    const levelColors = {critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#22c55e'};
+    const levelLabels = {critical:'Kritik', high:'Yüksek', medium:'Orta', low:'Düşük'};
+    let html = '<table class="fw-tbl"><thead><tr><th>Cihaz</th><th>Puan</th><th>Seviye</th><th>Güncelleme</th></tr></thead><tbody>';
+    scores.forEach(s => {
+        const color = levelColors[s.level] || '#6b7280';
+        const label = levelLabels[s.level] || s.level;
+        const barWidth = Math.min(100, s.score);
+        html += `<tr><td><strong>${esc(s.hostname || s.device_id)}</strong></td>`;
+        html += `<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;background:var(--bg);border-radius:4px;height:8px;min-width:80px"><div style="width:${barWidth}%;height:100%;border-radius:4px;background:${color}"></div></div><span style="font-weight:700;color:${color}">${s.score.toFixed(1)}</span></div></td>`;
+        html += `<td><span style="color:${color};font-weight:600">${label}</span></td>`;
+        html += `<td style="font-size:11px">${esc(s.updated_at?.slice(0,16)||'')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('riskTable').innerHTML = html;
+}
+
+async function fwRiskDecay() {
+    if (!confirm('Tüm risk puanlarını %5 azaltmak istiyor musunuz?')) return;
+    const r = await fetch(fwApi('rmm/risk/decay'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify({percent:5})});
+    const d = await r.json();
+    if (d?.success) { fwToast('Risk puanları azaltıldı'); fwRiskLoad(); }
+    else fwToast(d?.message || 'Hata', 'error');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('fwServerSelect');
-    if (sel.value) { FW.serverId = sel.value; fwRefresh(); }
+    FW.serverId = sel.value || 'emare-os';
+    fwRefresh();
+    document.getElementById('dashLive').addEventListener('change', () => {
+        if (!document.getElementById('dashLive').checked && _dashTimer) { clearInterval(_dashTimer); _dashTimer = null; }
+    });
+    // Sidebar grup toggle
+    document.querySelectorAll('.fw-nav-group-title').forEach(title => {
+        title.addEventListener('click', () => {
+            title.parentElement.classList.toggle('collapsed');
+        });
+    });
+    // İlk tab'ı aktif yap
+    fwTab('dashboard');
 });
 </script>
 </body>

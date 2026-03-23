@@ -133,7 +133,17 @@
 .org-empty { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .org-empty i { font-size: 48px; opacity: .3; display: block; margin-bottom: 16px; }
 
-@media (max-width: 768px) { .org-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+    .org-grid { grid-template-columns: 1fr; }
+    .org-header { padding: 18px; }
+    .org-header-left { width: 100%; }
+    .org-header .btn-primary { width: 100%; justify-content: center; }
+    .org-card { padding: 16px; }
+    .org-card-stats { gap: 8px; }
+    .modal-box { padding: 20px; width: 94%; }
+    .form-actions { flex-wrap: wrap; }
+    .form-actions button { width: 100%; justify-content: center; }
+}
 </style>
 {% endblock %}
 
@@ -179,11 +189,24 @@
             <input type="text" id="orgDomain" placeholder="panel.firmaadi.com">
         </div>
         <div class="form-group">
+            <label>Logo URL (opsiyonel)</label>
+            <input type="text" id="orgLogoUrl" placeholder="https://cdn.firma.com/logo.png">
+        </div>
+        <div class="form-group">
+            <label>Marka Adı (opsiyonel)</label>
+            <input type="text" id="orgBrandName" placeholder="Firma Cloud">
+        </div>
+        <div class="form-group">
+            <label>Marka Ana Renk (opsiyonel)</label>
+            <input type="text" id="orgBrandPrimaryColor" placeholder="#0ea5e9">
+        </div>
+        <div class="form-group">
             <label>Plan</label>
             <select id="orgPlan">
                 <option value="community">Community (Ücretsiz)</option>
                 <option value="professional">Professional</option>
                 <option value="enterprise">Enterprise</option>
+                <option value="reseller">Reseller (Bayi)</option>
             </select>
         </div>
         <div class="form-group">
@@ -389,6 +412,9 @@
         document.getElementById('orgName').value = '';
         document.getElementById('orgSlug').value = '';
         document.getElementById('orgDomain').value = '';
+        document.getElementById('orgLogoUrl').value = '';
+        document.getElementById('orgBrandName').value = '';
+        document.getElementById('orgBrandPrimaryColor').value = '';
         document.getElementById('orgPlan').value = 'community';
         document.getElementById('orgActive').value = 'true';
         document.getElementById('modalTitle').textContent = 'Yeni Organizasyon';
@@ -402,6 +428,9 @@
         document.getElementById('orgName').value = org.name || '';
         document.getElementById('orgSlug').value = org.slug || '';
         document.getElementById('orgDomain').value = org.domain || '';
+        document.getElementById('orgLogoUrl').value = org.logo_url || '';
+        document.getElementById('orgBrandName').value = org.brand_name || '';
+        document.getElementById('orgBrandPrimaryColor').value = org.brand_primary_color || '';
         document.getElementById('orgPlan').value = org.plan_name || 'community';
         document.getElementById('orgActive').value = org.is_active ? 'true' : 'false';
         document.getElementById('modalTitle').textContent = 'Düzenle: ' + org.name;
@@ -421,6 +450,9 @@
             name: name,
             slug: document.getElementById('orgSlug').value.trim() || undefined,
             domain: document.getElementById('orgDomain').value.trim() || null,
+            logo_url: document.getElementById('orgLogoUrl').value.trim() || null,
+            brand_name: document.getElementById('orgBrandName').value.trim() || null,
+            brand_primary_color: document.getElementById('orgBrandPrimaryColor').value.trim() || null,
             is_active: document.getElementById('orgActive').value === 'true',
             plan: document.getElementById('orgPlan').value,
         };

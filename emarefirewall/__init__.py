@@ -1,9 +1,9 @@
 """
-EmareFirewall — Bağımsız Güvenlik Duvarı Yönetim Paketi
+Emare Security OS — Birleşik Güvenlik Platformu
 ========================================================
 
-Herhangi bir Flask uygulamasına veya CLI'dan bağımsız kullanılabilir.
-UFW (Ubuntu/Debian) ve firewalld (RHEL/CentOS/AlmaLinux) destekler.
+Firewall, L7 Koruma, Ağ Analizi, RMM, ITSM, 5651 Uyumluluk.
+UFW (Ubuntu/Debian), firewalld (RHEL/CentOS/AlmaLinux) ve Emare OS destekler.
 
 Kullanım (Standalone):
     from emarefirewall import FirewallManager
@@ -19,9 +19,14 @@ Kullanım (CLI):
     python -m emarefirewall status --host 1.2.3.4 --user root
 """
 
-__version__ = "1.0.0"
+__version__ = "1.5.0"
 __author__ = "Emare Collective"
 
 from emarefirewall.manager import FirewallManager
+from emarefirewall.tenants import (
+    TenantStore, DictTenantStore, WebhookDispatcher, create_tenant_store,
+)
+from emarefirewall.rmm import RMMStore
+from emarefirewall import config as config
 
-__all__ = ["FirewallManager", "__version__"]
+__all__ = ["FirewallManager", "RMMStore", "config", "__version__"]

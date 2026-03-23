@@ -297,7 +297,7 @@ def api_create_user():
         return jsonify({'success': False, 'message': 'Kullanıcı adı en az 3 karakter olmalı'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'success': False, 'message': 'Bu kullanıcı adı zaten mevcut'}), 409
-    if role not in ('super_admin', 'admin', 'operator', 'read_only', 'custom'):
+    if role not in ('super_admin', 'admin', 'operator', 'reseller', 'sub_reseller', 'read_only', 'custom'):
         return jsonify({'success': False, 'message': 'Geçersiz rol'}), 400
 
     # Custom rol için en az bir izin zorunlu

@@ -1,0 +1,33 @@
+# EmareCloud CODEOWNERS
+# Not: Asagidaki e-posta tabanli sahiplik, ekip kullanici adlarina gecince
+# @kullanici veya @org/team formatina donusturulmelidir.
+
+* emre@emarecloud.tr
+
+# Core
+/core/** emre@emarecloud.tr
+/models.py emre@emarecloud.tr
+/app.py emre@emarecloud.tr
+/config.py emre@emarecloud.tr
+
+# Domain routes
+/routes/domain_ops/** emre@emarecloud.tr
+/routes/domain_infra/** emre@emarecloud.tr
+/routes/domain_network/** emre@emarecloud.tr
+
+# Legacy/common routes
+/routes/organizations.py emre@emarecloud.tr
+/routes/pages.py emre@emarecloud.tr
+/routes/servers.py emre@emarecloud.tr
+/routes/deploy.py emre@emarecloud.tr
+/routes/terminal.py emre@emarecloud.tr
+
+# Security-sensitive
+/auth_routes.py emre@emarecloud.tr
+/rbac.py emre@emarecloud.tr
+/firewall_manager.py emre@emarecloud.tr
+/crypto.py emre@emarecloud.tr
+
+# CI and automation
+/.github/** emre@emarecloud.tr
+/tools/** emre@emarecloud.tr

@@ -1,0 +1,68 @@
+## ISP Ölçekli Dağıtım (50.000+ abone)
+## Kullanım: docker compose -f docker-compose.yml -f docker-compose.isp.yml up -d
+
+services:
+  firewall:
+    command: ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5555", "--timeout", "120", "wsgi:app"]
+    environment:
+      - EMARE_MODE=isp
+      - EMARE_CACHE=redis
+      - EMARE_DB=postgres
+      - EMARE_WORKERS=4
+      - EMARE_SSH_POOL_SIZE=5
+      - EMARE_REDIS_URL=redis://redis:6379/0
+      - EMARE_POSTGRES_URL=postgresql://emare:emare_secret@postgres:5432/emarefirewall
+      - EMARE_RATE_LIMIT=120
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: emarefirewall-redis
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: emarefirewall-postgres
+    environment:
+      POSTGRES_DB: emarefirewall
+      POSTGRES_USER: emare
+      POSTGRES_PASSWORD: emare_secret
+    restart: unless-stopped
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emare -d emarefirewall"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:
+  pg_data:

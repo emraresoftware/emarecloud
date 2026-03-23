@@ -1,0 +1,1 @@
+"""Infrastructure domain route paketi."""

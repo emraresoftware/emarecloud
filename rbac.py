@@ -29,6 +29,18 @@ ROLES = {
         'description': 'Komut çalıştırma, servis yönetimi',
         'color': '#4c8dff',
     },
+    'reseller': {
+        'label': 'Bayi',
+        'level': 45,
+        'description': 'Kendi organizasyonu ve alt bayi yönetimi',
+        'color': '#0ea5e9',
+    },
+    'sub_reseller': {
+        'label': 'Alt Bayi',
+        'level': 35,
+        'description': 'Kendi organizasyonunu yönetir',
+        'color': '#14b8a6',
+    },
     'read_only': {
         'label': 'Salt Okunur',
         'level': 10,
@@ -78,8 +90,10 @@ ALL_PERMISSIONS = [
     'dc.view', 'dc.manage',
     # Geliştirici Panosu
     'scoreboard.view',
+    # Ağ Cihazları
+    'network.view', 'network.add', 'network.edit', 'network.delete', 'network.execute',
     # Admin Panel
-    'admin_panel',
+    'admin_panel', 'admin.access',
 ]
 
 # Modül grupları — admin panelde kategoriler halinde gösterim
@@ -239,11 +253,24 @@ PERMISSION_GROUPS = [
         ],
     },
     {
+        'key': 'network',
+        'label': 'Ağ Cihazları',
+        'icon': '🔌',
+        'perms': [
+            ('network.view',    'Görüntüle'),
+            ('network.add',     'Ekle'),
+            ('network.edit',    'Düzenle'),
+            ('network.delete',  'Sil'),
+            ('network.execute', 'Komut Çalıştır / Bağlan'),
+        ],
+    },
+    {
         'key': 'admin',
         'label': 'Admin Panel',
         'icon': '⚙️',
         'perms': [
             ('admin_panel', 'Admin Panele Eriş'),
+            ('admin.access', 'Admin Modullerine Eriş'),
         ],
     },
 ]
@@ -271,6 +298,8 @@ PERMISSIONS = {
         'cloudflare.view',
         'dc.view', 'dc.manage',
         'scoreboard.view',
+        'network.view', 'network.add', 'network.edit', 'network.delete', 'network.execute',
+        'admin.access',
     },
 
     'operator': {
@@ -288,6 +317,41 @@ PERMISSIONS = {
         'org.view',
         'plan.view',
         'token.manage',
+        'scoreboard.view',
+        'network.view', 'network.execute',
+    },
+
+    'reseller': {
+        'server.view', 'server.add', 'server.edit', 'server.metrics',
+        'server.connect', 'server.disconnect', 'server.execute',
+        'firewall.view', 'firewall.manage',
+        'vm.view', 'vm.manage',
+        'market.view', 'market.install',
+        'storage.view', 'storage.manage',
+        'terminal.access',
+        'user.view',
+        'monitoring.view', 'monitoring.manage',
+        'raid.view', 'raid.manage',
+        'org.view', 'org.manage', 'org.members',
+        'plan.view', 'token.manage',
+        'dc.view',
+        'scoreboard.view',
+        'network.view', 'network.add', 'network.edit', 'network.execute',
+        'admin.access',
+    },
+
+    'sub_reseller': {
+        'server.view', 'server.metrics',
+        'server.connect', 'server.disconnect', 'server.execute',
+        'firewall.view',
+        'vm.view',
+        'market.view',
+        'storage.view',
+        'terminal.access',
+        'monitoring.view',
+        'raid.view',
+        'org.view',
+        'plan.view',
         'scoreboard.view',
     },
 

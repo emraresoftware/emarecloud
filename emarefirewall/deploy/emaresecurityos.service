@@ -1,0 +1,16 @@
+[Unit]
+Description=Emare Security OS (Gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/www/emaresecurityos
+EnvironmentFile=/var/www/emaresecurityos/.env
+ExecStart=/opt/emaresecurityos-venv/bin/gunicorn -w 2 -k gevent -b 127.0.0.1:8202 --timeout 120 --access-logfile - --error-logfile - wsgi:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

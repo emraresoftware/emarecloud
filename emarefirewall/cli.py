@@ -1,8 +1,8 @@
 """
-EmareFirewall — CLI Arayüzü
+Emare Security OS — CLI Arayüzü
 =============================
 
-Komut satırından bağımsız firewall yönetimi.
+Komut satırından birleşik güvenlik platform yönetimi.
 
 Kullanım:
     python -m emarefirewall status --host 1.2.3.4 --user root
@@ -56,8 +56,8 @@ def print_table(rows, headers):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="emarefirewall",
-        description="🔥 EmareFirewall — Bağımsız Güvenlik Duvarı Yönetimi"
+        prog="emare-security-os",
+        description="🛡️ Emare Security OS — Birleşik Güvenlik Platformu"
     )
     parser.add_argument("command", choices=[
         "status", "rules", "enable", "disable",

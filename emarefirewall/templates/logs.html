@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emare Security OS — Log Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root{--bg:#0f172a;--bg-card:#1e293b;--bg-input:#334155;--text:#f1f5f9;--text-secondary:#94a3b8;--border:#334155;--primary:#3b82f6;--red:#ef4444;--green:#22c55e;--yellow:#eab308;--orange:#f97316;--purple:#a855f7}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.5}
+        a{color:var(--primary);text-decoration:none}
+
+        /* Layout */
+        .log-container{max-width:1400px;margin:0 auto}
+
+        /* Hero */
+        .log-hero{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(168,85,247,.06));border:1px solid var(--border);border-radius:20px;padding:24px 28px;margin-bottom:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+        .log-hero-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#a855f7);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;flex-shrink:0}
+        .log-hero h2{margin:0 0 4px;font-size:20px;font-weight:800}
+        .log-hero p{margin:0;color:var(--text-secondary);font-size:13px}
+        .log-hero-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+        /* Stat cards */
+        .log-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:22px}
+        .log-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;transition:.2s}
+        .log-stat:hover{border-color:var(--primary);transform:translateY(-2px)}
+        .log-stat-val{font-size:28px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#a855f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+        .log-stat-lbl{font-size:11px;color:var(--text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+        /* Tabs */
+        .log-tabs{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+        .log-tab{padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+        .log-tab:hover{border-color:var(--primary);color:var(--primary)}
+        .log-tab.active{background:linear-gradient(135deg,#3b82f6,#a855f7);color:#fff;border-color:transparent}
+
+        /* Panels */
+        .log-panel{display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:24px}
+        .log-panel.active{display:block}
+        .log-panel h3{margin:0 0 16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+
+        /* Filters */
+        .log-filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
+        .log-filters .fg{display:flex;flex-direction:column;gap:4px}
+        .log-filters label{font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
+        .log-filters input,.log-filters select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-input);color:var(--text);min-width:110px}
+        .log-filters input:focus,.log-filters select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.08)}
+
+        /* Buttons */
+        .btn{padding:8px 16px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px;color:var(--text)}
+        .btn:hover{transform:scale(1.02)}
+        .btn-primary{background:linear-gradient(135deg,#3b82f6,#a855f7);color:#fff}
+        .btn-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+        .btn-danger:hover{background:var(--red);color:#fff}
+        .btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
+        .btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+        .btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
+
+        /* Log table */
+        .log-table{width:100%;border-collapse:collapse}
+        .log-table th{text-align:left;padding:10px 12px;font-size:11px;color:var(--text-secondary);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:var(--bg-card);z-index:1}
+        .log-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid rgba(128,128,128,.08);font-family:'JetBrains Mono',monospace}
+        .log-table tr:hover{background:rgba(59,130,246,.03)}
+        .log-table-wrap{max-height:520px;overflow-y:auto;border-radius:10px}
+
+        /* Badges */
+        .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase}
+        .badge-info{background:rgba(59,130,246,.1);color:#3b82f6}
+        .badge-warn{background:rgba(234,179,8,.1);color:#eab308}
+        .badge-error{background:rgba(239,68,68,.1);color:#ef4444}
+        .badge-critical{background:rgba(239,68,68,.2);color:#ef4444}
+        .badge-get{background:rgba(34,197,94,.1);color:#22c55e}
+        .badge-post{background:rgba(59,130,246,.1);color:#3b82f6}
+        .badge-delete{background:rgba(239,68,68,.1);color:#ef4444}
+        .badge-cat{background:rgba(168,85,247,.1);color:#a855f7}
+
+        /* Charts */
+        .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+        @media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+        .chart-card{background:var(--bg-input);border-radius:12px;padding:16px}
+        .chart-card h4{margin:0 0 12px;font-size:13px;font-weight:700}
+
+        /* Bar charts */
+        .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+        .bar-label{font-size:11px;color:var(--text-secondary);min-width:90px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:4px;transition:width .4s ease}
+        .bar-val{font-size:11px;font-weight:700;min-width:35px;text-align:right}
+
+        /* Hourly chart (mini spark bar) */
+        .hour-chart{display:flex;align-items:flex-end;gap:2px;height:80px;padding-top:8px}
+        .hour-bar{flex:1;border-radius:3px 3px 0 0;transition:height .3s ease;min-width:4px;position:relative}
+        .hour-bar:hover{opacity:.8}
+        .hour-bar .tip{display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:10px;padding:3px 8px;border-radius:5px;white-space:nowrap;z-index:10}
+        .hour-bar:hover .tip{display:block}
+        .hour-labels{display:flex;gap:2px;font-size:9px;color:var(--text-secondary);margin-top:4px}
+        .hour-labels span{flex:1;text-align:center;min-width:4px}
+
+        /* Status pills */
+        .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+        .status-dot.s2{background:var(--green)}
+        .status-dot.s3{background:var(--primary)}
+        .status-dot.s4{background:var(--orange)}
+        .status-dot.s5{background:var(--red)}
+
+        /* Live indicator */
+        .live-dot{width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;animation:livePulse 1.5s infinite}
+        @keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+
+        /* Toast */
+        .log-toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:.3s}
+        .log-toast.show{transform:translateY(0);opacity:1}
+        .log-toast.success{background:var(--green);color:#fff}
+        .log-toast.error{background:var(--red);color:#fff}
+
+        /* Paging */
+        .log-paging{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--text-secondary)}
+
+        /* IP Tracker */
+        .ip-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;margin-bottom:16px}
+        .ip-card{background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:14px}
+        .ip-card:hover{border-color:var(--primary);transform:translateY(-2px)}
+        .ip-card.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+        .ip-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+        .ip-icon.safe{background:rgba(34,197,94,.1);color:var(--green)}
+        .ip-icon.warn{background:rgba(234,179,8,.1);color:var(--yellow)}
+        .ip-icon.danger{background:rgba(239,68,68,.1);color:var(--red)}
+        .ip-meta{flex:1;min-width:0}
+        .ip-addr{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace}
+        .ip-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+        .ip-right{text-align:right;flex-shrink:0}
+        .ip-count{font-size:18px;font-weight:800}
+        .risk-meter{width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+        .risk-fill{height:100%;border-radius:3px;transition:width .3s}
+
+        /* IP Detail Panel */
+        .ip-detail{display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:14px;padding:20px;margin-top:16px;animation:fadeIn .3s ease}
+        .ip-detail.active{display:block}
+        .ip-detail-header{display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+        .ip-detail-header h4{font-size:18px;font-weight:800;margin:0;font-family:'JetBrains Mono',monospace}
+        .ip-detail-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+        .ip-mini-stat{background:var(--bg-card);border-radius:10px;padding:12px;text-align:center}
+        .ip-mini-stat .val{font-size:22px;font-weight:800}
+        .ip-mini-stat .lbl{font-size:10px;color:var(--text-secondary);text-transform:uppercase;margin-top:2px}
+        .ip-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+        @media(max-width:800px){.ip-detail-grid{grid-template-columns:1fr}}
+        @media(max-width:768px){
+            body{padding:12px}
+            .log-hero{padding:16px}
+            .log-panel{padding:16px}
+            .log-hero-right{width:100%;margin-left:0;justify-content:flex-start}
+            .log-filters{gap:8px}
+            .log-filters .fg{width:100%}
+            .log-filters input,.log-filters select{width:100%;min-width:0}
+            .log-paging{gap:10px;flex-wrap:wrap}
+            .ip-list{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+<div class="log-container">
+    <!-- Hero -->
+    <div class="log-hero">
+        <div class="log-hero-icon"><i class="fas fa-chart-line"></i></div>
+        <div>
+            <h2>📊 Emare Security OS — Log Dashboard</h2>
+            <p>Tüm istek, yanıt, güvenlik olayları ve audit kayıtları — gerçek zamanlı izleme ve analiz.</p>
+        </div>
+        <div class="log-hero-right">
+            <span class="live-dot"></span>
+            <span style="font-size:12px;font-weight:700;color:var(--green)" id="liveLabel">Canlı</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleLive()" id="btnLive"><i class="fas fa-pause"></i> Duraklat</button>
+            <button class="btn btn-ghost btn-sm" onclick="refreshAll()"><i class="fas fa-sync"></i> Yenile</button>
+            <a href="/firewall" class="btn btn-ghost btn-sm"><i class="fas fa-shield-halved"></i> Firewall</a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="log-stats">
+        <div class="log-stat"><div class="log-stat-val" id="statTotal">-</div><div class="log-stat-lbl">Toplam İstek</div></div>
+        <div class="log-stat"><div class="log-stat-val" id="statLogs">-</div><div class="log-stat-lbl">Log Kaydı</div></div>
+        <div class="log-stat"><div class="log-stat-val" id="statErrors">-</div><div class="log-stat-lbl">Hata (4xx/5xx)</div></div>
+        <div class="log-stat"><div class="log-stat-val" id="statBlocked">-</div><div class="log-stat-lbl">Engellenen</div></div>
+        <div class="log-stat"><div class="log-stat-val" id="statL7">-</div><div class="log-stat-lbl">L7 Engelleme</div></div>
+        <div class="log-stat"><div class="log-stat-val" id="statReqSec">-</div><div class="log-stat-lbl">İstek/dk</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="log-tabs">
+        <div class="log-tab active" onclick="logTab('live')"><i class="fas fa-satellite-dish"></i> Canlı Log</div>
+        <div class="log-tab" onclick="logTab('analytics')"><i class="fas fa-chart-bar"></i> Analitik</div>
+        <div class="log-tab" onclick="logTab('security')"><i class="fas fa-shield-halved"></i> Güvenlik Olayları</div>
+        <div class="log-tab" onclick="logTab('audit')"><i class="fas fa-clipboard-list"></i> Audit Trail</div>
+        <div class="log-tab" onclick="logTab('search')"><i class="fas fa-magnifying-glass"></i> Gelişmiş Arama</div>
+        <div class="log-tab" onclick="logTab('l7attacks')"><i class="fas fa-shield-virus"></i> L7 Saldırılar</div>
+        <div class="log-tab" onclick="logTab('iptrack')"><i class="fas fa-crosshairs"></i> IP İzleme</div>
+    </div>
+
+    <!-- ═══ CANLI LOG ═══ -->
+    <div class="log-panel active" id="panel-live">
+        <h3><i class="fas fa-satellite-dish" style="color:var(--primary)"></i> Canlı Log Akışı</h3>
+        <div class="log-filters">
+            <div class="fg"><label>Seviye</label><select id="fLevel" onchange="applyLiveFilter()"><option value="">Tümü</option><option value="INFO">INFO</option><option value="WARNING">WARNING</option><option value="ERROR">ERROR</option></select></div>
+            <div class="fg"><label>Kategori</label><select id="fCategory" onchange="applyLiveFilter()"><option value="">Tümü</option><option value="REQUEST">REQUEST</option><option value="RESPONSE">RESPONSE</option><option value="RATE_LIMIT">RATE_LIMIT</option><option value="CSRF">CSRF</option><option value="AUDIT">AUDIT</option><option value="ERROR">ERROR</option><option value="L7_SYN_FLOOD">L7 SYN Flood</option><option value="L7_HTTP_FLOOD">L7 HTTP Flood</option><option value="L7_PORTSCAN">L7 Port Scan</option><option value="L7_CONNLIMIT">L7 Bağlantı Limit</option><option value="L7_ICMP_FLOOD">L7 ICMP Flood</option><option value="L7_BOGUS_TCP">L7 Bogus TCP</option><option value="L7_NGINX_BLOCK">L7 Nginx Block</option></select></div>
+            <div class="fg"><label>Metot</label><select id="fMethod" onchange="applyLiveFilter()"><option value="">Tümü</option><option value="GET">GET</option><option value="POST">POST</option><option value="DELETE">DELETE</option></select></div>
+            <div class="fg"><label>IP</label><input id="fIp" placeholder="ör: 192.168.1.1" oninput="applyLiveFilter()"></div>
+            <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-times"></i> Temizle</button>
+        </div>
+        <div class="log-table-wrap" id="liveTableWrap">
+            <table class="log-table">
+                <thead><tr><th style="width:40px">#</th><th style="width:80px">Seviye</th><th style="width:90px">Kategori</th><th style="width:60px">Metot</th><th>Yol</th><th style="width:60px">Durum</th><th style="width:110px">IP</th><th style="width:70px">Süre</th><th style="width:145px">Zaman</th></tr></thead>
+                <tbody id="liveBody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="fas fa-satellite-dish" style="font-size:30px;opacity:.3;display:block;margin-bottom:10px"></i>Bekleniyor…</td></tr></tbody>
+            </table>
+        </div>
+        <div class="log-paging">
+            <span id="liveCount">0 kayıt</span>
+            <div style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-sm" onclick="exportLogs('json')"><i class="fas fa-download"></i> JSON</button>
+                <button class="btn btn-ghost btn-sm" onclick="exportLogs('csv')"><i class="fas fa-file-csv"></i> CSV</button>
+                <button class="btn btn-danger btn-sm" onclick="clearLogs()"><i class="fas fa-trash"></i> Logları Temizle</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ANALİTİK ═══ -->
+    <div class="log-panel" id="panel-analytics">
+        <h3><i class="fas fa-chart-bar" style="color:var(--purple)"></i> Analitik Gösterge Paneli</h3>
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h4><i class="fas fa-clock"></i> Saatlik İstek Dağılımı</h4>
+                <div class="hour-chart" id="hourChart"></div>
+                <div class="hour-labels" id="hourLabels"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-code-branch"></i> HTTP Metot Dağılımı</h4>
+                <div id="methodBars"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-signal"></i> HTTP Durum Kodları</h4>
+                <div id="statusBars"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-exclamation-triangle"></i> Seviye Dağılımı</h4>
+                <div id="severityBars"></div>
+            </div>
+        </div>
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h4><i class="fas fa-globe"></i> En Aktif IP'ler (Top 15)</h4>
+                <div id="topIpBars"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-route"></i> En Çok İstenen Endpoint'ler (Top 15)</h4>
+                <div id="topPathBars"></div>
+            </div>
+        </div>
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h4><i class="fas fa-tags"></i> Kategori Dağılımı</h4>
+                <div id="categoryBars"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-shield-virus"></i> L7 Engelleme Dağılımı</h4>
+                <div id="l7AnalyticBars"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ GÜVENLİK OLAYLARI ═══ -->
+    <div class="log-panel" id="panel-security">
+        <h3><i class="fas fa-shield-halved" style="color:var(--red)"></i> Güvenlik Olayları</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Rate limit aşımı, CSRF reddi ve hata kayıtları — sadece güvenlik ile ilgili olaylar.</p>
+        <div class="log-table-wrap">
+            <table class="log-table">
+                <thead><tr><th>#</th><th>Seviye</th><th>Olay</th><th>Metot</th><th>Yol</th><th>IP</th><th>Mesaj</th><th>Zaman</th></tr></thead>
+                <tbody id="secBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)">Yükleniyor…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ AUDIT TRAIL ═══ -->
+    <div class="log-panel" id="panel-audit">
+        <h3><i class="fas fa-clipboard-list" style="color:var(--green)"></i> Audit Trail</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Kural ekleme, silme, IP engelleme, firewall etkinleştirme gibi tüm yönetim işlemleri.</p>
+        <div class="log-table-wrap">
+            <table class="log-table">
+                <thead><tr><th>#</th><th>İşlem</th><th>Hedef</th><th>Sonuç</th><th>IP</th><th>Zaman</th></tr></thead>
+                <tbody id="auditBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">Yükleniyor…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ GELİŞMİŞ ARAMA ═══ -->
+    <div class="log-panel" id="panel-search">
+        <h3><i class="fas fa-magnifying-glass" style="color:var(--yellow)"></i> Gelişmiş Arama</h3>
+        <div class="log-filters">
+            <div class="fg"><label>Seviye</label><select id="sLevel"><option value="">Tümü</option><option value="INFO">INFO</option><option value="WARNING">WARNING</option><option value="ERROR">ERROR</option></select></div>
+            <div class="fg"><label>Kategori</label><select id="sCategory"><option value="">Tümü</option><option value="REQUEST">REQUEST</option><option value="RESPONSE">RESPONSE</option><option value="RATE_LIMIT">RATE_LIMIT</option><option value="CSRF">CSRF</option><option value="AUDIT">AUDIT</option><option value="ERROR">ERROR</option><option value="L7_SYN_FLOOD">L7 SYN Flood</option><option value="L7_HTTP_FLOOD">L7 HTTP Flood</option><option value="L7_PORTSCAN">L7 Port Scan</option><option value="L7_CONNLIMIT">L7 Bağlantı Limit</option><option value="L7_NGINX_BLOCK">L7 Nginx</option></select></div>
+            <div class="fg"><label>Metot</label><select id="sMethod"><option value="">Tümü</option><option value="GET">GET</option><option value="POST">POST</option><option value="DELETE">DELETE</option></select></div>
+            <div class="fg"><label>IP</label><input id="sIp" placeholder="1.2.3.4"></div>
+            <div class="fg"><label>Endpoint İçerik</label><input id="sPath" placeholder="/firewall/" style="min-width:200px"></div>
+            <div class="fg"><label>Limit</label><input id="sLimit" type="number" value="200" min="10" max="500" style="min-width:70px"></div>
+            <button class="btn btn-primary" onclick="runSearch()"><i class="fas fa-search"></i> Ara</button>
+        </div>
+        <div class="log-table-wrap">
+            <table class="log-table">
+                <thead><tr><th>#</th><th>Seviye</th><th>Kategori</th><th>Metot</th><th>Yol</th><th>Durum</th><th>IP</th><th>Mesaj</th><th>Zaman</th></tr></thead>
+                <tbody id="searchBody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-secondary)">Arama yapmak için yukarıdaki filtreleri kullanın.</td></tr></tbody>
+            </table>
+        </div>
+        <div class="log-paging"><span id="searchCount">-</span></div>
+    </div>
+    <!-- ═══ L7 SALDIRILAR ═══ -->
+    <div class="log-panel" id="panel-l7attacks">
+        <h3><i class="fas fa-shield-virus" style="color:var(--red)"></i> L7 Saldırı İzleme</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">iptables/Emare OS/Nginx tarafından engellenen L7 seviye saldırı olayları — gerçek zamanlı sayaçlar.</p>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="loadL7Events()"><i class="fas fa-sync"></i> Olayları Topla</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportLogs('json','L7_')"><i class="fas fa-download"></i> L7 Logları İndir (JSON)</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportLogs('csv','L7_')"><i class="fas fa-file-csv"></i> L7 Logları İndir (CSV)</button>
+        </div>
+        <!-- L7 Özet Kartları -->
+        <div class="log-stats" id="l7SummaryCards" style="margin-bottom:16px">
+            <div class="log-stat"><div class="log-stat-val" id="l7TotalEvents">-</div><div class="log-stat-lbl">Toplam L7 Olay</div></div>
+            <div class="log-stat"><div class="log-stat-val" id="l7TotalBlocks">-</div><div class="log-stat-lbl">Engellenen Paket</div></div>
+        </div>
+        <!-- L7 Tür Dağılımı -->
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h4><i class="fas fa-chart-pie"></i> Saldırı Türü Dağılımı</h4>
+                <div id="l7TypeBars"></div>
+            </div>
+            <div class="chart-card">
+                <h4><i class="fas fa-list"></i> Son L7 Olayları</h4>
+                <div class="log-table-wrap" style="max-height:300px">
+                    <table class="log-table">
+                        <thead><tr><th>Tür</th><th>Seviye</th><th>Açıklama</th><th>Sayı</th><th>Zaman</th></tr></thead>
+                        <tbody id="l7EventsBody"><tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-secondary)">Henüz olay toplanmadı. "Olayları Topla" butonuna tıklayın.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ IP İZLEME ═══ -->
+    <div class="log-panel" id="panel-iptrack">
+        <h3><i class="fas fa-crosshairs" style="color:var(--orange)"></i> IP İzleme &amp; Analiz</h3>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Tüm IP adreslerinin aktivitesini izleyin — risk skoru, istek dağılımı, erişilen endpoint'ler ve zaman çizelgesi.</p>
+        <div class="log-filters">
+            <div class="fg"><label>IP Ara</label><input id="ipSearchInput" placeholder="192.168.1.1" style="min-width:180px"></div>
+            <div class="fg"><label>Sıralama</label><select id="ipSortBy"><option value="total">İstek Sayısı</option><option value="risk_score">Risk Skoru</option><option value="errors">Hata Sayısı</option><option value="last_seen">Son Görülme</option></select></div>
+            <button class="btn btn-primary btn-sm" onclick="loadIpList()"><i class="fas fa-search"></i> Listele</button>
+        </div>
+        <div id="ipListContainer" class="ip-list"></div>
+        <div class="ip-detail" id="ipDetailPanel">
+            <div class="ip-detail-header">
+                <div class="ip-icon" id="ipDetailIcon"><i class="fas fa-globe"></i></div>
+                <div>
+                    <h4 id="ipDetailAddr">-</h4>
+                    <div style="font-size:12px;color:var(--text-secondary)" id="ipDetailSeen">-</div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                    <div style="text-align:center">
+                        <div style="font-size:11px;color:var(--text-secondary)">Risk Skoru</div>
+                        <div id="ipDetailRisk" style="font-size:28px;font-weight:800">-</div>
+                    </div>
+                    <div class="risk-meter" style="width:80px;height:10px">
+                        <div class="risk-fill" id="ipDetailRiskBar"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ip-detail-stats" id="ipDetailStats"></div>
+            <div class="ip-detail-grid">
+                <div class="chart-card">
+                    <h4><i class="fas fa-clock"></i> Saatlik Aktivite</h4>
+                    <div class="hour-chart" id="ipHourChart"></div>
+                    <div class="hour-labels" id="ipHourLabels"></div>
+                </div>
+                <div class="chart-card">
+                    <h4><i class="fas fa-code-branch"></i> HTTP Metotları</h4>
+                    <div id="ipMethodBars"></div>
+                </div>
+            </div>
+            <div class="ip-detail-grid">
+                <div class="chart-card">
+                    <h4><i class="fas fa-signal"></i> Durum Kodları</h4>
+                    <div id="ipStatusBars"></div>
+                </div>
+                <div class="chart-card">
+                    <h4><i class="fas fa-route"></i> Erişilen Endpoint'ler (Top 20)</h4>
+                    <div id="ipPathBars"></div>
+                </div>
+            </div>
+            <h4 style="margin:16px 0 10px;font-size:14px"><i class="fas fa-list"></i> Son Aktiviteler</h4>
+            <div class="log-table-wrap" style="max-height:300px">
+                <table class="log-table">
+                    <thead><tr><th>#</th><th>Seviye</th><th>Kategori</th><th>Metot</th><th>Yol</th><th>Durum</th><th>Mesaj</th><th>Zaman</th></tr></thead>
+                    <tbody id="ipRecentBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="log-toast" id="logToast"></div>
+
+<script>
+const API = '';
+let LIVE = true;
+let LIVE_INTERVAL = null;
+let LAST_ID = 0;
+
+/* ─── Yardımcılar ─── */
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(msg,type='success'){const t=document.getElementById('logToast');t.textContent=msg;t.className='log-toast '+type+' show';setTimeout(()=>t.classList.remove('show'),3000)}
+
+function levelBadge(l){
+    const m={'INFO':'badge-info','WARNING':'badge-warn','ERROR':'badge-error','CRITICAL':'badge-critical'};
+    return `<span class="badge ${m[l]||'badge-info'}">${l}</span>`;
+}
+function methodBadge(m){
+    const c={'GET':'badge-get','POST':'badge-post','DELETE':'badge-delete','PUT':'badge-warn','PATCH':'badge-warn'};
+    return `<span class="badge ${c[m]||'badge-info'}">${m}</span>`;
+}
+function statusDot(code){
+    if(!code)return'-';
+    const g=code<300?'s2':code<400?'s3':code<500?'s4':'s5';
+    return `<span class="status-dot ${g}"></span>${code}`;
+}
+function fmtTime(iso){
+    if(!iso)return'-';
+    const d=new Date(iso);
+    return d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'.'+String(d.getMilliseconds()).padStart(3,'0');
+}
+function fmtDate(iso){
+    if(!iso)return'-';
+    const d=new Date(iso);
+    return d.toLocaleDateString('tr-TR')+' '+d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+/* ─── Tab Yönetimi ─── */
+function logTab(name){
+    document.querySelectorAll('.log-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.log-panel').forEach(p=>p.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('panel-'+name).classList.add('active');
+    if(name==='analytics')loadAnalytics();
+    if(name==='security')loadSecurityEvents();
+    if(name==='audit')loadAuditTrail();
+    if(name==='iptrack')loadIpList();
+    if(name==='l7attacks')loadL7Summary();
+}
+
+/* ─── Canlı/Duraklat ─── */
+function toggleLive(){
+    LIVE=!LIVE;
+    document.getElementById('btnLive').innerHTML=LIVE?'<i class="fas fa-pause"></i> Duraklat':'<i class="fas fa-play"></i> Devam';
+    document.getElementById('liveLabel').textContent=LIVE?'Canlı':'Duraklatıldı';
+    document.querySelector('.live-dot').style.animationPlayState=LIVE?'running':'paused';
+}
+
+/* ─── API Çağrıları ─── */
+async function logApi(path){
+    try{
+        const r=await fetch(`${API}/api/firewall/logs${path}`,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+        if(!r.ok)return null;
+        return await r.json();
+    }catch(e){return null;}
+}
+
+/* ─── Canlı Log ─── */
+async function pollLive(){
+    if(!LIVE)return;
+    const fl=document.getElementById('fLevel').value;
+    const fc=document.getElementById('fCategory').value;
+    const fm=document.getElementById('fMethod').value;
+    const fi=document.getElementById('fIp').value.trim();
+    let q=`?limit=200&since_id=${LAST_ID}`;
+    if(fl)q+=`&level=${fl}`;
+    if(fc)q+=`&category=${fc}`;
+    if(fm)q+=`&method=${fm}`;
+    if(fi)q+=`&ip=${encodeURIComponent(fi)}`;
+    const d=await logApi(q);
+    if(!d||!d.success)return;
+    const entries=d.entries||[];
+    if(!entries.length)return;
+    const body=document.getElementById('liveBody');
+    // İlk yüklemede temizle
+    if(body.querySelector('td[colspan]'))body.innerHTML='';
+    for(const e of entries.reverse()){
+        if(e.id>LAST_ID)LAST_ID=e.id;
+        const tr=document.createElement('tr');
+        tr.style.animation='fadeIn .3s ease';
+        tr.innerHTML=`<td style="color:var(--text-secondary)">${e.id}</td><td>${levelBadge(e.level)}</td><td><span class="badge badge-cat">${e.category}</span></td><td>${methodBadge(e.method)}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.path)}">${esc(e.path)}</td><td>${statusDot(e.status)}</td><td>${esc(e.ip)}</td><td>${esc(e.message||'-')}</td><td style="color:var(--text-secondary);font-size:11px">${fmtTime(e.ts)}</td>`;
+        body.insertBefore(tr,body.firstChild);
+    }
+    // Max 500 satır tut
+    while(body.children.length>500)body.removeChild(body.lastChild);
+    document.getElementById('liveCount').textContent=`${body.children.length} kayıt gösteriliyor`;
+}
+
+function applyLiveFilter(){LAST_ID=0;document.getElementById('liveBody').innerHTML='';pollLive();}
+function clearFilters(){document.getElementById('fLevel').value='';document.getElementById('fCategory').value='';document.getElementById('fMethod').value='';document.getElementById('fIp').value='';applyLiveFilter();}
+
+/* ─── İstatistikler ─── */
+async function loadStats(){
+    const d=await logApi('/stats');
+    if(!d||!d.success)return;
+    const s=d.stats;
+    document.getElementById('statTotal').textContent=s.total_requests||0;
+    document.getElementById('statLogs').textContent=s.total_logs||0;
+    document.getElementById('statErrors').textContent=s.total_errors||0;
+    document.getElementById('statBlocked').textContent=s.total_blocked||0;
+    document.getElementById('statL7').textContent=s.total_l7_blocks||0;
+    // İstek/dk hesapla (son 1 saatteki toplam / 60)
+    const now=new Date();
+    const hh=String(now.getUTCHours()).padStart(2,'0');
+    const thisHour=s.hourly_requests?.[hh]||0;
+    const mins=now.getUTCMinutes()||1;
+    document.getElementById('statReqSec').textContent=Math.round(thisHour/mins);
+    return s;
+}
+
+/* ─── Analitik ─── */
+function renderBars(containerId,items,color,maxVal){
+    const el=document.getElementById(containerId);
+    if(!items||!items.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px">Veri yok</div>';return}
+    const mx=maxVal||Math.max(...items.map(i=>i[1]),1);
+    el.innerHTML=items.map(([label,val])=>{
+        const pct=Math.round(val/mx*100);
+        return `<div class="bar-row"><div class="bar-label" title="${esc(label)}">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><div class="bar-val">${val}</div></div>`;
+    }).join('');
+}
+
+function renderHourChart(hourly){
+    const el=document.getElementById('hourChart');
+    const labels=document.getElementById('hourLabels');
+    let hours=[];
+    for(let i=0;i<24;i++){
+        const hh=String(i).padStart(2,'0');
+        hours.push({h:hh,v:hourly[hh]||0});
+    }
+    const mx=Math.max(...hours.map(h=>h.v),1);
+    el.innerHTML=hours.map(h=>{
+        const pct=Math.round(h.v/mx*100)||2;
+        const color=h.v>mx*0.8?'var(--red)':h.v>mx*0.5?'var(--orange)':'var(--primary)';
+        return `<div class="hour-bar" style="height:${pct}%;background:${color}"><div class="tip">${h.h}:00 → ${h.v} istek</div></div>`;
+    }).join('');
+    labels.innerHTML=hours.map(h=>`<span>${h.h}</span>`).join('');
+}
+
+async function loadAnalytics(){
+    const s=await loadStats();
+    if(!s)return;
+    renderHourChart(s.hourly_requests||{});
+    const methods=Object.entries(s.by_method||{}).sort((a,b)=>b[1]-a[1]);
+    renderBars('methodBars',methods,'var(--primary)');
+    const statuses=Object.entries(s.by_status||{}).sort((a,b)=>b[1]-a[1]);
+    renderBars('statusBars',statuses.map(([k,v])=>{
+        const c=k[0]==='2'?'var(--green)':k[0]==='3'?'var(--primary)':k[0]==='4'?'var(--orange)':'var(--red)';
+        return [k,v,c];
+    }).map(([k,v])=>[k,v]),'var(--primary)');
+    // Daha iyi: renk kodlu status bars
+    const statusEl=document.getElementById('statusBars');
+    statusEl.innerHTML=statuses.map(([code,val])=>{
+        const mx=Math.max(...statuses.map(s=>s[1]),1);
+        const pct=Math.round(val/mx*100);
+        const c=code[0]==='2'?'var(--green)':code[0]==='3'?'var(--primary)':code[0]==='4'?'var(--orange)':'var(--red)';
+        return `<div class="bar-row"><div class="bar-label">${code}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div><div class="bar-val">${val}</div></div>`;
+    }).join('')||'<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px">Veri yok</div>';
+
+    const sevs=Object.entries(s.severity_counts||{}).filter(([,v])=>v>0);
+    const sevColors={'INFO':'var(--primary)','WARNING':'var(--yellow)','ERROR':'var(--red)','CRITICAL':'var(--red)'};
+    const sevEl=document.getElementById('severityBars');
+    const sevMax=Math.max(...sevs.map(s=>s[1]),1);
+    sevEl.innerHTML=sevs.map(([k,v])=>{
+        const pct=Math.round(v/sevMax*100);
+        return `<div class="bar-row"><div class="bar-label">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${sevColors[k]||'var(--primary)'}"></div></div><div class="bar-val">${v}</div></div>`;
+    }).join('')||'<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px">Veri yok</div>';
+
+    renderBars('topIpBars',s.top_ips||[],'var(--purple)');
+    renderBars('topPathBars',(s.top_paths||[]).map(([p,v])=>[p.length>50?'…'+p.slice(-47):p,v]),'var(--orange)');
+
+    // Kategori dağılımı
+    const cats=Object.entries(s.by_category||{}).sort((a,b)=>b[1]-a[1]);
+    renderBars('categoryBars',cats,'var(--purple)');
+
+    // L7 engelleme dağılımı
+    const l7=Object.entries(s.l7_by_type||{}).sort((a,b)=>b[1]-a[1]);
+    const l7Colors={'L7_SYN_FLOOD':'var(--red)','L7_HTTP_FLOOD':'var(--orange)','L7_PORTSCAN':'var(--yellow)','L7_CONNLIMIT':'var(--primary)','L7_ICMP_FLOOD':'var(--purple)','L7_BOGUS_TCP':'var(--red)','L7_SLOWLORIS':'var(--orange)','L7_NGINX_BLOCK':'var(--green)','L7_NGINX_ERROR':'var(--red)','L7_EMAREOS':'var(--primary)'};
+    const l7El=document.getElementById('l7AnalyticBars');
+    if(!l7.length){l7El.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px">L7 engelleme verisi yok</div>';}
+    else{const mx=Math.max(...l7.map(x=>x[1]),1);l7El.innerHTML=l7.map(([k,v])=>{const pct=Math.round(v/mx*100);const c=l7Colors[k]||'var(--primary)';return `<div class="bar-row"><div class="bar-label">${k.replace('L7_','')}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div><div class="bar-val">${v}</div></div>`;}).join('');}
+}
+
+/* ─── Güvenlik Olayları ─── */
+async function loadSecurityEvents(){
+    const cats=['RATE_LIMIT','CSRF','ERROR'].map(c=>`category=${c}`).join('&');
+    // Multiple category filter not supported, so fetch all warnings+errors
+    const d=await logApi('?limit=300&level=WARNING');
+    const d2=await logApi('?limit=100&level=ERROR');
+    const d3=await logApi('?limit=200&category_prefix=L7_');
+    const body=document.getElementById('secBody');
+    let entries=[...((d?.entries)||[]),...((d2?.entries)||[]),...((d3?.entries)||[])];
+    // Deduplicate by id
+    const seen=new Set();
+    entries=entries.filter(e=>{if(seen.has(e.id))return false;seen.add(e.id);return true;});
+    entries.sort((a,b)=>b.id-a.id);
+    entries=entries.filter(e=>['RATE_LIMIT','CSRF','ERROR','AUDIT'].includes(e.category)||e.category.startsWith('L7_')||e.level==='ERROR'||e.level==='WARNING');
+    if(!entries.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="fas fa-shield-halved" style="font-size:30px;opacity:.3;display:block;margin-bottom:10px"></i>Güvenlik olayı yok ✅</td></tr>';return}
+    body.innerHTML=entries.map(e=>`<tr><td style="color:var(--text-secondary)">${e.id}</td><td>${levelBadge(e.level)}</td><td><span class="badge badge-cat">${esc(e.category)}</span></td><td>${methodBadge(e.method)}</td><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.path)}</td><td>${esc(e.ip)}</td><td style="font-size:11px">${esc(e.message||'-')}</td><td style="color:var(--text-secondary);font-size:11px">${fmtDate(e.ts)}</td></tr>`).join('');
+}
+
+/* ─── Audit Trail ─── */
+async function loadAuditTrail(){
+    const d=await logApi('?limit=300&category=AUDIT');
+    const body=document.getElementById('auditBody');
+    const entries=d?.entries||[];
+    if(!entries.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="fas fa-clipboard-list" style="font-size:30px;opacity:.3;display:block;margin-bottom:10px"></i>Audit kaydı yok</td></tr>';return}
+    body.innerHTML=entries.map(e=>{
+        const action=e.extra?.action||e.message||'-';
+        const success=e.message?.includes('başarılı');
+        return `<tr><td style="color:var(--text-secondary)">${e.id}</td><td style="font-weight:700">${esc(action)}</td><td>${esc(e.server_id||'-')}</td><td>${success?'<span style="color:var(--green)">✅ Başarılı</span>':'<span style="color:var(--red)">❌ Başarısız</span>'}</td><td>${esc(e.ip)}</td><td style="color:var(--text-secondary);font-size:11px">${fmtDate(e.ts)}</td></tr>`;
+    }).join('');
+}
+
+/* ─── Gelişmiş Arama ─── */
+async function runSearch(){
+    let q='?';
+    const params={level:'sLevel',category:'sCategory',method:'sMethod',ip:'sIp',path:'sPath',limit:'sLimit'};
+    for(const[k,id] of Object.entries(params)){
+        const v=document.getElementById(id).value.trim();
+        if(v)q+=`${k}=${encodeURIComponent(v)}&`;
+    }
+    const d=await logApi(q);
+    const body=document.getElementById('searchBody');
+    const entries=d?.entries||[];
+    document.getElementById('searchCount').textContent=`${d?.total||0} sonuç bulundu (${entries.length} gösteriliyor)`;
+    if(!entries.length){body.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-secondary)">Sonuç bulunamadı.</td></tr>';return}
+    body.innerHTML=entries.map(e=>`<tr><td style="color:var(--text-secondary)">${e.id}</td><td>${levelBadge(e.level)}</td><td><span class="badge badge-cat">${esc(e.category)}</span></td><td>${methodBadge(e.method)}</td><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.path)}">${esc(e.path)}</td><td>${statusDot(e.status)}</td><td>${esc(e.ip)}</td><td style="font-size:11px">${esc(e.message||'-')}</td><td style="color:var(--text-secondary);font-size:11px">${fmtDate(e.ts)}</td></tr>`).join('');
+}
+
+/* ─── IP İzleme ─── */
+async function loadIpList(){
+    const d=await logApi('/ips');
+    const container=document.getElementById('ipListContainer');
+    if(!d||!d.success){container.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-secondary)">Veri yüklenemedi.</div>';return}
+    let ips=d.ips||[];
+    // Arama filtresi
+    const search=document.getElementById('ipSearchInput').value.trim();
+    if(search)ips=ips.filter(ip=>ip.ip.includes(search));
+    // Sıralama
+    const sort=document.getElementById('ipSortBy').value;
+    if(sort==='risk_score')ips.sort((a,b)=>b.risk_score-a.risk_score);
+    else if(sort==='errors')ips.sort((a,b)=>b.errors-a.errors);
+    else if(sort==='last_seen')ips.sort((a,b)=>new Date(b.last_seen)-new Date(a.last_seen));
+    else ips.sort((a,b)=>b.total-a.total);
+
+    if(!ips.length){container.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text-secondary)"><i class="fas fa-crosshairs" style="font-size:30px;opacity:.3;display:block;margin-bottom:10px"></i>Henüz IP kaydı yok.</div>';return}
+    container.innerHTML=ips.map(ip=>{
+        const iconCls=ip.risk_score>=60?'danger':ip.risk_score>=30?'warn':'safe';
+        const riskColor=ip.risk_score>=60?'var(--red)':ip.risk_score>=30?'var(--yellow)':'var(--green)';
+        return `<div class="ip-card" onclick="loadIpDetail('${esc(ip.ip)}',this)">
+            <div class="ip-icon ${iconCls}"><i class="fas fa-${iconCls==='danger'?'exclamation-triangle':iconCls==='warn'?'exclamation':'check-circle'}"></i></div>
+            <div class="ip-meta">
+                <div class="ip-addr">${esc(ip.ip)}</div>
+                <div class="ip-sub">${ip.methods.join(', ')} · ${ip.errors} hata · ${ip.blocked} engel</div>
+            </div>
+            <div class="ip-right">
+                <div class="ip-count">${ip.total}</div>
+                <div class="risk-meter"><div class="risk-fill" style="width:${ip.risk_score}%;background:${riskColor}"></div></div>
+                <div style="font-size:9px;color:var(--text-secondary);margin-top:2px">Risk: ${ip.risk_score}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function loadIpDetail(ip,cardEl){
+    // Seçili kartı vurgula
+    document.querySelectorAll('.ip-card').forEach(c=>c.classList.remove('selected'));
+    if(cardEl)cardEl.classList.add('selected');
+
+    const d=await logApi('/ip/'+encodeURIComponent(ip));
+    if(!d||!d.success||!d.detail?.found){toast('IP detayı bulunamadı','error');return}
+    const det=d.detail;
+    const panel=document.getElementById('ipDetailPanel');
+    panel.classList.add('active');
+
+    // Header
+    const riskColor=det.risk_score>=60?'var(--red)':det.risk_score>=30?'var(--yellow)':'var(--green)';
+    const iconCls=det.risk_score>=60?'danger':det.risk_score>=30?'warn':'safe';
+    document.getElementById('ipDetailIcon').className='ip-icon '+iconCls;
+    document.getElementById('ipDetailAddr').textContent=det.ip;
+    document.getElementById('ipDetailSeen').innerHTML=`İlk: ${fmtDate(det.first_seen)} &nbsp;·&nbsp; Son: ${fmtDate(det.last_seen)}`;
+    document.getElementById('ipDetailRisk').textContent=det.risk_score;
+    document.getElementById('ipDetailRisk').style.color=riskColor;
+    const riskBar=document.getElementById('ipDetailRiskBar');
+    riskBar.style.width=det.risk_score+'%';
+    riskBar.style.background=riskColor;
+
+    // Mini stats
+    document.getElementById('ipDetailStats').innerHTML=[
+        ['fa-arrow-up-right-dots',det.total_requests,'Toplam İstek','var(--primary)'],
+        ['fa-triangle-exclamation',det.errors,'Hata','var(--red)'],
+        ['fa-ban',det.blocked,'Engellenen','var(--orange)'],
+        ['fa-exclamation',det.warnings,'Uyarı','var(--yellow)'],
+        ['fa-tags',Object.keys(det.by_category||{}).length,'Kategori','var(--purple)'],
+        ['fa-route',det.top_paths?.length||0,'Endpoint','var(--green)'],
+    ].map(([icon,val,lbl,color])=>`<div class="ip-mini-stat"><div class="val" style="color:${color}">${val}</div><div class="lbl"><i class="fas ${icon}"></i> ${lbl}</div></div>`).join('');
+
+    // Saatlik chart
+    renderIpHourChart(det.hourly||{});
+
+    // Metot bars
+    const methods=Object.entries(det.by_method||{}).sort((a,b)=>b[1]-a[1]);
+    renderBars('ipMethodBars',methods,'var(--primary)');
+
+    // Status bars
+    const statuses=Object.entries(det.by_status||{}).sort((a,b)=>b[1]-a[1]);
+    const statusEl=document.getElementById('ipStatusBars');
+    const smx=Math.max(...statuses.map(s=>s[1]),1);
+    statusEl.innerHTML=statuses.map(([code,val])=>{
+        const pct=Math.round(val/smx*100);
+        const c=code[0]==='2'?'var(--green)':code[0]==='3'?'var(--primary)':code[0]==='4'?'var(--orange)':'var(--red)';
+        return `<div class="bar-row"><div class="bar-label">${code}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div><div class="bar-val">${val}</div></div>`;
+    }).join('')||'<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px">Veri yok</div>';
+
+    // Path bars
+    renderBars('ipPathBars',det.top_paths||[],'var(--orange)');
+
+    // Son aktiviteler
+    const tbody=document.getElementById('ipRecentBody');
+    const recent=det.recent||[];
+    tbody.innerHTML=recent.length?recent.map(e=>`<tr><td style="color:var(--text-secondary)">${e.id}</td><td>${levelBadge(e.level)}</td><td><span class="badge badge-cat">${esc(e.category)}</span></td><td>${methodBadge(e.method)}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.path)}">${esc(e.path)}</td><td>${statusDot(e.status)}</td><td style="font-size:11px">${esc(e.message||'-')}</td><td style="color:var(--text-secondary);font-size:11px">${fmtDate(e.ts)}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-secondary)">Veri yok</td></tr>';
+
+    // Scroll to detail
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderIpHourChart(hourly){
+    const el=document.getElementById('ipHourChart');
+    const labels=document.getElementById('ipHourLabels');
+    let hours=[];
+    for(let i=0;i<24;i++){const hh=String(i).padStart(2,'0');hours.push({h:hh,v:hourly[hh]||0});}
+    const mx=Math.max(...hours.map(h=>h.v),1);
+    el.innerHTML=hours.map(h=>{
+        const pct=Math.round(h.v/mx*100)||2;
+        const color=h.v>mx*0.8?'var(--red)':h.v>mx*0.5?'var(--orange)':'var(--primary)';
+        return `<div class="hour-bar" style="height:${pct}%;background:${color}"><div class="tip">${h.h}:00 → ${h.v} istek</div></div>`;
+    }).join('');
+    labels.innerHTML=hours.map(h=>`<span>${h.h}</span>`).join('');
+}
+
+/* ─── Log Temizle ─── */
+async function clearLogs(){
+    if(!confirm('Tüm loglar temizlenecek, emin misiniz?'))return;
+    const r=await fetch(`${API}/api/firewall/logs/clear`,{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}});
+    const d=await r.json();
+    if(d?.success){LAST_ID=0;document.getElementById('liveBody').innerHTML='';toast('Loglar temizlendi');refreshAll();}
+    else toast(d?.message||'Hata','error');
+}
+
+/* ─── Yenile ─── */
+function refreshAll(){loadStats();pollLive();}
+
+/* ─── L7 Saldırı İzleme ─── */
+async function loadL7Summary(){
+    const d=await logApi('/l7-summary');
+    if(!d||!d.success)return;
+    const sum=d.summary;
+    document.getElementById('l7TotalEvents').textContent=sum.total_events||0;
+    document.getElementById('l7TotalBlocks').textContent=sum.total_blocks||0;
+    // Tür dağılımı
+    const types=Object.entries(sum.by_type||{}).sort((a,b)=>b[1]-a[1]);
+    const l7Colors={
+        'L7_SYN_FLOOD':'var(--red)','L7_HTTP_FLOOD':'var(--orange)',
+        'L7_PORTSCAN':'var(--yellow)','L7_CONNLIMIT':'var(--purple)',
+        'L7_ICMP_FLOOD':'var(--primary)','L7_BOGUS_TCP':'var(--red)',
+        'L7_SLOWLORIS':'var(--orange)','L7_NGINX_BLOCK':'var(--green)',
+        'L7_NGINX_ERROR':'var(--yellow)','L7_EMAREOS':'#f97316',
+    };
+    const typesEl=document.getElementById('l7TypeBars');
+    if(!types.length){typesEl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-secondary)">Henüz L7 olay verisi yok.</div>';return}
+    const mx=Math.max(...types.map(t=>t[1]),1);
+    typesEl.innerHTML=types.map(([k,v])=>{
+        const pct=Math.round(v/mx*100);
+        const color=l7Colors[k]||'var(--primary)';
+        const label=k.replace('L7_','').replace(/_/g,' ');
+        return `<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><div class="bar-val">${v.toLocaleString()}</div></div>`;
+    }).join('');
+    // Son olaylar
+    const body=document.getElementById('l7EventsBody');
+    const evts=sum.last_events||[];
+    if(!evts.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-secondary)">Olay yok</td></tr>';return}
+    body.innerHTML=evts.map(e=>{
+        const cat=e.category.replace('L7_','').replace(/_/g,' ');
+        return `<tr><td><span class="badge badge-cat">${cat}</span></td><td>${levelBadge(e.level)}</td><td style="font-size:11px">${esc(e.message||'-')}</td><td style="font-weight:700">${e.extra?.count||'-'}</td><td style="color:var(--text-secondary);font-size:11px">${fmtDate(e.ts)}</td></tr>`;
+    }).join('');
+}
+
+async function loadL7Events(){
+    // Sunucu ID'si gerekli — prompt ile al veya default kullan
+    let serverId=window._fwServerId;
+    if(!serverId){
+        serverId=prompt('L7 olaylarını toplamak için Sunucu ID girin:');
+        if(!serverId)return;
+        window._fwServerId=serverId;
+    }
+    toast('L7 olayları toplanıyor...');
+    try{
+        const r=await fetch(`${API}/api/servers/${encodeURIComponent(serverId)}/firewall/l7/events`,{headers:{'X-Requested-With':'XMLHttpRequest'}});
+        const d=await r.json();
+        if(d?.success){
+            toast(`${d.total||0} L7 olay toplandı`);
+            loadL7Summary();
+            loadStats();
+        }else{toast(d?.message||'Hata','error')}
+    }catch(e){toast('API hatası','error')}
+}
+
+/* ─── Log Export ─── */
+function exportLogs(fmt,catPrefix){
+    let url=`${API}/api/firewall/logs/export?format=${fmt}`;
+    if(catPrefix)url+=`&category_prefix=${encodeURIComponent(catPrefix)}`;
+    window.open(url,'_blank');
+}
+
+/* ─── Başlat ─── */
+document.addEventListener('DOMContentLoaded',()=>{
+    loadStats();
+    pollLive();
+    LIVE_INTERVAL=setInterval(()=>{
+        if(LIVE){pollLive();loadStats();}
+    },3000);
+});
+</script>
+<style>@keyframes fadeIn{from{opacity:0;background:rgba(59,130,246,.06)}to{opacity:1;background:transparent}}</style>
+</body>
+</html>

@@ -26,6 +26,8 @@ class Organization(db.Model):
     settings_json = db.Column(db.Text, default='{}')
     logo_url = db.Column(db.String(500), nullable=True)
     domain = db.Column(db.String(255), nullable=True, unique=True)
+    parent_org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
+    hierarchy_type = db.Column(db.String(30), nullable=False, default='tenant')  # tenant, reseller, sub_reseller
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -38,6 +40,7 @@ class Organization(db.Model):
                                       cascade='all, delete-orphan')
     resource_quota = db.relationship('ResourceQuota', backref='organization', uselist=False,
                                      cascade='all, delete-orphan')
+    parent_org = db.relationship('Organization', remote_side=[id], backref='children')
 
     @staticmethod
     def generate_slug(name: str) -> str:
@@ -80,6 +83,7 @@ class Organization(db.Model):
         return 'community'
 
     def to_dict(self) -> dict:
+        branding = self.settings.get('branding', {})
         return {
             'id': self.id,
             'name': self.name,
@@ -88,6 +92,10 @@ class Organization(db.Model):
             'is_active': self.is_active,
             'logo_url': self.logo_url,
             'domain': self.domain,
+            'parent_org_id': self.parent_org_id,
+            'hierarchy_type': self.hierarchy_type,
+            'brand_name': branding.get('brand_name') or self.name,
+            'brand_primary_color': branding.get('brand_primary_color'),
             'plan': self.plan_name,
             'member_count': self.members.count(),
             'server_count': self.servers.count(),
@@ -508,6 +516,88 @@ class ServerCredential(db.Model):
         if include_password:
             d['password'] = self.get_password()
             d['ssh_key'] = self.ssh_key or ''
+        return d
+
+
+# ==================== NETWORK DEVICE ====================
+
+class NetworkDevice(db.Model):
+    """Ağ cihazı — router, switch, firewall vb. çok marka/model desteği."""
+    __tablename__ = 'network_devices'
+
+    id = db.Column(db.String(20), primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    host = db.Column(db.String(255), nullable=False)
+    port = db.Column(db.Integer, default=22)
+    username = db.Column(db.String(100), nullable=False, default='admin')
+    encrypted_password = db.Column(db.LargeBinary, nullable=True)
+    encryption_iv = db.Column(db.LargeBinary, nullable=True)
+    # Cisco enable şifresi (opsiyonel)
+    enable_enc = db.Column(db.LargeBinary, nullable=True)
+    enable_iv = db.Column(db.LargeBinary, nullable=True)
+    # Cihaz kimliği
+    device_type = db.Column(db.String(30), default='router')
+    # Desteklenen değerler: cisco_ios, cisco_nxos, mikrotik, juniper,
+    # huawei, fortinet, palo_alto, hp_aruba, ubiquiti, pfsense, generic
+    brand = db.Column(db.String(50), default='generic')
+    model = db.Column(db.String(100), default='')
+    connection_type = db.Column(db.String(20), default='ssh')  # ssh / telnet
+    group_name = db.Column(db.String(50), default='Genel')
+    location = db.Column(db.String(100), default='')
+    description = db.Column(db.Text, default='')
+    tags = db.Column(db.Text, default='[]')
+    dc_id = db.Column(db.Integer, db.ForeignKey('data_centers.id'), nullable=True, index=True)
+    org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=True, index=True)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    added_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    datacenter = db.relationship('DataCenter', backref='network_devices', lazy='joined',
+                                  foreign_keys=[dc_id])
+
+    def get_password(self) -> str:
+        if self.encrypted_password and self.encryption_iv:
+            from crypto import decrypt_password
+            return decrypt_password(self.encrypted_password, self.encryption_iv)
+        return ''
+
+    def set_password(self, password: str):
+        if password:
+            from crypto import encrypt_password
+            self.encrypted_password, self.encryption_iv = encrypt_password(password)
+
+    def get_enable_password(self) -> str:
+        if self.enable_enc and self.enable_iv:
+            from crypto import decrypt_password
+            return decrypt_password(self.enable_enc, self.enable_iv)
+        return ''
+
+    def set_enable_password(self, password: str):
+        if password:
+            from crypto import encrypt_password
+            self.enable_enc, self.enable_iv = encrypt_password(password)
+
+    def to_dict(self, include_password: bool = False) -> dict:
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'host': self.host,
+            'port': self.port,
+            'username': self.username,
+            'device_type': self.device_type,
+            'brand': self.brand,
+            'model': self.model or '',
+            'connection_type': self.connection_type,
+            'group': self.group_name,
+            'location': self.location or '',
+            'description': self.description or '',
+            'tags': json.loads(self.tags) if self.tags else [],
+            'dc_id': self.dc_id,
+            'dc_name': self.datacenter.name if self.datacenter else None,
+            'added_at': self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else '',
+        }
+        if include_password:
+            d['password'] = self.get_password()
+            d['enable_password'] = self.get_enable_password()
         return d
 
 

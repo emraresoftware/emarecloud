@@ -1,9 +1,12 @@
 """
-EmareFirewall — Dahili SSH Executor
+Emare Security OS — Dahili SSH Executor
 ====================================
 
 Paramiko ile bağımsız SSH bağlantı yöneticisi.
 EmareCloud ssh_mgr'a ihtiyaç duymadan doğrudan kullanılabilir.
+
+standalone mod: Sunucu başına tek SSH bağlantısı (az bellek)
+isp mod       : Sunucu başına N bağlantı havuzu (eşzamanlı komut)
 
 Kullanım:
     from emarefirewall.ssh import ParamikoExecutor
@@ -16,7 +19,9 @@ Kullanım:
 
 import os
 import logging
+import threading
 from typing import Optional
+from collections import deque
 
 logger = logging.getLogger('emarefirewall.ssh')
 
@@ -27,29 +32,28 @@ except ImportError:
 
 
 class ParamikoExecutor:
-    """Paramiko tabanlı SSH executor. FirewallManager ile kullanılır."""
+    """Paramiko tabanlı SSH executor. FirewallManager ile kullanılır.
 
-    def __init__(self):
+    pool_size=1 → Sunucu başına tek bağlantı (standalone)
+    pool_size=N → Sunucu başına N bağlantı havuzu (ISP)
+    """
+
+    def __init__(self, pool_size: int = 1):
         if paramiko is None:
             raise ImportError("paramiko gerekli: pip install paramiko")
-        self._clients = {}
+        self._pool_size = max(1, pool_size)
+        self._servers = {}   # server_id -> connection config
+        self._pools = {}     # server_id -> deque([client, ...])
+        self._locks = {}     # server_id -> threading.Semaphore
+        self._connect_lock = threading.Lock()
 
-    def connect(self, server_id: str, host: str, user: str = "root",
-                port: int = 22, key_path: Optional[str] = None,
-                password: Optional[str] = None, timeout: int = 10,
-                host_key_policy: str = "warning"):
-        """
-        Sunucuya SSH bağlantısı kurar.
+    def _create_client(self, server_id: str) -> 'paramiko.SSHClient':
+        """Bir sunucu için yeni SSH client oluştur (dahili)."""
+        cfg = self._servers.get(server_id)
+        if not cfg:
+            raise ValueError(f"Sunucu '{server_id}' yapılandırılmamış.")
 
-        Args:
-            host_key_policy: 'reject' | 'warning' | 'auto'
-                - 'reject':  Bilinmeyen host key'leri reddeder (en güvenli)
-                - 'warning': Bilinmeyen key'leri kabul eder ama log'a yazar (varsayılan)
-                - 'auto':    Hepsini sessizce kabul eder (GELİŞTİRME ORTAMI İÇİN)
-        """
         client = paramiko.SSHClient()
-
-        # Host key doğrulaması — önce known_hosts yükle
         known_hosts = os.path.expanduser("~/.ssh/known_hosts")
         if os.path.exists(known_hosts):
             try:
@@ -57,66 +61,161 @@ class ParamikoExecutor:
             except Exception as e:
                 logger.warning("known_hosts yüklenemedi: %s", e)
 
-        if host_key_policy == "reject":
-            client.set_missing_host_key_policy(paramiko.RejectPolicy())
-        elif host_key_policy == "warning":
+        policy = cfg.get('host_key_policy', 'reject')
+        if policy == "auto":
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        elif policy == "warning":
             client.set_missing_host_key_policy(paramiko.WarningPolicy())
         else:
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
 
-        kwargs = {"hostname": host, "port": port, "username": user, "timeout": timeout}
-        if key_path:
-            key_path = os.path.expanduser(key_path)
-            kwargs["key_filename"] = key_path
-        elif password:
-            kwargs["password"] = password
+        kwargs = {"hostname": cfg['host'], "port": cfg['port'],
+                  "username": cfg['user'], "timeout": cfg['timeout']}
+        if cfg.get('key_path'):
+            kwargs["key_filename"] = os.path.expanduser(cfg['key_path'])
+        elif cfg.get('password'):
+            kwargs["password"] = cfg['password']
 
         client.connect(**kwargs)
-        self._clients[server_id] = {"client": client, "host": host, "user": user}
+        transport = client.get_transport()
+        if transport:
+            transport.set_keepalive(30)
+        return client
+
+    def connect(self, server_id: str, host: str, user: str = "root",
+                port: int = 22, key_path: Optional[str] = None,
+                password: Optional[str] = None, timeout: int = 10,
+                host_key_policy: str = "reject"):
+        """
+        Sunucuya SSH bağlantısı kurar. pool_size kadar bağlantı oluşturur.
+
+        Args:
+            host_key_policy: 'reject' | 'warning' | 'auto'
+                - 'reject':  Bilinmeyen host key'leri reddeder (varsayılan, en güvenli)
+                - 'warning': Bilinmeyen key'leri kabul eder ama log'a yazar
+                - 'auto':    Hepsini sessizce kabul eder (GELİŞTİRME ORTAMI İÇİN)
+        """
+        with self._connect_lock:
+            self._servers[server_id] = {
+                'host': host, 'port': port, 'user': user,
+                'key_path': key_path, 'password': password,
+                'timeout': timeout, 'host_key_policy': host_key_policy,
+            }
+            pool = deque()
+            # İlk bağlantıyı hemen oluştur, geri kalanlar lazy
+            client = self._create_client(server_id)
+            pool.append(client)
+            self._pools[server_id] = pool
+            self._locks[server_id] = threading.Semaphore(self._pool_size)
+
+    def _acquire_client(self, server_id: str) -> 'paramiko.SSHClient':
+        """Havuzdan bir bağlantı al veya yenisini oluştur."""
+        sem = self._locks.get(server_id)
+        if sem is None:
+            return None
+        sem.acquire()
+        pool = self._pools.get(server_id)
+        if pool is None:
+            sem.release()
+            return None
+        with self._connect_lock:
+            # Havuzda hazır bağlantı var mı?
+            while pool:
+                client = pool.popleft()
+                transport = client.get_transport()
+                if transport and transport.is_active():
+                    return client
+                # Bağlantı kopmuş, kapat
+                try:
+                    client.close()
+                except Exception:
+                    pass
+            # Havuz boş — yeni bağlantı oluştur
+            try:
+                return self._create_client(server_id)
+            except Exception as e:
+                sem.release()
+                raise
+
+    def _release_client(self, server_id: str, client: 'paramiko.SSHClient'):
+        """Bağlantıyı havuza geri koy."""
+        pool = self._pools.get(server_id)
+        sem = self._locks.get(server_id)
+        if pool is not None:
+            with self._connect_lock:
+                pool.append(client)
+        if sem is not None:
+            sem.release()
 
     def disconnect(self, server_id: str):
-        """Bağlantıyı kapatır."""
-        info = self._clients.pop(server_id, None)
-        if info:
-            info["client"].close()
+        """Tüm bağlantıları kapat ve sunucuyu kaldır."""
+        with self._connect_lock:
+            pool = self._pools.pop(server_id, None)
+            self._locks.pop(server_id, None)
+            self._servers.pop(server_id, None)
+        if pool:
+            for client in pool:
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
     def disconnect_all(self):
         """Tüm bağlantıları kapatır."""
-        for sid in list(self._clients.keys()):
+        for sid in list(self._pools.keys()):
             self.disconnect(sid)
 
     def is_connected(self, server_id: str) -> bool:
-        """Bağlantı durumunu kontrol eder."""
-        info = self._clients.get(server_id)
-        if not info:
+        """En az bir aktif bağlantı var mı kontrol eder."""
+        pool = self._pools.get(server_id)
+        if not pool:
             return False
-        transport = info["client"].get_transport()
-        return transport is not None and transport.is_active()
+        for client in pool:
+            transport = client.get_transport()
+            if transport and transport.is_active():
+                return True
+        return False
 
     def execute(self, server_id: str, command: str) -> tuple:
         """
-        Komut çalıştırır.
+        Komut çalıştırır. Havuzdan bağlantı alır, bitince geri koyar.
         Returns: (ok: bool, stdout: str, stderr: str)
         """
-        info = self._clients.get(server_id)
-        if not info:
+        if server_id not in self._servers:
             return False, "", f"Sunucu '{server_id}' bağlı değil."
 
         try:
-            _, stdout, stderr = info["client"].exec_command(command, timeout=30)
+            client = self._acquire_client(server_id)
+            if client is None:
+                return False, "", f"Sunucu '{server_id}' bağlı değil."
+        except Exception as e:
+            return False, "", f"Bağlantı hatası: {e}"
+
+        try:
+            _, stdout, stderr = client.exec_command(command, timeout=30)
             out = stdout.read().decode("utf-8", errors="replace").strip()
             err = stderr.read().decode("utf-8", errors="replace").strip()
             exit_code = stdout.channel.recv_exit_status()
+            self._release_client(server_id, client)
             return exit_code == 0, out, err
         except Exception as e:
+            # Hatalı bağlantıyı geri koymadan kapat
+            try:
+                client.close()
+            except Exception:
+                pass
+            sem = self._locks.get(server_id)
+            if sem:
+                sem.release()
             return False, "", str(e)
 
     def list_connections(self) -> list:
         """Aktif bağlantıları listeler."""
         return [
-            {"server_id": sid, "host": info["host"], "user": info["user"],
-             "connected": self.is_connected(sid)}
-            for sid, info in self._clients.items()
+            {"server_id": sid, "host": cfg["host"], "user": cfg["user"],
+             "connected": self.is_connected(sid),
+             "pool_size": len(self._pools.get(sid, []))}
+            for sid, cfg in self._servers.items()
         ]
 
 

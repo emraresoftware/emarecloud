@@ -6,10 +6,10 @@ Dashboard, market, server_detail, terminal, virtualization, storage, server_map 
 import json
 import subprocess
 
-from flask import Blueprint, jsonify, redirect, render_template, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from core.helpers import get_app_settings, get_server_by_id, get_servers_for_sidebar, monitor, ssh_mgr
+from core.helpers import connect_server_ssh, get_app_settings, get_server_by_id, get_servers_for_sidebar, monitor, ssh_mgr
 from license_manager import verify_license
 from market_apps import get_all_apps, get_apps_by_category, get_categories, get_emare_projects, get_stack_bundles
 from rbac import permission_required, role_required
@@ -115,7 +115,7 @@ def audit_logs_page():
 
 @pages_bp.route('/admin/organizations')
 @login_required
-@role_required('super_admin', 'admin')
+@role_required('super_admin', 'admin', 'reseller', 'sub_reseller')
 def org_management_page():
     """Organizasyon Yönetimi — org CRUD, üye yönetimi, kota."""
     return render_template('admin/organizations.html',
@@ -449,10 +449,12 @@ def scoreboard_page():
 @login_required
 def server_map_page():
     """Sunucu mimarisi görsel haritası."""
+    selected_server_id = (request.args.get('server_id') or '').strip()
     return render_template(
         'server_map.html',
         servers=get_servers_for_sidebar(),
         is_admin=current_user.is_admin,
+        selected_server_id=selected_server_id,
     )
 
 
@@ -471,28 +473,57 @@ def api_server_map():
     if not current_user.is_admin:
         return jsonify({'success': False, 'message': 'Yetkisiz erişim'}), 403
     """Sunucu servis durumlarını JSON olarak döndürür."""
+    server_id = (request.args.get('server_id') or '').strip()
+
+    target_meta = {'server_id': '', 'server_name': 'Bu Sunucu', 'host': '127.0.0.1'}
+
+    def run_local(cmd: str, timeout: int = 5) -> str:
+        return _run(cmd, timeout=timeout)
+
+    run_cmd = run_local
+
+    if server_id:
+        srv = get_server_by_id(server_id)
+        if not srv:
+            return jsonify({'success': False, 'message': 'Sunucu bulunamadı veya erişim yok'}), 404
+        target_meta = {
+            'server_id': server_id,
+            'server_name': srv.get('name') or server_id,
+            'host': srv.get('host') or '',
+        }
+        if not ssh_mgr.is_connected(server_id):
+            ok, msg = connect_server_ssh(server_id, srv)
+            if not ok:
+                return jsonify({'success': False, 'message': f'SSH bağlantısı kurulamadı: {msg}'}), 400
+
+        def run_remote(cmd: str, timeout: int = 8) -> str:
+            ok, out, _err = ssh_mgr.execute_command(server_id, cmd, timeout=timeout)
+            return out.strip() if ok else ''
+
+        run_cmd = run_remote
+
     # --- systemd services ---
     svc_names = ['nginx', 'emarecloud', 'firewalld', 'sshd']
     services = {}
     for name in svc_names:
-        active = _run(f'systemctl is-active {name}') == 'active'
+        active = run_cmd(f'systemctl is-active {name}') == 'active'
         # Map emarecloud → gunicorn for frontend
         key = 'gunicorn' if name == 'emarecloud' else name
         services[key] = {'active': active}
 
     # --- versions ---
-    py_ver = _run('python3 --version').replace('Python ', '')
-    node_ver = _run('node --version').lstrip('v')
-    nginx_ver = _run("nginx -v 2>&1 | grep -oP '[\\d.]+'")
+    py_ver = run_cmd('python3 --version').replace('Python ', '')
+    node_ver = run_cmd('node --version').lstrip('v')
+    nginx_ver = run_cmd("nginx -v 2>&1 | grep -oP '[\\d.]+'")
 
     # --- SELinux ---
-    selinux = _run('getenforce')
+    selinux = run_cmd('getenforce')
 
     # --- firewall ports ---
-    ports = _run('firewall-cmd --list-ports 2>/dev/null')
+    ports = run_cmd('firewall-cmd --list-ports 2>/dev/null')
 
     # --- PM2 processes ---
-    pm2_raw = _run('pm2 jlist 2>/dev/null')
+    pm2_raw = run_cmd('pm2 jlist 2>/dev/null')
     pm2_procs = []
     if pm2_raw:
         try:
@@ -511,11 +542,13 @@ def api_server_map():
             pass
 
     # --- System info ---
-    hostname = _run('hostname')
-    uptime = _run("uptime -p 2>/dev/null || uptime | sed 's/.*up/up/'")
-    kernel = _run('uname -r')
+    hostname = run_cmd('hostname')
+    uptime = run_cmd("uptime -p 2>/dev/null || uptime | sed 's/.*up/up/'")
+    kernel = run_cmd('uname -r')
 
     return jsonify({
+        'success': True,
+        'target': target_meta,
         'services': services,
         'python_version': py_ver,
         'node_version': node_ver,

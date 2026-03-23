@@ -8,6 +8,8 @@ import logging
 import os
 import uuid
 
+from sqlalchemy import inspect, text
+
 from extensions import db
 from models import AppSetting, Organization, Plan, ResourceQuota, ServerCredential, Subscription, User
 
@@ -20,6 +22,7 @@ def init_database(app):
     """Veritabanını oluştur, varsayılan admin oluştur, config.json'dan veri aktar."""
     with app.app_context():
         db.create_all()
+        _apply_lightweight_schema_updates()
 
         # Varsayılan admin oluştur
         if not User.query.first():
@@ -220,3 +223,40 @@ def _create_default_org():
 
     db.session.commit()
     logger.info("  ✅ Varsayılan organizasyon oluşturuldu (slug: default)")
+
+
+def _apply_lightweight_schema_updates():
+    """Eski kurulumlar için küçük şema güncellemeleri (idempotent)."""
+    engine_name = db.engine.dialect.name
+    inspector = inspect(db.engine)
+
+    org_cols = {c['name'] for c in inspector.get_columns('organizations')}
+    statements = []
+
+    if 'parent_org_id' not in org_cols:
+        if engine_name == 'postgresql':
+            statements.append('ALTER TABLE organizations ADD COLUMN parent_org_id INTEGER NULL')
+        else:
+            statements.append('ALTER TABLE organizations ADD COLUMN parent_org_id INTEGER')
+
+    if 'hierarchy_type' not in org_cols:
+        if engine_name == 'postgresql':
+            statements.append("ALTER TABLE organizations ADD COLUMN hierarchy_type VARCHAR(30) NOT NULL DEFAULT 'tenant'")
+        else:
+            statements.append("ALTER TABLE organizations ADD COLUMN hierarchy_type VARCHAR(30) NOT NULL DEFAULT 'tenant'")
+
+    if not statements:
+        return
+
+    conn = db.engine.connect()
+    tx = conn.begin()
+    try:
+        for stmt in statements:
+            conn.execute(text(stmt))
+        tx.commit()
+        logger.info('  ✅ Lightweight şema güncellemesi uygulandı: %s', ', '.join(statements))
+    except Exception as e:
+        tx.rollback()
+        logger.warning('  ⚠️ Lightweight şema güncellemesi atlandı: %s', e)
+    finally:
+        conn.close()

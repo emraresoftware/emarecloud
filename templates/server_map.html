@@ -449,13 +449,24 @@
         </div>
         <div class="smap-header-info">
             {% if is_admin %}
-            <h2>185.189.54.104 — Sunucu Mimarisi</h2>
-            <p>AlmaLinux 9.6 &bull; Tüm servislerin canlı durumu ve mimari yapı</p>
+            <h2 id="smapTitle">Sunucu Mimarisi</h2>
+            <p id="smapSubtitle">Seçili sunucunun canlı servis durumu ve mimari yapı</p>
             {% else %}
             <h2>Sunucu Haritam</h2>
             <p>Sisteme eklediğiniz sunucuların durumu</p>
             {% endif %}
         </div>
+        {% if is_admin %}
+        <div style="display:flex;flex-direction:column;gap:.35rem;min-width:240px;">
+            <label for="smapServerSelect" style="font-size:.75rem;color:var(--text-secondary);font-weight:600;">Haritada Gösterilecek Sunucu</label>
+            <select id="smapServerSelect" style="padding:.55rem .7rem;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);">
+                <option value="">Bu Sunucu (Uygulamanın Kurulu Olduğu)</option>
+                {% for srv in servers %}
+                <option value="{{ srv.id }}" {% if selected_server_id and selected_server_id == srv.id %}selected{% endif %}>{{ srv.name }} — {{ srv.host }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
         <div class="smap-header-stats">
             <div class="smap-hstat">
                 <div class="smap-hstat-val" id="smapTotalServices">—</div>
@@ -732,13 +743,13 @@
 
     <!-- ── Quick Links ───────────────────────── -->
     <div class="smap-links">
-        <a href="http://185.189.54.104" target="_blank" class="smap-link">
+        <a href="http://185.189.54.104" target="_blank" class="smap-link" id="smapLinkPanel">
             <i class="fas fa-server"></i> EmareCloud Panel
         </a>
-        <a href="http://185.189.54.104:3001" target="_blank" class="smap-link">
+        <a href="http://185.189.54.104:3001" target="_blank" class="smap-link" id="smapLinkWebsite">
             <i class="fas fa-palette"></i> Token Website
         </a>
-        <a href="http://185.189.54.104:3003" target="_blank" class="smap-link">
+        <a href="http://185.189.54.104:3003" target="_blank" class="smap-link" id="smapLinkDapp">
             <i class="fas fa-wallet"></i> Token DApp
         </a>
     </div>
@@ -798,7 +809,10 @@ function toggleDetails(el) {
 
 async function loadServerMap() {
     try {
-        const res = await fetch('/api/server-map');
+        const select = document.getElementById('smapServerSelect');
+        const serverId = select ? (select.value || '') : '';
+        const qs = serverId ? ('?server_id=' + encodeURIComponent(serverId)) : '';
+        const res = await fetch('/api/server-map' + qs);
         if (!res.ok) throw new Error('API error');
         const data = await res.json();
         renderMap(data);
@@ -812,6 +826,21 @@ async function loadServerMap() {
 
 function renderMap(d) {
     const svc = d.services || {};
+    const target = d.target || {};
+    const targetHost = target.host || '127.0.0.1';
+    const targetName = target.server_name || targetHost || 'Bu Sunucu';
+
+    const titleEl = document.getElementById('smapTitle');
+    const subtitleEl = document.getElementById('smapSubtitle');
+    if (titleEl) titleEl.textContent = `${targetName} — Sunucu Mimarisi`;
+    if (subtitleEl) subtitleEl.textContent = `${targetHost} • Seçili sunucunun canlı servis durumu`;
+
+    const linkPanel = document.getElementById('smapLinkPanel');
+    const linkWebsite = document.getElementById('smapLinkWebsite');
+    const linkDapp = document.getElementById('smapLinkDapp');
+    if (linkPanel) linkPanel.href = `http://${targetHost}`;
+    if (linkWebsite) linkWebsite.href = `http://${targetHost}:3001`;
+    if (linkDapp) linkDapp.href = `http://${targetHost}:3003`;
 
     // Header stats
     const svcNames = Object.keys(svc);
@@ -870,7 +899,19 @@ function renderMap(d) {
 }
 
 // Load on page ready
-document.addEventListener('DOMContentLoaded', loadServerMap);
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('smapServerSelect');
+    if (select) {
+        select.addEventListener('change', () => {
+            const url = new URL(window.location.href);
+            if (select.value) url.searchParams.set('server_id', select.value);
+            else url.searchParams.delete('server_id');
+            window.history.replaceState({}, '', url.toString());
+            loadServerMap();
+        });
+    }
+    loadServerMap();
+});
 
 // Auto refresh every 30s
 setInterval(loadServerMap, 30000);

@@ -1,0 +1,15 @@
+[Unit]
+Description=Emare Asistan WhatsApp Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/emareasistan/whatsapp-bridge
+ExecStart=/usr/bin/node /var/www/emareasistan/whatsapp-bridge/index-multi.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

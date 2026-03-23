@@ -47,6 +47,9 @@ EmareCloud — Altyapı Yönetim Paneli dokümantasyonu.
 | Dosya | Açıklama |
 |-------|----------|
 | [BLOCKCHAIN_ENTEGRASYON.md](BLOCKCHAIN_ENTEGRASYON.md) | EmareToken (ERC20) blockchain entegrasyon mimarisi — cüzdan yönetimi, EP ödül sistemi, RewardPool, Marketplace, Settlement bağlantısı |
+| [AI_COKLU_GELISTIRME_PROTOKOLU.md](AI_CALISMA/AI_COKLU_GELISTIRME_PROTOKOLU.md) | Coklu AI gelistirme protokolu — roller, PR kurallari, kalite kapilari, handoff standardi |
+| [AI_ESZAMANLI_CALISMA_KILAVUZU.md](AI_CALISMA/AI_ESZAMANLI_CALISMA_KILAVUZU.md) | Ayni dosyada cakismayi onleyen pratik kilavuz — dosya rezervasyonu, slot kurali, lock modeli |
+| [AI_GUNLUK_CALISMA_RUTINI.md](AI_CALISMA/AI_GUNLUK_CALISMA_RUTINI.md) | 1 sayfalik gunluk rutin — lock acma, gelistirme, PR, merge sonrasi kapanis adimlari |
 
 ## Anahtar Dosyalar
 

@@ -1,0 +1,819 @@
+{% extends "base.html" %}
+{% block title %}Ağ Cihazları{% endblock %}
+{% block page_title %}Ağ Cihazları{% endblock %}
+
+{% block head %}
+<style>
+/* ══ Layout ══════════════════════════════════════════════════ */
+.nd-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.nd-header h2{margin:0;font-size:1.25rem;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:10px}
+.nd-header h2 i{color:#4c8dff}
+.nd-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ══ Filtre Çubuğu ═══════════════════════════════════════════ */
+.nd-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.nd-filters select,.nd-filters input{background:#1e2333;border:1px solid rgba(255,255,255,.1);
+  color:#e2e8f0;border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;min-width:140px}
+.nd-filters select:focus,.nd-filters input:focus{border-color:#4c8dff}
+.nd-search{flex:1;min-width:200px}
+
+/* ══ İstatistik Kartları ═════════════════════════════════════ */
+.nd-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.nd-stat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;padding:16px;text-align:center}
+.nd-stat-card .stat-val{font-size:1.8rem;font-weight:700;color:#4c8dff}
+.nd-stat-card .stat-lbl{font-size:.75rem;color:#8b8fa3;margin-top:4px}
+
+/* ══ Cihaz Tablosu / Kartlar ════════════════════════════════ */
+.nd-group-title{font-size:.8rem;font-weight:600;color:#8b8fa3;text-transform:uppercase;
+  letter-spacing:.06em;padding:10px 4px 6px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:8px}
+.nd-table{width:100%;border-collapse:collapse}
+.nd-table th{font-size:.75rem;font-weight:600;color:#8b8fa3;text-transform:uppercase;
+  padding:8px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07)}
+.nd-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.nd-table tr:hover td{background:rgba(255,255,255,.03)}
+.nd-table tr:last-child td{border-bottom:none}
+
+/* ══ Cihaz satırı elemanları ═════════════════════════════════ */
+.nd-name{font-weight:600;color:#e2e8f0;display:flex;align-items:center;gap:8px}
+.nd-name i{font-size:1rem;width:20px;text-align:center}
+.nd-host{font-family:monospace;font-size:.8rem;color:#94a3b8}
+.nd-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;
+  font-size:.7rem;font-weight:600}
+.nd-badge-router{background:rgba(76,141,255,.15);color:#4c8dff}
+.nd-badge-switch{background:rgba(16,185,129,.15);color:#10b981}
+.nd-badge-firewall{background:rgba(239,68,68,.15);color:#ef4444}
+.nd-badge-ap{background:rgba(245,158,11,.15);color:#f59e0b}
+.nd-badge-lb{background:rgba(139,92,246,.15);color:#8b5cf6}
+.nd-badge-other{background:rgba(107,114,128,.15);color:#6b7280}
+
+.nd-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.nd-status-dot.online{background:#10b981;box-shadow:0 0 6px rgba(16,185,129,.6)}
+.nd-status-dot.offline{background:#6b7280}
+.nd-status-dot.connected{background:#4c8dff;box-shadow:0 0 6px rgba(76,141,255,.6);animation:pulse-blue 2s infinite}
+
+.nd-brand-pill{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:6px;padding:2px 8px;font-size:.7rem;color:#cbd5e1}
+.nd-latency{font-size:.75rem;color:#64748b}
+.nd-latency.fast{color:#10b981}
+
+.nd-actions{display:flex;gap:4px;justify-content:flex-end}
+.nd-btn{background:rgba(255,255,255,.06);border:none;border-radius:6px;padding:5px 10px;
+  color:#94a3b8;cursor:pointer;font-size:.78rem;transition:.15s;white-space:nowrap}
+.nd-btn:hover{background:rgba(255,255,255,.12);color:#e2e8f0}
+.nd-btn.connect{background:rgba(16,185,129,.15);color:#10b981}
+.nd-btn.connect:hover{background:rgba(16,185,129,.25)}
+.nd-btn.danger{background:rgba(239,68,68,.12);color:#ef4444}
+.nd-btn.danger:hover{background:rgba(239,68,68,.25)}
+.nd-btn.primary{background:rgba(76,141,255,.18);color:#4c8dff}
+.nd-btn.primary:hover{background:rgba(76,141,255,.3)}
+
+/* ══ Modal ═══════════════════════════════════════════════════ */
+.nd-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
+  z-index:2000;display:none;align-items:center;justify-content:center}
+.nd-modal-overlay.open{display:flex}
+.nd-modal{background:#1a1f2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;
+  padding:28px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto}
+.nd-modal h3{margin:0 0 20px;font-size:1.1rem;color:#e2e8f0;display:flex;align-items:center;gap:8px}
+.nd-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.nd-form-full{grid-column:1/-1}
+.nd-form-group{display:flex;flex-direction:column;gap:6px}
+.nd-form-group label{font-size:.78rem;color:#94a3b8;font-weight:500}
+.nd-form-group input,.nd-form-group select,.nd-form-group textarea{
+  background:#111827;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;
+  border-radius:8px;padding:9px 12px;font-size:.85rem;outline:none;width:100%;box-sizing:border-box}
+.nd-form-group input:focus,.nd-form-group select:focus,.nd-form-group textarea:focus{border-color:#4c8dff}
+.nd-form-group textarea{resize:vertical;min-height:60px;font-family:inherit}
+.nd-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.07)}
+.nd-modal-btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:.85rem;font-weight:600}
+.nd-modal-btn.cancel{background:rgba(255,255,255,.07);color:#94a3b8}
+.nd-modal-btn.save{background:#4c8dff;color:#fff}
+.nd-modal-btn.save:hover{background:#3b7de8}
+.nd-modal-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ══ Detail Panel ════════════════════════════════════════════ */
+.nd-detail-panel{position:fixed;top:0;right:-520px;width:520px;height:100vh;
+  background:#151a28;border-left:1px solid rgba(255,255,255,.1);z-index:1500;
+  transition:right .3s ease;display:flex;flex-direction:column}
+.nd-detail-panel.open{right:0}
+.nd-detail-header{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.nd-detail-header h3{margin:0;font-size:1rem;color:#e2e8f0;display:flex;align-items:center;gap:8px}
+.nd-detail-close{background:none;border:none;color:#6b7280;cursor:pointer;font-size:1.1rem;padding:4px}
+.nd-detail-close:hover{color:#e2e8f0}
+.nd-detail-body{flex:1;overflow-y:auto;padding:20px}
+
+.nd-detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.nd-meta-item{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px}
+.nd-meta-item .meta-lbl{font-size:.7rem;color:#6b7280;margin-bottom:4px}
+.nd-meta-item .meta-val{font-size:.85rem;color:#e2e8f0;font-weight:500}
+
+.nd-cmd-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.nd-cmd-tab{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
+  background:transparent;color:#94a3b8;cursor:pointer;font-size:.75rem;transition:.15s}
+.nd-cmd-tab:hover,.nd-cmd-tab.active{background:rgba(76,141,255,.2);color:#4c8dff;border-color:#4c8dff}
+
+.nd-terminal-out{background:#0d0f1a;border:1px solid rgba(255,255,255,.08);border-radius:8px;
+  padding:14px;font-family:monospace;font-size:.78rem;color:#10b981;min-height:120px;
+  max-height:340px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5}
+.nd-terminal-out.error{color:#ef4444}
+.nd-terminal-out.empty{color:#4b5563;font-style:italic}
+
+.nd-custom-cmd{display:flex;gap:8px;margin-top:12px}
+.nd-custom-cmd input{flex:1;background:#111827;border:1px solid rgba(255,255,255,.1);
+  color:#e2e8f0;border-radius:8px;padding:8px 12px;font-family:monospace;font-size:.82rem;outline:none}
+.nd-custom-cmd input:focus{border-color:#4c8dff}
+.nd-custom-cmd button{padding:8px 16px;background:#4c8dff;border:none;border-radius:8px;
+  color:#fff;cursor:pointer;font-size:.82rem;font-weight:600;white-space:nowrap}
+.nd-custom-cmd button:hover{background:#3b7de8}
+
+.nd-section-title{font-size:.78rem;font-weight:600;color:#8b8fa3;text-transform:uppercase;
+  letter-spacing:.05em;margin:16px 0 8px}
+
+/* ══ Toast / Loading ════════════════════════════════════════ */
+.nd-toast{position:fixed;bottom:24px;right:24px;background:#1e2333;border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:12px 18px;color:#e2e8f0;font-size:.85rem;z-index:9999;
+  transform:translateY(20px);opacity:0;transition:.3s;pointer-events:none;max-width:320px}
+.nd-toast.show{transform:translateY(0);opacity:1}
+.nd-toast.success{border-left:3px solid #10b981}
+.nd-toast.error{border-left:3px solid #ef4444}
+
+.nd-spinning{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse-blue{0%,100%{box-shadow:0 0 6px rgba(76,141,255,.6)}50%{box-shadow:0 0 12px rgba(76,141,255,.9)}}
+
+.nd-empty{text-align:center;padding:48px;color:#4b5563}
+.nd-empty i{font-size:2.5rem;margin-bottom:12px;color:#374151}
+
+/* ══ Responsive ══════════════════════════════════════════════ */
+@media(max-width:768px){
+  .nd-table th:nth-child(3),.nd-table td:nth-child(3),
+  .nd-table th:nth-child(4),.nd-table td:nth-child(4){display:none}
+  .nd-detail-panel{width:100%}
+  .nd-form-grid{grid-template-columns:1fr}
+  .nd-stats{grid-template-columns:repeat(2,1fr)}
+  .nd-modal{margin:0 12px}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="nd-header">
+    <h2><i class="fas fa-network-wired"></i> Ağ Cihazları</h2>
+    <div class="nd-header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="ndRefresh()">
+            <i class="fas fa-sync-alt" id="ndRefreshIcon"></i> Yenile
+        </button>
+        {% if current_user.has_permission('network.add') %}
+        <button class="btn btn-primary btn-sm" onclick="ndOpenAdd()">
+            <i class="fas fa-plus"></i> Cihaz Ekle
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- İstatistikler -->
+<div class="nd-stats" id="ndStats">
+    <div class="nd-stat-card"><div class="stat-val" id="statTotal">—</div><div class="stat-lbl">Toplam Cihaz</div></div>
+    <div class="nd-stat-card"><div class="stat-val" id="statOnline" style="color:#10b981">—</div><div class="stat-lbl">Erişilebilir</div></div>
+    <div class="nd-stat-card"><div class="stat-val" id="statConnected" style="color:#4c8dff">—</div><div class="stat-lbl">Bağlı</div></div>
+    <div class="nd-stat-card"><div class="stat-val" id="statRouters" style="color:#4c8dff">—</div><div class="stat-lbl">Router</div></div>
+    <div class="nd-stat-card"><div class="stat-val" id="statSwitches" style="color:#10b981">—</div><div class="stat-lbl">Switch</div></div>
+    <div class="nd-stat-card"><div class="stat-val" id="statFirewalls" style="color:#ef4444">—</div><div class="stat-lbl">Firewall</div></div>
+</div>
+
+<!-- Filtreler -->
+<div class="nd-filters">
+    <input type="text" class="nd-search" id="ndSearch" placeholder="Cihaz adı veya IP ara..." oninput="ndFilterRender()">
+    <select id="ndFilterType" onchange="ndFilterRender()">
+        <option value="">Tüm Tipler</option>
+        <option value="router">Router</option>
+        <option value="switch">Switch</option>
+        <option value="firewall">Firewall</option>
+        <option value="ap">Access Point</option>
+        <option value="lb">Yük Dengeleyici</option>
+        <option value="other">Diğer</option>
+    </select>
+    <select id="ndFilterBrand" onchange="ndFilterRender()">
+        <option value="">Tüm Markalar</option>
+        {% for k, lbl in brands.items() %}
+        <option value="{{ k }}">{{ lbl }}</option>
+        {% endfor %}
+    </select>
+    <select id="ndFilterGroup" onchange="ndFilterRender()">
+        <option value="">Tüm Gruplar</option>
+    </select>
+    <select id="ndFilterStatus" onchange="ndFilterRender()">
+        <option value="">Tüm Durum</option>
+        <option value="online">Erişilebilir</option>
+        <option value="offline">Erişilemiyor</option>
+        <option value="connected">Bağlı</option>
+    </select>
+</div>
+
+<!-- Tablo -->
+<div id="ndTableWrap">
+    <div class="nd-empty"><i class="fas fa-spinner nd-spinning"></i><br>Yükleniyor...</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- ── Modal: Cihaz Ekle/Düzenle ───────────────────────────────── -->
+<div class="nd-modal-overlay" id="ndModal">
+    <div class="nd-modal">
+        <h3 id="ndModalTitle"><i class="fas fa-plus-circle"></i> Cihaz Ekle</h3>
+        <form id="ndForm" onsubmit="ndSaveDevice(event)">
+            <input type="hidden" id="ndEditId">
+            <div class="nd-form-grid">
+                <div class="nd-form-group nd-form-full">
+                    <label>Cihaz Adı *</label>
+                    <input type="text" id="ndFName" placeholder="Örn: Core-Router-01" required>
+                </div>
+                <div class="nd-form-group">
+                    <label>IP / Hostname *</label>
+                    <input type="text" id="ndFHost" placeholder="192.168.1.1" required>
+                </div>
+                <div class="nd-form-group">
+                    <label>SSH Port</label>
+                    <input type="number" id="ndFPort" value="22" min="1" max="65535">
+                </div>
+                <div class="nd-form-group">
+                    <label>Kullanıcı Adı</label>
+                    <input type="text" id="ndFUsername" placeholder="admin">
+                </div>
+                <div class="nd-form-group">
+                    <label>Şifre</label>
+                    <input type="password" id="ndFPassword" placeholder="Değiştirmek için girin">
+                </div>
+                <div class="nd-form-group">
+                    <label>Enable / Privilege Şifresi</label>
+                    <input type="password" id="ndFEnable" placeholder="Cisco enable şifresi (opsiyonel)">
+                </div>
+                <div class="nd-form-group">
+                    <label>Cihaz Tipi</label>
+                    <select id="ndFType">
+                        <option value="router">🔀 Router</option>
+                        <option value="switch">🔌 Switch</option>
+                        <option value="firewall">🛡️ Firewall</option>
+                        <option value="ap">📶 Access Point</option>
+                        <option value="lb">⚖️ Yük Dengeleyici</option>
+                        <option value="other">⚙️ Diğer</option>
+                    </select>
+                </div>
+                <div class="nd-form-group">
+                    <label>Marka / OS</label>
+                    <select id="ndFBrand">
+                        {% for k, lbl in brands.items() %}
+                        <option value="{{ k }}">{{ lbl }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="nd-form-group">
+                    <label>Model</label>
+                    <input type="text" id="ndFModel" placeholder="Örn: Cisco 2911, MikroTik hEX">
+                </div>
+                <div class="nd-form-group">
+                    <label>Grup</label>
+                    <input type="text" id="ndFGroup" placeholder="Genel" value="Genel">
+                </div>
+                <div class="nd-form-group">
+                    <label>Konum</label>
+                    <input type="text" id="ndFLocation" placeholder="Raf, Oda, DC...">
+                </div>
+                <div class="nd-form-group nd-form-full">
+                    <label>Açıklama</label>
+                    <textarea id="ndFDesc" rows="2" placeholder="Opsiyonel notlar..."></textarea>
+                </div>
+            </div>
+            <div class="nd-modal-actions">
+                <button type="button" class="nd-modal-btn cancel" onclick="ndCloseModal()">İptal</button>
+                <button type="submit" class="nd-modal-btn save" id="ndSaveBtn">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Sağ Panel: Cihaz Detayı ─────────────────────────────────── -->
+<div class="nd-detail-panel" id="ndDetailPanel">
+    <div class="nd-detail-header">
+        <h3 id="ndDetailTitle"><i class="fas fa-microchip"></i> Cihaz Detayı</h3>
+        <button class="nd-detail-close" onclick="ndCloseDetail()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="nd-detail-body">
+        <div class="nd-detail-meta" id="ndDetailMeta"></div>
+
+        <div class="nd-section-title">Bağlantı</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+            <button class="nd-btn connect" id="ndConnectBtn" onclick="ndToggleConnect()">
+                <i class="fas fa-plug"></i> Bağlan
+            </button>
+            <button class="nd-btn" onclick="ndDetailRefresh()"><i class="fas fa-sync-alt"></i> Bilgi Al</button>
+        </div>
+
+        <div class="nd-section-title">Hızlı Sorgular</div>
+        <div class="nd-cmd-tabs" id="ndCmdTabs"></div>
+
+        <div class="nd-section-title">Çıktı</div>
+        <div class="nd-terminal-out empty" id="ndOutput">Yukarıdan sorgu seçin veya komut girin...</div>
+
+        <div class="nd-section-title">Komut Çalıştır</div>
+        <div class="nd-custom-cmd">
+            <input type="text" id="ndCustomCmd" placeholder="show ip int brief" onkeydown="if(event.key==='Enter')ndRunCustom()">
+            <button onclick="ndRunCustom()"><i class="fas fa-play"></i> Çalıştır</button>
+        </div>
+
+        <div class="nd-section-title">Config Yedek</div>
+        <button class="nd-btn primary" style="width:100%;margin-bottom:8px" onclick="ndBackup()">
+            <i class="fas fa-download"></i> Running Config İndir
+        </button>
+    </div>
+</div>
+
+<!-- ── Toast ────────────────────────────────────────────────────── -->
+<div class="nd-toast" id="ndToast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════
+let ndDevices = [];
+let ndCurrentId = null;
+let ndCurrentDevice = null;
+
+// ═══════════════════════════════════════════════════════
+//  Boot
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    ndLoad();
+    // Panel dışı tıklama kapatmaz (aksiyon paneli olduğu için)
+    document.getElementById('ndModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('ndModal')) ndCloseModal();
+    });
+});
+
+// ═══════════════════════════════════════════════════════
+//  Veri Yükleme
+// ═══════════════════════════════════════════════════════
+async function ndLoad() {
+    const icon = document.getElementById('ndRefreshIcon');
+    icon.classList.add('nd-spinning');
+    try {
+        const r = await fetch('/api/network-devices');
+        const data = await r.json();
+        if (data.success) {
+            ndDevices = data.devices;
+            ndUpdateStats();
+            ndPopulateGroups(data.groups);
+            ndFilterRender();
+        }
+    } catch (e) {
+        ndToast('Yükleme hatası: ' + e.message, 'error');
+    } finally {
+        icon.classList.remove('nd-spinning');
+    }
+}
+
+function ndRefresh() { ndLoad(); }
+
+function ndUpdateStats() {
+    const total    = ndDevices.length;
+    const online   = ndDevices.filter(d => d.reachable).length;
+    const connected= ndDevices.filter(d => d.connected).length;
+    const routers  = ndDevices.filter(d => d.device_type === 'router').length;
+    const switches = ndDevices.filter(d => d.device_type === 'switch').length;
+    const firewalls= ndDevices.filter(d => d.device_type === 'firewall').length;
+    document.getElementById('statTotal').textContent     = total;
+    document.getElementById('statOnline').textContent    = online;
+    document.getElementById('statConnected').textContent = connected;
+    document.getElementById('statRouters').textContent   = routers;
+    document.getElementById('statSwitches').textContent  = switches;
+    document.getElementById('statFirewalls').textContent = firewalls;
+}
+
+function ndPopulateGroups(groups) {
+    const sel = document.getElementById('ndFilterGroup');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Tüm Gruplar</option>';
+    groups.forEach(g => {
+        const o = document.createElement('option');
+        o.value = g; o.textContent = g;
+        if (g === current) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  Filtreleme & Render
+// ═══════════════════════════════════════════════════════
+function ndFilterRender() {
+    const search  = document.getElementById('ndSearch').value.toLowerCase();
+    const ftype   = document.getElementById('ndFilterType').value;
+    const fbrand  = document.getElementById('ndFilterBrand').value;
+    const fgroup  = document.getElementById('ndFilterGroup').value;
+    const fstatus = document.getElementById('ndFilterStatus').value;
+
+    let filtered = ndDevices.filter(d => {
+        if (search && !d.name.toLowerCase().includes(search) && !d.host.includes(search)) return false;
+        if (ftype   && d.device_type !== ftype)   return false;
+        if (fbrand  && d.brand !== fbrand)         return false;
+        if (fgroup  && d.group !== fgroup)         return false;
+        if (fstatus === 'online'    && !d.reachable)  return false;
+        if (fstatus === 'offline'   && d.reachable)   return false;
+        if (fstatus === 'connected' && !d.connected)  return false;
+        return true;
+    });
+
+    ndRenderTable(filtered);
+}
+
+function ndRenderTable(devices) {
+    const wrap = document.getElementById('ndTableWrap');
+    if (devices.length === 0) {
+        wrap.innerHTML = `<div class="nd-empty">
+            <i class="fas fa-network-wired"></i><br>
+            ${ndDevices.length === 0 ? 'Henüz cihaz eklenmemiş.' : 'Filtreye uyan cihaz yok.'}
+            ${ndDevices.length === 0 ? '<br><br><button class="btn btn-primary btn-sm" onclick="ndOpenAdd()"><i class="fas fa-plus"></i> İlk Cihazı Ekle</button>' : ''}
+        </div>`;
+        return;
+    }
+
+    // Gruplara ayır
+    const groups = {};
+    devices.forEach(d => {
+        if (!groups[d.group]) groups[d.group] = [];
+        groups[d.group].push(d);
+    });
+
+    let html = '';
+    for (const [grp, devList] of Object.entries(groups)) {
+        html += `<div class="nd-group-title"><i class="fas fa-folder-open" style="margin-right:6px"></i>${escHtml(grp)} <span style="font-weight:400;color:#4b5563">(${devList.length})</span></div>`;
+        html += `<table class="nd-table"><thead><tr>
+            <th>Cihaz</th><th>Host / Port</th><th>Marka</th><th>Konum</th><th>Durum</th><th></th>
+        </tr></thead><tbody>`;
+        devList.forEach(d => {
+            const statusDot = d.connected
+                ? `<span class="nd-status-dot connected" title="SSH Bağlı"></span>`
+                : d.reachable
+                    ? `<span class="nd-status-dot online" title="Erişilebilir"></span>`
+                    : `<span class="nd-status-dot offline" title="Erişilemiyor"></span>`;
+            const latency = d.reachable
+                ? `<span class="nd-latency ${d.latency < 20 ? 'fast' : ''}">${d.latency}ms</span>`
+                : `<span class="nd-latency">—</span>`;
+            const typeBadge = `<span class="nd-badge nd-badge-${d.device_type}">
+                <i class="fas ${d.type_icon}"></i> ${ndTypeLbl(d.device_type)}
+            </span>`;
+
+            html += `<tr>
+                <td>
+                    <div class="nd-name">
+                        <i class="fas ${d.type_icon}" style="color:${ndTypeColor(d.device_type)}"></i>
+                        <div>
+                            <div>${escHtml(d.name)}</div>
+                            <div style="font-size:.72rem;color:#6b7280">${escHtml(d.model||'')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="nd-host">${escHtml(d.host)}${d.port !== 22 ? ':'+d.port : ''}</div>
+                    ${typeBadge}
+                </td>
+                <td><span class="nd-brand-pill">${escHtml(d.brand_label||d.brand)}</span></td>
+                <td><span style="font-size:.8rem;color:#6b7280">${escHtml(d.location||'—')}</span></td>
+                <td>${statusDot} ${latency}</td>
+                <td>
+                    <div class="nd-actions">
+                        <button class="nd-btn primary" onclick="ndOpenDetail('${d.id}')" title="Detay / Komut"><i class="fas fa-terminal"></i></button>
+                        <button class="nd-btn" onclick="ndOpenEdit('${d.id}')" title="Düzenle"><i class="fas fa-pen"></i></button>
+                        <button class="nd-btn danger" onclick="ndDelete('${d.id}','${escHtml(d.name)}')" title="Sil"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table><br>';
+    }
+    wrap.innerHTML = html;
+}
+
+function ndTypeLbl(t) {
+    return {router:'Router',switch:'Switch',firewall:'Firewall',ap:'AP',lb:'LB',other:'Diğer'}[t]||t;
+}
+function ndTypeColor(t) {
+    return {router:'#4c8dff',switch:'#10b981',firewall:'#ef4444',ap:'#f59e0b',lb:'#8b5cf6',other:'#6b7280'}[t]||'#94a3b8';
+}
+
+// ═══════════════════════════════════════════════════════
+//  Modal: Ekle / Düzenle
+// ═══════════════════════════════════════════════════════
+function ndOpenAdd() {
+    document.getElementById('ndModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cihaz Ekle';
+    document.getElementById('ndEditId').value = '';
+    document.getElementById('ndForm').reset();
+    document.getElementById('ndFPort').value = '22';
+    document.getElementById('ndFGroup').value = 'Genel';
+    document.getElementById('ndFUsername').value = 'admin';
+    document.getElementById('ndModal').classList.add('open');
+}
+
+function ndOpenEdit(id) {
+    const d = ndDevices.find(x => x.id === id);
+    if (!d) return;
+    document.getElementById('ndModalTitle').innerHTML = '<i class="fas fa-pen"></i> Cihaz Düzenle';
+    document.getElementById('ndEditId').value = d.id;
+    document.getElementById('ndFName').value     = d.name;
+    document.getElementById('ndFHost').value     = d.host;
+    document.getElementById('ndFPort').value     = d.port;
+    document.getElementById('ndFUsername').value = d.username;
+    document.getElementById('ndFPassword').value = '';
+    document.getElementById('ndFEnable').value   = '';
+    document.getElementById('ndFType').value     = d.device_type;
+    document.getElementById('ndFBrand').value    = d.brand;
+    document.getElementById('ndFModel').value    = d.model||'';
+    document.getElementById('ndFGroup').value    = d.group;
+    document.getElementById('ndFLocation').value = d.location||'';
+    document.getElementById('ndFDesc').value     = d.description||'';
+    document.getElementById('ndModal').classList.add('open');
+}
+
+function ndCloseModal() {
+    document.getElementById('ndModal').classList.remove('open');
+}
+
+async function ndSaveDevice(e) {
+    e.preventDefault();
+    const editId = document.getElementById('ndEditId').value;
+    const body = {
+        name:            document.getElementById('ndFName').value.trim(),
+        host:            document.getElementById('ndFHost').value.trim(),
+        port:        parseInt(document.getElementById('ndFPort').value)||22,
+        username:        document.getElementById('ndFUsername').value.trim(),
+        password:        document.getElementById('ndFPassword').value,
+        enable_password: document.getElementById('ndFEnable').value,
+        device_type:     document.getElementById('ndFType').value,
+        brand:           document.getElementById('ndFBrand').value,
+        model:           document.getElementById('ndFModel').value.trim(),
+        group:           document.getElementById('ndFGroup').value.trim()||'Genel',
+        location:        document.getElementById('ndFLocation').value.trim(),
+        description:     document.getElementById('ndFDesc').value.trim(),
+    };
+
+    const btn = document.getElementById('ndSaveBtn');
+    btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+
+    try {
+        const url    = editId ? `/api/network-devices/${editId}` : '/api/network-devices';
+        const method = editId ? 'PUT' : 'POST';
+        const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+        const data = await r.json();
+        if (data.success) {
+            ndCloseModal();
+            ndToast(editId ? 'Cihaz güncellendi' : 'Cihaz eklendi', 'success');
+            await ndLoad();
+        } else {
+            ndToast(data.error||'Kayıt hatası', 'error');
+        }
+    } catch(err) {
+        ndToast('Hata: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Kaydet';
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Silme
+// ═══════════════════════════════════════════════════════
+async function ndDelete(id, name) {
+    if (!confirm(`"${name}" cihazını silmek istediğinizden emin misiniz?`)) return;
+    try {
+        const r = await fetch(`/api/network-devices/${id}`, {method:'DELETE'});
+        const data = await r.json();
+        if (data.success) {
+            ndToast('Cihaz silindi', 'success');
+            if (ndCurrentId === id) ndCloseDetail();
+            await ndLoad();
+        } else {
+            ndToast(data.error||'Silme hatası', 'error');
+        }
+    } catch(e) {
+        ndToast('Hata: ' + e.message, 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Detay Paneli
+// ═══════════════════════════════════════════════════════
+const QUICK_QUERIES = [
+    {key:'show_version',    lbl:'Versiyon'},
+    {key:'show_interfaces', lbl:'Arayüzler'},
+    {key:'show_arp',        lbl:'ARP'},
+    {key:'show_routing',    lbl:'Rota'},
+    {key:'show_mac',        lbl:'MAC Tablo'},
+    {key:'show_vlan',       lbl:'VLAN'},
+    {key:'show_firewall',   lbl:'Firewall'},
+    {key:'show_nat',        lbl:'NAT'},
+];
+
+function ndOpenDetail(id) {
+    const d = ndDevices.find(x => x.id === id);
+    if (!d) return;
+    ndCurrentId = id;
+    ndCurrentDevice = d;
+
+    document.getElementById('ndDetailTitle').innerHTML =
+        `<i class="fas ${d.type_icon}"></i> ${escHtml(d.name)}`;
+
+    // Meta bilgiler
+    document.getElementById('ndDetailMeta').innerHTML = `
+        <div class="nd-meta-item"><div class="meta-lbl">IP / Host</div><div class="meta-val">${escHtml(d.host)}:${d.port}</div></div>
+        <div class="nd-meta-item"><div class="meta-lbl">Marka</div><div class="meta-val">${escHtml(d.brand_label||d.brand)}</div></div>
+        <div class="nd-meta-item"><div class="meta-lbl">Model</div><div class="meta-val">${escHtml(d.model||'—')}</div></div>
+        <div class="nd-meta-item"><div class="meta-lbl">Konum</div><div class="meta-val">${escHtml(d.location||'—')}</div></div>
+    `;
+
+    // Bağlantı butonu güncelle
+    ndUpdateConnectBtn(d.connected);
+
+    // Sorgu tab'ları oluştur
+    document.getElementById('ndCmdTabs').innerHTML = QUICK_QUERIES.map(q =>
+        `<button class="nd-cmd-tab" onclick="ndRunQuery('${q.key}','${q.lbl}')">${q.lbl}</button>`
+    ).join('');
+
+    // Çıktıyı sıfırla
+    const out = document.getElementById('ndOutput');
+    out.className = 'nd-terminal-out empty';
+    out.textContent = 'Sorgu seçin veya komut girin...';
+
+    document.getElementById('ndDetailPanel').classList.add('open');
+}
+
+function ndUpdateConnectBtn(connected) {
+    const btn = document.getElementById('ndConnectBtn');
+    if (connected) {
+        btn.innerHTML = '<i class="fas fa-unlink"></i> Bağlantıyı Kes';
+        btn.className = 'nd-btn danger';
+    } else {
+        btn.innerHTML = '<i class="fas fa-plug"></i> Bağlan';
+        btn.className = 'nd-btn connect';
+    }
+}
+
+function ndCloseDetail() {
+    document.getElementById('ndDetailPanel').classList.remove('open');
+    ndCurrentId = null;
+    ndCurrentDevice = null;
+}
+
+async function ndToggleConnect() {
+    if (!ndCurrentId) return;
+    const d = ndCurrentDevice;
+    const isConn = d.connected;
+    const endpoint = isConn ? 'disconnect' : 'connect';
+    const btn = document.getElementById('ndConnectBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner nd-spinning"></i> Bekleniyor...';
+    try {
+        const r = await fetch(`/api/network-devices/${ndCurrentId}/${endpoint}`, {method:'POST'});
+        const data = await r.json();
+        if (data.success !== false) {
+            d.connected = data.connected;
+            ndUpdateConnectBtn(data.connected);
+            ndToast(isConn ? 'Bağlantı kesildi' : (data.message||'Bağlantı kuruldu'), 'success');
+            ndUpdateStats();
+        } else {
+            ndToast(data.message||data.error||'Hata', 'error');
+            ndUpdateConnectBtn(d.connected);
+        }
+    } catch(e) {
+        ndToast('Hata: ' + e.message, 'error');
+        ndUpdateConnectBtn(d.connected);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function ndDetailRefresh() {
+    if (!ndCurrentId) return;
+    const out = document.getElementById('ndOutput');
+    out.className = 'nd-terminal-out';
+    out.textContent = 'Cihaz bilgisi alınıyor...';
+    try {
+        const r = await fetch(`/api/network-devices/${ndCurrentId}/info`);
+        const data = await r.json();
+        if (data.success) {
+            const d = ndDevices.find(x => x.id === ndCurrentId);
+            if (d) { d.reachable = data.reachable; d.connected = data.connected; d.latency = data.latency; }
+            if (ndCurrentDevice) { ndCurrentDevice.connected = data.connected; ndCurrentDevice.reachable = data.reachable; }
+            ndUpdateConnectBtn(data.connected);
+            ndUpdateStats();
+            out.className = 'nd-terminal-out';
+            out.textContent = data.version || `Durum: ${data.reachable ? 'Erişilebilir' : 'Erişilemiyor'}\nGecikme: ${data.latency}ms`;
+        } else {
+            out.className = 'nd-terminal-out error';
+            out.textContent = data.error || 'Bilgi alınamadı';
+        }
+    } catch(e) {
+        out.className = 'nd-terminal-out error';
+        out.textContent = 'Hata: ' + e.message;
+    }
+}
+
+async function ndRunQuery(key, lbl) {
+    if (!ndCurrentId) return;
+    // Tab'ı aktif yap
+    document.querySelectorAll('.nd-cmd-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const out = document.getElementById('ndOutput');
+    out.className = 'nd-terminal-out';
+    out.textContent = `${lbl} sorgulanıyor...`;
+    try {
+        const r = await fetch(`/api/network-devices/${ndCurrentId}/query/${key}`);
+        const data = await r.json();
+        if (data.success) {
+            out.className = 'nd-terminal-out';
+            out.textContent = `# ${data.command}\n\n${data.output||'(boş çıktı)'}`;
+        } else {
+            out.className = 'nd-terminal-out error';
+            out.textContent = '⚠ ' + (data.error||'Sorgu başarısız');
+        }
+    } catch(e) {
+        out.className = 'nd-terminal-out error';
+        out.textContent = 'Hata: ' + e.message;
+    }
+}
+
+async function ndRunCustom() {
+    if (!ndCurrentId) return;
+    const input = document.getElementById('ndCustomCmd');
+    const cmd = input.value.trim();
+    if (!cmd) return;
+
+    const out = document.getElementById('ndOutput');
+    out.className = 'nd-terminal-out';
+    out.textContent = `$ ${cmd}\nÇalıştırılıyor...`;
+
+    try {
+        const r = await fetch(`/api/network-devices/${ndCurrentId}/execute`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({command: cmd})
+        });
+        const data = await r.json();
+        if (data.success) {
+            out.className = 'nd-terminal-out';
+            out.textContent = `$ ${cmd}\n\n${data.output||'(boş çıktı)'}`;
+        } else {
+            out.className = 'nd-terminal-out error';
+            out.textContent = `$ ${cmd}\n\n⚠ ${data.error||'Komut başarısız'}`;
+        }
+    } catch(e) {
+        out.className = 'nd-terminal-out error';
+        out.textContent = 'Hata: ' + e.message;
+    }
+}
+
+async function ndBackup() {
+    if (!ndCurrentId) return;
+    const out = document.getElementById('ndOutput');
+    out.className = 'nd-terminal-out';
+    out.textContent = 'Konfigurasyon yedekleniyor...';
+    try {
+        const r = await fetch(`/api/network-devices/${ndCurrentId}/backup`);
+        const data = await r.json();
+        if (data.success) {
+            out.className = 'nd-terminal-out';
+            out.textContent = data.output || '(boş çıktı)';
+            // İndir
+            const blob = new Blob([data.output], {type:'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${(ndCurrentDevice?.name||ndCurrentId).replace(/[^a-zA-Z0-9_-]/g,'-')}-config.txt`;
+            a.click();
+            ndToast('Config yedeklendi ve indirildi', 'success');
+        } else {
+            out.className = 'nd-terminal-out error';
+            out.textContent = '⚠ ' + (data.error||'Yedekleme başarısız');
+        }
+    } catch(e) {
+        out.className = 'nd-terminal-out error';
+        out.textContent = 'Hata: ' + e.message;
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Yardımcılar
+// ═══════════════════════════════════════════════════════
+let _toastTimer;
+function ndToast(msg, type='success') {
+    const el = document.getElementById('ndToast');
+    el.textContent = msg;
+    el.className = `nd-toast ${type} show`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

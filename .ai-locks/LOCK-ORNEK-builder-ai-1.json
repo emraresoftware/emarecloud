@@ -1,0 +1,12 @@
+{
+  "gorev": "OPS-142",
+  "ai": "builder-ai-1",
+  "dosyalar": [
+    "routes/domain_ops/monitoring.py",
+    "templates/monitoring.html"
+  ],
+  "baslangic": "2026-03-23T10:00:00Z",
+  "bitis_tahmin": "2026-03-23T10:30:00Z",
+  "durum": "active",
+  "not": "Monitor ekrani performans duzeltmesi"
+}

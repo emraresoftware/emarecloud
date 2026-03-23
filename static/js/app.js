@@ -80,6 +80,86 @@ function toggleSidebar() {
     }
 }
 
+function initSidebarSections() {
+    const menu = document.querySelector('#sidebar .sidebar-menu');
+    if (!menu || menu.dataset.grouped === '1') return;
+    menu.dataset.grouped = '1';
+
+    const sectionState = JSON.parse(localStorage.getItem('sidebarSectionState') || '{}');
+    const allNodes = Array.from(menu.children);
+
+    let i = 0;
+    while (i < allNodes.length) {
+        const node = allNodes[i];
+        if (!node.classList.contains('menu-section')) {
+            i += 1;
+            continue;
+        }
+
+        const sectionTitle = (node.textContent || '').trim() || `section-${i}`;
+        const sectionKey = sectionTitle
+            .toLowerCase()
+            .replace(/[^a-z0-9\s_-]/g, '')
+            .replace(/\s+/g, '-');
+
+        const sublist = document.createElement('ul');
+        sublist.className = 'menu-sublist';
+        sublist.dataset.sectionKey = sectionKey;
+
+        let j = i + 1;
+        while (j < allNodes.length && !allNodes[j].classList.contains('menu-section')) {
+            if (allNodes[j].classList.contains('menu-item')) {
+                sublist.appendChild(allNodes[j]);
+            }
+            j += 1;
+        }
+
+        if (sublist.children.length === 0) {
+            node.remove();
+            i = j;
+            continue;
+        }
+
+        node.classList.add('menu-section-toggle');
+        node.dataset.sectionKey = sectionKey;
+        node.setAttribute('role', 'button');
+        node.setAttribute('tabindex', '0');
+
+        const hasActiveItem = !!sublist.querySelector('.menu-item.active');
+        const shouldOpen = sectionState[sectionKey] !== undefined ? !!sectionState[sectionKey] : hasActiveItem;
+
+        if (!shouldOpen) {
+            node.classList.add('collapsed');
+            sublist.classList.add('collapsed');
+        }
+
+        menu.insertBefore(sublist, allNodes[j] || null);
+        i = j;
+    }
+
+    menu.querySelectorAll('.menu-section-toggle').forEach((sectionEl) => {
+        const key = sectionEl.dataset.sectionKey;
+        const sublist = menu.querySelector(`.menu-sublist[data-section-key="${key}"]`);
+        if (!sublist) return;
+
+        const toggleSection = () => {
+            const willCollapse = !sublist.classList.contains('collapsed');
+            sublist.classList.toggle('collapsed', willCollapse);
+            sectionEl.classList.toggle('collapsed', willCollapse);
+            sectionState[key] = !willCollapse;
+            localStorage.setItem('sidebarSectionState', JSON.stringify(sectionState));
+        };
+
+        sectionEl.addEventListener('click', toggleSection);
+        sectionEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSection();
+            }
+        });
+    });
+}
+
 // Sidebar durumunu localStorage'dan yükle
 (function restoreSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -88,6 +168,8 @@ function toggleSidebar() {
         if (collapsed) sidebar.classList.add('collapsed');
     }
 })();
+
+document.addEventListener('DOMContentLoaded', initSidebarSections);
 
 // ========== TEMA ==========
 function toggleTheme() {
@@ -479,6 +561,20 @@ function aiChatSend() {
         botMsg.innerHTML = '<div class="ai-chat-msg-avatar"><i class="fas fa-robot"></i></div>' +
             '<div class="ai-chat-msg-bubble">' + response + '</div>';
         messages.appendChild(botMsg);
+
+        // Backend'in onerdigi takip sorularini chip olarak goster
+        if (data.success && Array.isArray(data.suggestions) && data.suggestions.length > 0 && suggestions) {
+            suggestions.innerHTML = '';
+            data.suggestions.slice(0, 4).forEach((s) => {
+                const btn = document.createElement('button');
+                btn.className = 'ai-chat-suggest-btn';
+                btn.textContent = s;
+                btn.onclick = () => aiChatAsk(s);
+                suggestions.appendChild(btn);
+            });
+            suggestions.style.display = 'flex';
+        }
+
         messages.scrollTop = messages.scrollHeight;
     })
     .catch(() => {
@@ -755,3 +851,25 @@ async function fbLoadList() {
         emptyEl.style.display = 'block';
     }
 }
+
+async function fbRefreshUnread() {
+    const dot = document.getElementById('fbUnreadDot');
+    if (!dot) return;
+    try {
+        const r = await fetch('/api/feedback/my');
+        const d = await r.json();
+        const unread = d?.success ? (d.unread || 0) : 0;
+        dot.style.display = unread > 0 ? 'block' : 'none';
+    } catch (e) {
+        // Sessizce atla
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Geri bildirim widget varsayilan ayarlari
+    fbSetCat('bug');
+    fbSetPri('normal');
+    fbSetTab('new');
+    fbRefreshUnread();
+    setInterval(fbRefreshUnread, 60000);
+});

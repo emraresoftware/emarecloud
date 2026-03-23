@@ -306,6 +306,89 @@ AI_QUICK_PROMPTS = [
 ]
 
 
+PROGRAM_KNOWLEDGE = {
+    'overview': (
+        '🏢 **EmareCloud Nedir?**\n\n'
+        'EmareCloud; çok kiracılı (multi-tenant), rol bazlı yetkilendirme (RBAC), '
+        'sunucu yönetimi, güvenlik, otomasyon ve AI modullerini tek panelde toplayan '
+        'altyapı yönetim platformudur.\n\n'
+        '**Ana Omurga:**\n'
+        '- Kimlik ve yetki: Login + RBAC + 2FA\n'
+        '- Tenant izolasyonu: Organization bazlı veri ayrımı\n'
+        '- Sunucu yönetimi: SSH, terminal, monitoring, firewall, storage, VM\n'
+        '- Uygulama pazarı: Hazır uygulamalar ve stack kurulumları\n'
+        '- AI modulleri: maliyet, log analizi, guvenlik, wizard, optimizer\n'
+        '- Token/abonelik: planlar, kota, EMARE token odeme akisları'
+    ),
+    'modules': (
+        '🧩 **Moduller ve Sayfalar**\n\n'
+        '- Dashboard: genel saglik ve sunucu ozeti\n'
+        '- Market: uygulama/stack kurulumu\n'
+        '- Monitoring + Metrics: kaynak takibi\n'
+        '- Firewall: kural, IP engel, guvenlik tarama\n'
+        '- Virtualization/Storage: VM ve depolama yonetimi\n'
+        '- Organizations: tenant, uye, kota, abonelik\n'
+        '- AI Suite: wizard, maliyet, log intelligence, optimizer, security'
+    ),
+    'security': (
+        '🛡️ **Guvenlik Katmanı**\n\n'
+        '- RBAC: super_admin, admin, reseller, sub_reseller, operator, read_only\n'
+        '- API token auth + session auth\n'
+        '- 2FA (TOTP) destegi\n'
+        '- Tenant filtreleme ile org bazlı izolasyon\n'
+        '- Audit log ile kritik islem izleme\n'
+        '- Firewall ve komut guvenlik allowlist kontrolleri'
+    ),
+    'database': (
+        '🗄️ **Veri ve Kalıcılık**\n\n'
+        '- SQLAlchemy tabanlı model yapısı\n'
+        '- Organization merkezli multi-tenant tasarım\n'
+        '- Plan/Subscription/Quota tabloları ile lisans-kota yonetimi\n'
+        '- Feedback, audit, token islemleri ve operasyon kayıtları DB uzerinde\n'
+        '- Ortam degiskenine gore SQLite veya PostgreSQL calisma modeli'
+    ),
+}
+
+
+def _match_platform_info(question: str, context: str = '') -> str | None:
+    """Program/urun hakkındaki genel sorulara detaylı platform ozeti dondurur."""
+    q = (question or '').lower()
+    c = (context or '').lower()
+    text = f'{q} {c}'
+
+    ask_overview = any(k in text for k in [
+        'emarecloud nedir', 'program', 'sistem', 'platform', 'ne ise yarar', 'tum detay', 'detayli anlat',
+    ])
+    ask_modules = any(k in text for k in ['modul', 'ozellik', 'menu', 'sayfa', 'hangi bolum'])
+    ask_security = any(k in text for k in ['guvenlik', 'rbac', 'rol', 'izin', '2fa', 'tenant'])
+    ask_db = any(k in text for k in ['veritabani', 'database', 'sqlite', 'postgres', 'kalici'])
+
+    sections = []
+    if ask_overview:
+        sections.append(PROGRAM_KNOWLEDGE['overview'])
+    if ask_modules:
+        sections.append(PROGRAM_KNOWLEDGE['modules'])
+    if ask_security:
+        sections.append(PROGRAM_KNOWLEDGE['security'])
+    if ask_db:
+        sections.append(PROGRAM_KNOWLEDGE['database'])
+
+    if not sections and any(k in text for k in ['emare', 'platform', 'panel']):
+        sections = [PROGRAM_KNOWLEDGE['overview'], PROGRAM_KNOWLEDGE['modules']]
+
+    if not sections:
+        return None
+
+    sections.append(
+        '📌 **Hizli Yonlendirme**\n'
+        '- "Rol bazli izinleri anlat"\n'
+        '- "Organizations modulunu adim adim anlat"\n'
+        '- "AI modullerini kullanim sirasina gore ozetle"\n'
+        '- "Veritabani gecis stratejisini ozetle"'
+    )
+    return '\n\n---\n\n'.join(sections)
+
+
 def _match_error(text):
     """Terminal çıktısındaki hata kalıplarını tespit eder."""
     text_lower = text.lower()
@@ -400,6 +483,11 @@ def ai_analyze(question, context=''):
     opt_tips = _match_optimization(question)
     if opt_tips:
         response_parts.append(opt_tips)
+
+    # 4.5) Program/urun detay bilgisi
+    platform_info = _match_platform_info(question, context)
+    if platform_info:
+        response_parts.append(platform_info)
 
     # 5) Özel soru kalıpları
     q_lower = question.lower() if question else ''
