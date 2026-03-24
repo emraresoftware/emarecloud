@@ -13,6 +13,13 @@
 
 #Requires -Version 5.1
 
+param(
+    [string]$Server = "",
+    [switch]$Register,
+    [switch]$DeepScan,
+    [switch]$Service
+)
+
 # ═══════════════════════════════════════════════════════════
 #  YAPILANDIRMA
 # ═══════════════════════════════════════════════════════════
@@ -30,11 +37,42 @@ $Script:Config = @{
     Version         = "1.0.0"
 }
 
+# Config dosyasından yükle (Install-EmareAgent.ps1 tarafından oluşturulur)
+if (Test-Path $Script:Config.ConfigFile) {
+    try {
+        $cfgJson = Get-Content $Script:Config.ConfigFile -Raw | ConvertFrom-Json
+        if ($cfgJson.ServerUrl)      { $Script:Config.ServerUrl      = $cfgJson.ServerUrl }
+        if ($cfgJson.HeartbeatSec)   { $Script:Config.HeartbeatSec   = [int]$cfgJson.HeartbeatSec }
+        if ($cfgJson.TaskPollSec)    { $Script:Config.TaskPollSec    = [int]$cfgJson.TaskPollSec }
+        if ($cfgJson.DeepCollectSec) { $Script:Config.DeepCollectSec = [int]$cfgJson.DeepCollectSec }
+        if ($null -ne $cfgJson.TrustAllCerts) { $Script:Config.TrustAllCerts = [bool]$cfgJson.TrustAllCerts }
+    } catch { }
+}
+
+# CLI parametresi en yüksek öncelikli
+if ($Server) { $Script:Config.ServerUrl = $Server }
+
 # ═══════════════════════════════════════════════════════════
 #  SSL / TLS AYARLARI
 # ═══════════════════════════════════════════════════════════
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+# Self-signed sertifika desteği
+if ($Script:Config.TrustAllCerts) {
+    if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+        Add-Type @"
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+public class TrustAllCertsPolicy : ICertificatePolicy {
+    public bool CheckValidationResult(
+        ServicePoint srvPoint, X509Certificate cert,
+        WebRequest request, int certProblem) { return true; }
+}
+"@
+    }
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+}
 
 # ═══════════════════════════════════════════════════════════
 #  LOG SİSTEMİ
@@ -1371,7 +1409,7 @@ function Poll-Tasks {
             $taskHash = @{
                 id        = $task.id
                 task_type = $task.task_type
-                payload   = if ($task.payload -is [string]) { $task.payload | ConvertFrom-Json -AsHashtable } else { $task.payload }
+                payload   = if ($task.payload -is [string]) { $task.payload | ConvertFrom-Json } else { $task.payload }
             }
             Execute-Task -Task $taskHash
         }
@@ -1411,11 +1449,13 @@ function Start-AgentLoop {
 
     # Key yükle veya kayıt ol
     if (-not (Load-AgentKey)) {
-        $registered = Register-Agent
-        if (-not $registered) {
-            Write-AgentLog "Kayit basarisiz, 30 saniye sonra tekrar denenecek..." "ERROR"
-            Start-Sleep -Seconds 30
-            return Start-AgentLoop
+        $retryDelay = 10
+        while ($true) {
+            $registered = Register-Agent
+            if ($registered) { break }
+            Write-AgentLog "Kayit basarisiz, ${retryDelay}s sonra tekrar denenecek..." "ERROR"
+            Start-Sleep -Seconds $retryDelay
+            $retryDelay = [Math]::Min($retryDelay * 2, 300)
         }
     }
 
@@ -1460,16 +1500,6 @@ function Start-AgentLoop {
 # ═══════════════════════════════════════════════════════════
 #  BAŞLAT
 # ═══════════════════════════════════════════════════════════
-
-# CLI parametreleri
-param(
-    [string]$Server = "",
-    [switch]$Register,
-    [switch]$DeepScan,
-    [switch]$Service
-)
-
-if ($Server) { $Script:Config.ServerUrl = $Server }
 
 if ($Register) {
     # Sadece kayıt ol ve çık

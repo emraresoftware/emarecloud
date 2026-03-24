@@ -2962,4 +2962,374 @@ def create_blueprint(
         _rmm.decay_risk_scores(decay_percent=pct)
         return jsonify(success=True, message='Risk puanları azaltıldı.')
 
+    # ── SOAR / Playbook Endpoints ──
+
+    @bp.route('/api/rmm/playbooks', methods=['GET'])
+    @auth
+    def rmm_playbook_list():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        return jsonify(success=True, playbooks=_rmm.list_playbooks())
+
+    @bp.route('/api/rmm/playbooks', methods=['POST'])
+    @auth
+    def rmm_playbook_create():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        name = (d.get('name') or '').strip()
+        if not name or len(name) > 200:
+            return jsonify(success=False, message='Geçersiz playbook adı.'), 400
+        trigger = d.get('trigger_type', 'alert')
+        if trigger not in ('alert', 'correlation', 'threat_match', 'anomaly'):
+            return jsonify(success=False, message='Geçersiz trigger_type.'), 400
+        res = _rmm.create_playbook(
+            name=name, trigger_type=trigger,
+            trigger_conditions=d.get('trigger_conditions', {}),
+            actions=d.get('actions', []),
+            description=d.get('description', ''))
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/playbooks/<int:pb_id>', methods=['PUT'])
+    @auth
+    def rmm_playbook_update(pb_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        _rmm.update_playbook(pb_id, **d)
+        return jsonify(success=True, message='Playbook güncellendi.')
+
+    @bp.route('/api/rmm/playbooks/<int:pb_id>', methods=['DELETE'])
+    @auth
+    def rmm_playbook_delete(pb_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        _rmm.delete_playbook(pb_id)
+        return jsonify(success=True, message='Playbook silindi.')
+
+    @bp.route('/api/rmm/playbooks/<int:pb_id>/run', methods=['POST'])
+    @auth
+    def rmm_playbook_run(pb_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        res = _rmm.execute_playbook(pb_id, trigger_event=d.get('event', {}))
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/playbook-runs', methods=['GET'])
+    @auth
+    def rmm_playbook_runs():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        pb_id = request.args.get('playbook_id', type=int)
+        return jsonify(success=True,
+                       runs=_rmm.list_playbook_runs(pb_id=pb_id))
+
+    # ── UEBA Endpoints ──
+
+    @bp.route('/api/rmm/ueba/anomalies', methods=['GET'])
+    @auth
+    def rmm_ueba_anomalies():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        dev = request.args.get('device_id', '')
+        if dev and not re.match(r'^[a-f0-9]{16}$', dev):
+            return jsonify(success=False, message='Geçersiz device_id.'), 400
+        return jsonify(success=True,
+                       anomalies=_rmm.list_anomalies(
+                           device_id=dev or None))
+
+    @bp.route('/api/rmm/ueba/baselines', methods=['GET'])
+    @auth
+    def rmm_ueba_baselines():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        dev = request.args.get('device_id', '')
+        if dev and not re.match(r'^[a-f0-9]{16}$', dev):
+            return jsonify(success=False, message='Geçersiz device_id.'), 400
+        return jsonify(success=True,
+                       baselines=_rmm.get_baselines(
+                           device_id=dev or None))
+
+    # ── Investigation / Case Management Endpoints ──
+
+    @bp.route('/api/rmm/cases', methods=['GET'])
+    @auth
+    def rmm_case_list():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        status = request.args.get('status', '')
+        if status and status not in ('open', 'investigating', 'contained',
+                                      'resolved', 'closed'):
+            return jsonify(success=False, message='Geçersiz status.'), 400
+        return jsonify(success=True,
+                       cases=_rmm.list_cases(status=status or None))
+
+    @bp.route('/api/rmm/cases', methods=['POST'])
+    @auth
+    def rmm_case_create():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        title = (d.get('title') or '').strip()
+        if not title or len(title) > 300:
+            return jsonify(success=False, message='Geçersiz başlık.'), 400
+        sev = d.get('severity', 'medium')
+        if sev not in ('critical', 'high', 'medium', 'low'):
+            sev = 'medium'
+        res = _rmm.create_case(
+            title=title, description=d.get('description', ''),
+            severity=sev, assignee=d.get('assignee', ''),
+            created_by=d.get('created_by', 'admin'))
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/cases/<int:case_id>', methods=['GET'])
+    @auth
+    def rmm_case_detail(case_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        c = _rmm.get_case(case_id)
+        if not c:
+            return jsonify(success=False, message='Vaka bulunamadı.'), 404
+        c['timeline'] = _rmm.get_case_timeline(case_id)
+        c['evidence'] = _rmm.get_case_evidence_list(case_id)
+        return jsonify(success=True, **c)
+
+    @bp.route('/api/rmm/cases/<int:case_id>', methods=['PUT'])
+    @auth
+    def rmm_case_update(case_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        _rmm.update_case(case_id, actor=d.pop('actor', 'admin'), **d)
+        return jsonify(success=True, message='Vaka güncellendi.')
+
+    @bp.route('/api/rmm/cases/<int:case_id>/evidence', methods=['POST'])
+    @auth
+    def rmm_case_add_evidence(case_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        etype = (d.get('evidence_type') or '').strip()
+        if not etype or etype not in ('alert', 'anomaly', 'threat',
+                                       'syslog', 'note', 'file',
+                                       'correlation'):
+            return jsonify(success=False, message='Geçersiz evidence_type.'), 400
+        res = _rmm.add_case_evidence(
+            case_id, evidence_type=etype,
+            description=d.get('description', ''),
+            data=d.get('data', {}),
+            reference_id=str(d.get('reference_id', '')),
+            added_by=d.get('added_by', 'admin'))
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/cases/<int:case_id>/link-alert', methods=['POST'])
+    @auth
+    def rmm_case_link_alert(case_id):
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        alert_id = d.get('alert_id')
+        if not alert_id:
+            return jsonify(success=False, message='alert_id gerekli.'), 400
+        res = _rmm.link_alert_to_case(case_id, int(alert_id),
+                                       actor=d.get('actor', 'admin'))
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/cases/dashboard', methods=['GET'])
+    @auth
+    def rmm_case_dashboard():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        return jsonify(success=True, **_rmm.case_dashboard())
+
+    # ── Syslog Receiver Endpoints ──
+
+    @bp.route('/api/rmm/syslog/status', methods=['GET'])
+    @auth
+    def rmm_syslog_status():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        return jsonify(success=True, **_rmm.syslog_status())
+
+    @bp.route('/api/rmm/syslog/start', methods=['POST'])
+    @auth
+    def rmm_syslog_start():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        port = int(d.get('port', 5514))
+        if port < 1024 or port > 65535:
+            return jsonify(success=False,
+                           message='Port 1024-65535 arasında olmalı.'), 400
+        res = _rmm.start_syslog_receiver(port=port)
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/syslog/stop', methods=['POST'])
+    @auth
+    def rmm_syslog_stop():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        res = _rmm.stop_syslog_receiver()
+        return jsonify(success=True, **res)
+
+    @bp.route('/api/rmm/syslog/entries', methods=['GET'])
+    @auth
+    def rmm_syslog_entries():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        src = request.args.get('source_ip', '')
+        sev = request.args.get('severity', type=int)
+        return jsonify(success=True,
+                       entries=_rmm.list_syslog_entries(
+                           source_ip=src or None,
+                           severity=sev))
+
+    # ── Natural Language Query Endpoint ──
+
+    @bp.route('/api/rmm/query', methods=['POST'])
+    @auth
+    def rmm_nl_query():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        csrf_err = _csrf_check()
+        if csrf_err:
+            return csrf_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        d = request.get_json(silent=True) or {}
+        q = (d.get('query') or '').strip()
+        if not q or len(q) > 500:
+            return jsonify(success=False, message='Geçersiz sorgu.'), 400
+        res = _rmm.natural_language_query(q)
+        return jsonify(success=True, **res)
+
+    # ── UEBA User Events Endpoints ──
+
+    @bp.route('/api/rmm/ueba/events', methods=['GET'])
+    @auth
+    def rmm_ueba_events():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        dev = request.args.get('device_id', '')
+        if dev and not re.match(r'^[a-f0-9]{16}$', dev):
+            return jsonify(success=False, message='Geçersiz device_id.'), 400
+        etype = request.args.get('type', '')
+        allowed = {'logon', 'usb', 'process_start', 'network_connection',
+                    'file_access', 'software_inventory', ''}
+        if etype not in allowed:
+            return jsonify(success=False, message='Geçersiz event type.'), 400
+        return jsonify(
+            success=True,
+            events=_rmm.list_user_events(
+                device_id=dev or None,
+                event_type=etype or None))
+
+    @bp.route('/api/rmm/ueba/events/summary', methods=['GET'])
+    @auth
+    def rmm_ueba_events_summary():
+        rate_err = _rate_limited()
+        if rate_err:
+            return rate_err
+        if not _rmm:
+            return jsonify(success=False, message='RMM modülü aktif değil.'), 503
+        dev = request.args.get('device_id', '')
+        if dev and not re.match(r'^[a-f0-9]{16}$', dev):
+            return jsonify(success=False, message='Geçersiz device_id.'), 400
+        return jsonify(
+            success=True,
+            summary=_rmm.count_user_events(
+                device_id=dev or None))
+
     return bp

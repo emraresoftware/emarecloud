@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "emare-security-os"
-version = "1.13.0"
+version = "1.14.0"
 description = "Birleşik güvenlik platformu — Firewall, L7 Koruma, Ağ Analizi, RMM, ITSM, 5651 Uyumluluk"
 readme = "README.md"
 license = {text = "Emare Collective License"}

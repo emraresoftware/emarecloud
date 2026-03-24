@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emare Security OS — Birleşik Güvenlik Platformu</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23ef4444'/><text x='32' y='44' font-size='36' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>E</text></svg>">
     <link rel="stylesheet" href="/static/css/all.min.css">
     <script src="/static/js/chart.umd.min.js"></script>
     <style>
@@ -289,6 +290,11 @@
                     <div class="fw-nav-item" onclick="fwTab('correlation')"><i class="fas fa-project-diagram"></i> Korelasyon</div>
                     <div class="fw-nav-item" onclick="fwTab('mitre')"><i class="fas fa-crosshairs"></i> MITRE ATT&CK</div>
                     <div class="fw-nav-item" onclick="fwTab('risk')"><i class="fas fa-exclamation-triangle"></i> Risk Puanı</div>
+                    <div class="fw-nav-item" onclick="fwTab('playbook')"><i class="fas fa-magic"></i> SOAR Playbook</div>
+                    <div class="fw-nav-item" onclick="fwTab('ueba')"><i class="fas fa-user-shield"></i> UEBA</div>
+                    <div class="fw-nav-item" onclick="fwTab('cases')"><i class="fas fa-briefcase"></i> İnceleme</div>
+                    <div class="fw-nav-item" onclick="fwTab('syslog')"><i class="fas fa-file-alt"></i> Syslog</div>
+                    <div class="fw-nav-item" onclick="fwTab('nlquery')"><i class="fas fa-search"></i> Sorgu</div>
                 </div>
             </div>
         </nav>
@@ -933,6 +939,172 @@
             <div id="riskTable"><div class="fw-empty">Yükleniyor...</div></div>
         </div>
     </div>
+
+    <!-- ═══════ SIEM: SOAR Playbook ═══════ -->
+    <div class="fw-panel" id="panel-playbook">
+        <h3><i class="fas fa-magic" style="color:#8b5cf6"></i> SOAR — Otomatik Yanıt Playbook'ları</h3>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <h4 style="font-size:13px;margin:0 0 12px 0">Yeni Playbook</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                <input class="fw-input" id="pbName" placeholder="Playbook adı" maxlength="200">
+                <select class="fw-input" id="pbTrigger">
+                    <option value="alert">Alarm tetiklendiğinde</option>
+                    <option value="correlation">Korelasyon eşleştiğinde</option>
+                    <option value="threat_match">Tehdit eşleştiğinde</option>
+                    <option value="anomaly">Anomali tespit edildiğinde</option>
+                </select>
+            </div>
+            <input class="fw-input" id="pbDesc" placeholder="Açıklama" style="margin-bottom:8px" maxlength="500">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <select class="fw-input" id="pbActionType" style="width:180px">
+                    <option value="block_ip">IP Engelle</option>
+                    <option value="create_ticket">Kayıt Oluştur</option>
+                    <option value="add_threat">Tehdide Ekle</option>
+                    <option value="run_task">Görev Çalıştır</option>
+                </select>
+                <input class="fw-input" id="pbActionParam" placeholder="Parametre (JSON)" style="flex:1">
+                <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwPbAddAction()">+ Aksiyon</button>
+            </div>
+            <div id="pbActionList" style="margin-bottom:8px;font-size:12px;color:var(--text-secondary)"></div>
+            <button class="fw-btn fw-btn-primary" onclick="fwPbCreate()"><i class="fas fa-plus"></i> Playbook Oluştur</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h4 style="font-size:13px;margin:0">📋 Playbook Listesi</h4>
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwPbLoad()"><i class="fas fa-sync"></i></button>
+        </div>
+        <div id="pbList"><div class="fw-empty">Yükleniyor...</div></div>
+
+        <div style="margin-top:16px;background:var(--bg-input);border-radius:12px;padding:16px">
+            <h4 style="font-size:13px;margin:0 0 12px 0">Son Çalıştırmalar</h4>
+            <div id="pbRunList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: UEBA ═══════ -->
+    <div class="fw-panel" id="panel-ueba">
+        <h3><i class="fas fa-user-shield" style="color:#06b6d4"></i> UEBA — Davranış Analizi</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="uebaStats">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="uebaAnomalyCount">-</div><div class="fw-stat-lbl">Anomali</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#06b6d4" id="uebaBaselineCount">-</div><div class="fw-stat-lbl">Baseline</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#8b5cf6" id="uebaDeviceCount">-</div><div class="fw-stat-lbl">Cihaz</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">🔴 Anomaliler</h4>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwUebaLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="uebaAnomalyList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <h4 style="font-size:13px;margin:0 0 12px 0">📊 Baseline Değerleri</h4>
+            <div id="uebaBaselineList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: İnceleme (Case Management) ═══════ -->
+    <div class="fw-panel" id="panel-cases">
+        <h3><i class="fas fa-briefcase" style="color:#f59e0b"></i> Olay İnceleme — Vaka Yönetimi</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="caseStats">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#ef4444" id="caseOpen">-</div><div class="fw-stat-lbl">Açık</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#f97316" id="caseInvestigating">-</div><div class="fw-stat-lbl">İnceleniyor</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#22c55e" id="caseResolved">-</div><div class="fw-stat-lbl">Çözüldü</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" style="color:#94a3b8" id="caseClosed">-</div><div class="fw-stat-lbl">Kapatıldı</div></div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <h4 style="font-size:13px;margin:0 0 12px 0">Yeni Vaka</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                <input class="fw-input" id="caseTitle" placeholder="Vaka başlığı" maxlength="300">
+                <select class="fw-input" id="caseSeverity">
+                    <option value="medium">Orta</option>
+                    <option value="critical">Kritik</option>
+                    <option value="high">Yüksek</option>
+                    <option value="low">Düşük</option>
+                </select>
+            </div>
+            <input class="fw-input" id="caseAssignee" placeholder="Atanan kişi" style="margin-bottom:8px" maxlength="100">
+            <textarea class="fw-input" id="caseDesc" placeholder="Açıklama" rows="2" style="margin-bottom:8px" maxlength="2000"></textarea>
+            <button class="fw-btn fw-btn-primary" onclick="fwCaseCreate()"><i class="fas fa-plus"></i> Vaka Oluştur</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h4 style="font-size:13px;margin:0">📋 Vaka Listesi</h4>
+            <div style="display:flex;gap:8px">
+                <select class="fw-input" id="caseFilterStatus" style="width:140px" onchange="fwCaseLoad()">
+                    <option value="">Tümü</option>
+                    <option value="open">Açık</option>
+                    <option value="investigating">İnceleniyor</option>
+                    <option value="resolved">Çözüldü</option>
+                    <option value="closed">Kapatıldı</option>
+                </select>
+                <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCaseLoad()"><i class="fas fa-sync"></i></button>
+            </div>
+        </div>
+        <div id="caseList"><div class="fw-empty">Yükleniyor...</div></div>
+        <div id="caseDetailView" style="display:none"></div>
+    </div>
+
+    <!-- ═══════ SIEM: Syslog ═══════ -->
+    <div class="fw-panel" id="panel-syslog">
+        <h3><i class="fas fa-file-alt" style="color:#10b981"></i> Syslog Alıcı</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" id="syslogStatus">-</div><div class="fw-stat-lbl">Durum</div></div>
+            <div class="fw-stat" style="text-align:center"><div class="fw-stat-val" id="syslogTotal">-</div><div class="fw-stat-lbl">Toplam Kayıt</div></div>
+            <div class="fw-stat" style="text-align:center">
+                <div style="display:flex;gap:6px;justify-content:center">
+                    <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwSyslogStart()"><i class="fas fa-play"></i></button>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwSyslogStop()"><i class="fas fa-stop"></i></button>
+                </div>
+                <div class="fw-stat-lbl">Kontrol</div>
+            </div>
+        </div>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h4 style="font-size:13px;margin:0">📋 Syslog Kayıtları</h4>
+                <div style="display:flex;gap:8px">
+                    <input class="fw-input" id="syslogFilterIP" placeholder="Kaynak IP" style="width:140px">
+                    <select class="fw-input" id="syslogFilterSev" style="width:120px">
+                        <option value="">Tüm Seviye</option>
+                        <option value="2">Critical+</option>
+                        <option value="3">Error+</option>
+                        <option value="4">Warning+</option>
+                        <option value="6">Info+</option>
+                    </select>
+                    <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwSyslogLoad()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+            <div id="syslogList"><div class="fw-empty">Yükleniyor...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══════ SIEM: Doğal Dil Sorgusu ═══════ -->
+    <div class="fw-panel" id="panel-nlquery">
+        <h3><i class="fas fa-search" style="color:#6366f1"></i> Doğal Dil Sorgusu</h3>
+
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <p style="font-size:12px;color:var(--text-secondary);margin:0 0 12px 0">
+                Türkçe veya İngilizce doğal dil ile SIEM verilerinizi sorgulayın.<br>
+                <b>Örnekler:</b> "son 24 saatteki kritik alarmlar", "192.168.1.5 anomali", "bu hafta syslog critical"
+            </p>
+            <div style="display:flex;gap:8px">
+                <input class="fw-input" id="nlqInput" placeholder="Sorgunuzu yazın..." style="flex:1" maxlength="500"
+                    onkeydown="if(event.key==='Enter') fwNlQuery()">
+                <button class="fw-btn fw-btn-primary" onclick="fwNlQuery()"><i class="fas fa-search"></i> Sorgula</button>
+            </div>
+        </div>
+
+        <div id="nlqParsed" style="display:none;background:var(--bg-input);border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px"></div>
+        <div id="nlqResults"><div class="fw-empty">Henüz sorgu yapılmadı.</div></div>
+    </div>
+
 </div><!-- /fw-container -->
 </main><!-- /fw-main -->
 </div><!-- /fw-layout -->
@@ -1045,6 +1217,10 @@ function fwTab(name) {
     if (name === 'correlation') fwCorrelationLoad();
     if (name === 'mitre') fwMitreLoad();
     if (name === 'risk') fwRiskLoad();
+    if (name === 'playbook') fwPbLoad();
+    if (name === 'ueba') fwUebaLoad();
+    if (name === 'cases') fwCaseLoad();
+    if (name === 'syslog') fwSyslogLoad();
 }
 
 // ── Server Switch ──
@@ -1185,12 +1361,78 @@ async function fwBackupDelete(id) { if(!confirm('Yedek silinecek?'))return; cons
 
 // ── Network Analyser ──
 
-function _showNetResult(txt) { document.getElementById('netResult').style.display='block'; document.getElementById('netResultPre').textContent=txt; }
-async function fwNetSummary() { const d=await fwNetApi('summary'); if(d?.success) _showNetResult(JSON.stringify(d.summary||d,null,2)); else fwToast('Hata','error'); }
-async function fwNetBandwidth() { const d=await fwNetApi('bandwidth'); if(d?.success) _showNetResult(JSON.stringify(d.bandwidth||d,null,2)); else fwToast('Hata','error'); }
-async function fwNetListening() { const d=await fwNetApi('listening-ports'); if(d?.success) _showNetResult(JSON.stringify(d.ports||d,null,2)); else fwToast('Hata','error'); }
-async function fwNetTopTalkers() { const d=await fwNetApi('top-talkers'); if(d?.success) _showNetResult(JSON.stringify(d.talkers||d,null,2)); else fwToast('Hata','error'); }
-async function fwNetSpeedTest() { fwToast('Hız testi başlatılıyor...'); const d=await fwNetApi('speed-test','POST'); if(d?.success) _showNetResult(JSON.stringify(d.result||d,null,2)); else fwToast(d?.message||'Hata','error'); }
+function _showNetResult(txt) { const el=document.getElementById('netResult'); el.style.display='block'; el.innerHTML='<pre style="white-space:pre-wrap;font-size:12px;font-family:monospace;color:var(--text);max-height:400px;overflow-y:auto"></pre>'; el.querySelector('pre').textContent=txt; }
+function _showNetHtml(html) { const el=document.getElementById('netResult'); el.style.display='block'; el.innerHTML=html; }
+
+async function fwNetSummary() {
+    const d = await fwNetApi('summary');
+    if (!d?.success) return fwToast('Hata','error');
+    const data = d.data || {};
+    const ifaces = data.interfaces || [];
+    let html = '<h4 style="margin-bottom:12px"><i class="fas fa-network-wired" style="color:#3b82f6"></i> Ağ Özeti</h4>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">';
+    html += `<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#3b82f6">${ifaces.length}</div><div class="lbl">Arayüz</div></div>`;
+    html += `<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#22c55e">${ifaces.filter(i=>i.running).length}</div><div class="lbl">Aktif</div></div>`;
+    html += `<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#ef4444">${data.total_connections||0}</div><div class="lbl">Bağlantı</div></div>`;
+    html += `<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#f97316">${(data.listening_ports||[]).length}</div><div class="lbl">Dinlenen Port</div></div>`;
+    html += '</div>';
+    html += '<table class="fw-tbl"><thead><tr><th>Arayüz</th><th>Tip</th><th>Durum</th></tr></thead><tbody>';
+    ifaces.forEach(i => {
+        const color = i.running ? '#22c55e' : '#6b7280';
+        const label = i.running ? 'Aktif' : 'Pasif';
+        html += `<tr><td><strong>${esc(i.name)}</strong></td><td>${esc(i.type||'')}</td><td><span style="color:${color};font-weight:600">${label}</span></td></tr>`;
+    });
+    html += '</tbody></table>';
+    _showNetHtml(html);
+}
+
+async function fwNetBandwidth() {
+    const d = await fwNetApi('bandwidth');
+    if (!d?.success) return fwToast('Hata','error');
+    const data = d.data || {};
+    const ifaces = data.interfaces || [];
+    let html = '<h4 style="margin-bottom:12px"><i class="fas fa-tachometer-alt" style="color:#22c55e"></i> Bant Genişliği</h4>';
+    html += '<table class="fw-tbl"><thead><tr><th>Arayüz</th><th>RX (alınan)</th><th>TX (gönderilen)</th></tr></thead><tbody>';
+    ifaces.forEach(i => {
+        html += `<tr><td><strong>${esc(i.name)}</strong></td><td>${esc(i.rx||i['rx-byte']||'0')}</td><td>${esc(i.tx||i['tx-byte']||'0')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    _showNetHtml(html);
+}
+
+async function fwNetListening() {
+    const d = await fwNetApi('listening-ports');
+    if (!d?.success) return fwToast('Hata','error');
+    const data = d.data || {};
+    const ports = data.ports || [];
+    let html = '<h4 style="margin-bottom:12px"><i class="fas fa-headphones" style="color:#a855f7"></i> Dinlenen Portlar</h4>';
+    if (!ports.length) { html += '<div class="fw-empty">Dinlenen port bulunamadı.</div>'; _showNetHtml(html); return; }
+    html += '<table class="fw-tbl"><thead><tr><th>Port</th><th>Protokol</th><th>Servis/Proses</th><th>Adres</th></tr></thead><tbody>';
+    ports.forEach(p => {
+        html += `<tr><td><code>${esc(String(p.port||p.dst_port||''))}</code></td><td>${esc(p.protocol||'')}</td><td>${esc(p.process||p.service||'')}</td><td>${esc(p.address||p.dst_address||'')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    _showNetHtml(html);
+}
+
+async function fwNetTopTalkers() {
+    const d = await fwNetApi('top-talkers');
+    if (!d?.success) return fwToast('Hata','error');
+    const data = d.data || {};
+    const talkers = data.talkers || [];
+    let html = '<h4 style="margin-bottom:12px"><i class="fas fa-users" style="color:#f97316"></i> Top Talkers</h4>';
+    if (!talkers.length) { html += '<div class="fw-empty">Bağlantı bulunamadı.</div>'; _showNetHtml(html); return; }
+    const max = Math.max(1, ...talkers.map(t => t.connections||0));
+    html += '<table class="fw-tbl"><thead><tr><th>IP</th><th>Bağlantı</th><th></th></tr></thead><tbody>';
+    talkers.forEach(t => {
+        const w = Math.round(((t.connections||0)/max)*100);
+        html += `<tr><td><code>${esc(t.ip)}</code></td><td>${t.connections||0}</td><td><div style="background:var(--bg);border-radius:4px;height:8px;width:120px"><div style="width:${w}%;height:100%;border-radius:4px;background:#f97316"></div></div></td></tr>`;
+    });
+    html += '</tbody></table>';
+    _showNetHtml(html);
+}
+
+async function fwNetSpeedTest() { fwToast('Hız testi başlatılıyor...'); const d=await fwNetApi('speed-test','POST'); if(d?.success) { const r=d.data||d.result||d; let html='<h4 style="margin-bottom:12px"><i class="fas fa-gauge-high" style="color:#06b6d4"></i> Hız Testi</h4>'; html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">'; html+=`<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#22c55e">${r.download||'—'}</div><div class="lbl">İndirme</div></div>`; html+=`<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#3b82f6">${r.upload||'—'}</div><div class="lbl">Yükleme</div></div>`; html+=`<div class="fw-kpi"><div class="val" style="-webkit-text-fill-color:#f97316">${r.ping||'—'}</div><div class="lbl">Ping</div></div>`; html+='</div>'; _showNetHtml(html); } else fwToast(d?.message||'Hata','error'); }
 async function fwNetPing() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const c=parseInt(document.getElementById('netCount').value)||0; fwToast('Ping gönderiliyor...'); const d=await fwNetApi('ping','POST',{target:t,count:c}); if(d?.success&&d.data){const r=d.data;const lc=r.packet_loss===0?'#22c55e':'#ef4444';const el=document.getElementById('netResult');el.style.display='block';el.innerHTML='<div id="netPingStats"></div><pre id="netResultPre" style="white-space:pre-wrap;font-size:12px;font-family:monospace;color:var(--text);max-height:400px;overflow-y:auto;margin-top:12px"></pre>';document.getElementById('netPingStats').innerHTML='<div style="margin-bottom:12px"><strong>'+r.target+'</strong> — <span style="color:'+lc+'">'+r.packets_received+'/'+r.packets_sent+' paket, kayıp: %'+r.packet_loss+'</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Min</div><div style="font-weight:700">'+r.rtt_min+' ms</div></div><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Ort</div><div style="font-weight:700">'+r.rtt_avg+' ms</div></div><div style="background:var(--bg-card);padding:8px 12px;border-radius:8px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">Maks</div><div style="font-weight:700">'+r.rtt_max+' ms</div></div></div>';document.getElementById('netResultPre').textContent=r.output;} else fwToast(d?.message||'Hata','error'); }
 async function fwNetTrace() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const d=await fwNetApi('traceroute','POST',{target:t}); if(d?.success) _showNetResult(d.data?.output||JSON.stringify(d.data||d,null,2)); else fwToast(d?.message||'Hata','error'); }
 async function fwNetDns() { const t=document.getElementById('netTarget').value.trim(); if(!t){fwToast('Hedef girin','error');return;} const d=await fwNetApi('dns-lookup','POST',{domain:t}); if(d?.success) _showNetResult(d.data?.output||JSON.stringify(d.data||d,null,2)); else fwToast(d?.message||'Hata','error'); }
@@ -1386,13 +1628,15 @@ async function fwDashRefresh() {
 
     // KPI
     const kpi = document.getElementById('dashKpi');
+    const _sev = s.severity_counts || s.by_severity || {};
+    const _sv = (k) => _sev[k] || _sev[k.toUpperCase()] || _sev[k.toLowerCase()] || 0;
     kpi.innerHTML = `
         <div class="fw-kpi"><div class="ico"><i class="fas fa-fire" style="color:#ef4444"></i></div><div class="val" style="-webkit-text-fill-color:#ef4444">${s.total||0}</div><div class="lbl">Toplam Olay</div></div>
-        <div class="fw-kpi"><div class="ico"><i class="fas fa-skull-crossbones" style="color:#ef4444"></i></div><div class="val" style="-webkit-text-fill-color:#ef4444">${s.by_severity?.critical||0}</div><div class="lbl">Critical</div></div>
-        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-triangle" style="color:#f97316"></i></div><div class="val" style="-webkit-text-fill-color:#f97316">${s.by_severity?.high||0}</div><div class="lbl">High</div></div>
-        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-circle" style="color:#eab308"></i></div><div class="val" style="-webkit-text-fill-color:#eab308">${s.by_severity?.medium||0}</div><div class="lbl">Medium</div></div>
-        <div class="fw-kpi"><div class="ico"><i class="fas fa-info-circle" style="color:#3b82f6"></i></div><div class="val" style="-webkit-text-fill-color:#3b82f6">${s.by_severity?.low||0}</div><div class="lbl">Low</div></div>
-        <div class="fw-kpi"><div class="ico"><i class="fas fa-check-circle" style="color:#22c55e"></i></div><div class="val" style="-webkit-text-fill-color:#22c55e">${s.by_severity?.info||0}</div><div class="lbl">Info</div></div>`;
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-skull-crossbones" style="color:#ef4444"></i></div><div class="val" style="-webkit-text-fill-color:#ef4444">${_sv('critical')}</div><div class="lbl">Critical</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-triangle" style="color:#f97316"></i></div><div class="val" style="-webkit-text-fill-color:#f97316">${_sv('high')}</div><div class="lbl">High</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-exclamation-circle" style="color:#eab308"></i></div><div class="val" style="-webkit-text-fill-color:#eab308">${_sv('medium')}</div><div class="lbl">Medium</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-info-circle" style="color:#3b82f6"></i></div><div class="val" style="-webkit-text-fill-color:#3b82f6">${_sv('low')}</div><div class="lbl">Low</div></div>
+        <div class="fw-kpi"><div class="ico"><i class="fas fa-check-circle" style="color:#22c55e"></i></div><div class="val" style="-webkit-text-fill-color:#22c55e">${_sv('info')}</div><div class="lbl">Info</div></div>`;
 
     const _c = (id, type, cfg) => {
         if (_dashCharts[id]) { _dashCharts[id].data = cfg.data; _dashCharts[id].update(); return; }
@@ -1413,7 +1657,7 @@ async function fwDashRefresh() {
     const _mkGradH = (ctx, c1, c2) => { const g = ctx.getContext('2d').createLinearGradient(0, 0, ctx.width, 0); g.addColorStop(0, c1); g.addColorStop(1, c2); return g; };
 
     // Traffic (line - simulated from hourly)
-    const hourly = s.by_hour || {};
+    const hourly = s.hourly_requests || s.by_hour || {};
     const hours = Object.keys(hourly).sort();
     const trafficCanvas = document.getElementById('chartTraffic');
     const trafficGrad = trafficCanvas ? _mkGrad(trafficCanvas, 'rgba(239,68,68,.25)', 'rgba(239,68,68,.01)') : 'rgba(239,68,68,.1)';
@@ -1430,11 +1674,11 @@ async function fwDashRefresh() {
     _c('chartStatus', 'bar', { data: { labels: Object.keys(statuses), datasets: [{ label: 'İstek', data: Object.values(statuses), backgroundColor: statusGrad, borderRadius: 6, borderSkipped: false }] }, options: { scales: { x: {}, y: { beginAtZero: true } } } });
 
     // Severity (polar)
-    const sev = s.by_severity || {};
+    const sev = s.severity_counts || s.by_severity || {};
     _c('chartSeverity', 'polarArea', { data: { labels: Object.keys(sev), datasets: [{ data: Object.values(sev), backgroundColor: ['rgba(239,68,68,.7)','rgba(249,115,22,.7)','rgba(234,179,8,.7)','rgba(59,130,246,.7)','rgba(34,197,94,.7)'], borderColor: 'rgba(15,23,42,.5)', borderWidth: 2 }] }, options: {} });
 
     // L7 (radar)
-    const l7 = s.by_l7_type || {};
+    const l7 = s.l7_by_type || s.by_l7_type || {};
     _c('chartL7', 'radar', { data: { labels: Object.keys(l7).slice(0, 10), datasets: [{ label: 'L7', data: Object.values(l7).slice(0, 10), borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,.12)', borderWidth: 2, pointBackgroundColor: '#a855f7', pointBorderColor: '#1e293b', pointBorderWidth: 2, pointRadius: 3 }] }, options: {} });
 
     // Hourly (bar)
@@ -1672,14 +1916,17 @@ async function fwRmmLoadAlertBanner() {
     const d = await fwRmmApi('alerts?acknowledged=0');
     if (!d?.success) return;
     const banner = document.getElementById('rmmAlertBanner');
+    if (!banner) return;
     const stats = d.stats || {};
     if (stats.total > 0) {
         banner.style.display = 'block';
         const label = stats.critical > 0
             ? `${stats.critical} kritik, ${stats.warning} uyarı`
             : `${stats.warning} uyarı`;
-        document.getElementById('rmmAlertCount').textContent = stats.total;
-        banner.querySelector('div > div').innerHTML = `<b>${stats.total}</b> aktif alarm (${label})`;
+        const countEl = document.getElementById('rmmAlertCount');
+        if (countEl) countEl.textContent = stats.total;
+        const innerDiv = banner.querySelector('div > div');
+        if (innerDiv) innerDiv.innerHTML = `<b>${stats.total}</b> aktif alarm (${label})`;
     } else {
         banner.style.display = 'none';
     }
@@ -2158,8 +2405,7 @@ function fwItsmBackToList() {
 // ══════════════ SIEM: Threat Intelligence ══════════════
 
 async function fwThreatLoad() {
-    const r = await fetch(fwApi('rmm/threats'), {headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('threats');
     if (!d?.success) return;
     const s = d.stats || {};
     document.getElementById('tiTotal').textContent = s.total || 0;
@@ -2196,8 +2442,7 @@ async function fwThreatAdd() {
         source: document.getElementById('tiSource').value.trim() || 'manual',
         reputation: document.getElementById('tiReputation').value,
     };
-    const r = await fetch(fwApi('rmm/threats'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
-    const d = await r.json();
+    const d = await fwRmmApi('threats', 'POST', body);
     if (d?.success) { fwToast('Tehdit göstergesi eklendi'); document.getElementById('tiIndicator').value=''; fwThreatLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
@@ -2206,8 +2451,7 @@ async function fwThreatCheck() {
     const indicator = document.getElementById('tiCheckIndicator').value.trim();
     if (!indicator) return fwToast('Gösterge girin', 'error');
     const body = { indicator, indicator_type: document.getElementById('tiCheckType').value };
-    const r = await fetch(fwApi('rmm/threats/check'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
-    const d = await r.json();
+    const d = await fwRmmApi('threats/check', 'POST', body);
     const el = document.getElementById('tiCheckResult');
     if (d?.found) {
         const t = d.threat;
@@ -2222,8 +2466,7 @@ async function fwThreatCheck() {
 
 async function fwThreatDel(id) {
     if (!confirm('Bu göstergeyi silmek istediğinize emin misiniz?')) return;
-    const r = await fetch(fwApi('rmm/threats/' + id), {method:'DELETE', headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('threats/' + id, 'DELETE');
     if (d?.success) { fwToast('Gösterge silindi'); fwThreatLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
@@ -2278,15 +2521,13 @@ async function fwCorrCreate() {
         conditions,
         severity: document.getElementById('corrSeverity').value,
     };
-    const r = await fetch(fwApi('rmm/correlation/rules'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify(body)});
-    const d = await r.json();
+    const d = await fwRmmApi('correlation/rules', 'POST', body);
     if (d?.success) { fwToast('Korelasyon kuralı oluşturuldu'); document.getElementById('corrName').value=''; fwCorrelationLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
 
 async function fwCorrelationLoad() {
-    const r = await fetch(fwApi('rmm/correlation/rules'), {headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('correlation/rules');
     if (!d?.success) return;
     const rules = d.rules || [];
     if (!rules.length) {
@@ -2313,23 +2554,20 @@ async function fwCorrelationLoad() {
 }
 
 async function fwCorrToggle(id, enabled) {
-    const r = await fetch(fwApi('rmm/correlation/rules/' + id), {method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify({enabled})});
-    const d = await r.json();
+    const d = await fwRmmApi('correlation/rules/' + id, 'PUT', {enabled});
     if (d?.success) { fwToast('Kural güncellendi'); fwCorrelationLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
 
 async function fwCorrDel(id) {
     if (!confirm('Bu kuralı silmek istediğinize emin misiniz?')) return;
-    const r = await fetch(fwApi('rmm/correlation/rules/' + id), {method:'DELETE', headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('correlation/rules/' + id, 'DELETE');
     if (d?.success) { fwToast('Kural silindi'); fwCorrelationLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
 }
 
 async function fwCorrEventsLoad() {
-    const r = await fetch(fwApi('rmm/correlation/events'), {headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('correlation/events');
     if (!d?.success) return;
     const events = d.events || [];
     if (!events.length) {
@@ -2354,8 +2592,7 @@ async function fwCorrEventsLoad() {
 // ══════════════ SIEM: MITRE ATT&CK ══════════════
 
 async function fwMitreLoad() {
-    const r = await fetch(fwApi('rmm/mitre/summary'), {headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('mitre/summary');
     if (!d?.success) return;
     const tactics = d.tactics || [];
     const maxCount = Math.max(1, ...tactics.map(t => t.count));
@@ -2390,8 +2627,7 @@ async function fwMitreLoad() {
 // ══════════════ SIEM: Risk Score ══════════════
 
 async function fwRiskLoad() {
-    const r = await fetch(fwApi('rmm/risk'), {headers:{'X-CSRF-Token':FW.csrf}});
-    const d = await r.json();
+    const d = await fwRmmApi('risk');
     if (!d?.success) return;
     const summary = d.summary || {};
     document.getElementById('riskCritical').textContent = summary.critical || 0;
@@ -2422,10 +2658,272 @@ async function fwRiskLoad() {
 
 async function fwRiskDecay() {
     if (!confirm('Tüm risk puanlarını %5 azaltmak istiyor musunuz?')) return;
-    const r = await fetch(fwApi('rmm/risk/decay'), {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':FW.csrf}, body:JSON.stringify({percent:5})});
-    const d = await r.json();
+    const d = await fwRmmApi('risk/decay', 'POST', {percent:5});
     if (d?.success) { fwToast('Risk puanları azaltıldı'); fwRiskLoad(); }
     else fwToast(d?.message || 'Hata', 'error');
+}
+
+// ══════════════ SIEM: SOAR Playbook ══════════════
+
+let _pbActions = [];
+function _pbRender() {
+    const names = {block_ip:'IP Engelle', create_ticket:'Kayıt Oluştur', add_threat:'Tehdide Ekle', run_task:'Görev Çalıştır'};
+    document.getElementById('pbActionList').innerHTML = _pbActions.map((a,i) =>
+        `<span style="background:var(--bg);padding:2px 8px;border-radius:4px;margin-right:4px">${names[a.action_type]||a.action_type} <span style="cursor:pointer;color:#ef4444" onclick="_pbActions.splice(${i},1);_pbRender()">✕</span></span>`
+    ).join('');
+}
+function fwPbAddAction() {
+    const t = document.getElementById('pbActionType').value;
+    let p = {};
+    try { p = JSON.parse(document.getElementById('pbActionParam').value || '{}'); } catch(_) {}
+    _pbActions.push({action_type: t, params: p});
+    _pbRender();
+}
+
+async function fwPbCreate() {
+    const name = document.getElementById('pbName').value.trim();
+    if (!name) { fwToast('Playbook adı girin', 'error'); return; }
+    const d = await fwRmmApi('playbooks', 'POST', {
+        name, trigger_type: document.getElementById('pbTrigger').value,
+        description: document.getElementById('pbDesc').value,
+        actions: _pbActions
+    });
+    if (d?.success) { fwToast('Playbook oluşturuldu'); _pbActions=[]; document.getElementById('pbActionList').innerHTML=''; document.getElementById('pbName').value=''; document.getElementById('pbDesc').value=''; fwPbLoad(); }
+    else fwToast(d?.message||'Hata','error');
+}
+
+async function fwPbLoad() {
+    const d = await fwRmmApi('playbooks');
+    if (!d?.success) return;
+    const pbs = d.playbooks || [];
+    if (!pbs.length) { document.getElementById('pbList').innerHTML='<div class="fw-empty">Playbook yok</div>'; }
+    else {
+        const tNames = {alert:'Alarm', correlation:'Korelasyon', threat_match:'Tehdit', anomaly:'Anomali'};
+        document.getElementById('pbList').innerHTML = '<table class="fw-table"><thead><tr><th>Ad</th><th>Tetik</th><th>Aksiyon</th><th>Çalışma</th><th>Durum</th><th></th></tr></thead><tbody>' +
+            pbs.map(p => `<tr><td>${esc(p.name)}</td><td>${tNames[p.trigger_type]||p.trigger_type}</td><td>${(p.actions||[]).length}</td><td>${p.run_count}</td><td>${p.enabled?'<span style="color:#22c55e">Aktif</span>':'<span style="color:#94a3b8">Pasif</span>'}</td><td style="display:flex;gap:4px"><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwPbRun(${p.id})" title="Çalıştır"><i class="fas fa-play"></i></button><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwPbToggle(${p.id},${p.enabled?0:1})" title="${p.enabled?'Devre dışı':'Etkinleştir'}"><i class="fas fa-${p.enabled?'pause':'check'}"></i></button><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwPbDel(${p.id})" title="Sil"><i class="fas fa-trash" style="color:#ef4444"></i></button></td></tr>`).join('') +
+            '</tbody></table>';
+    }
+    // Runs
+    const r = await fwRmmApi('playbook-runs');
+    const runs = r?.runs || [];
+    if (!runs.length) { document.getElementById('pbRunList').innerHTML='<div class="fw-empty">Henüz çalıştırma yok</div>'; }
+    else {
+        document.getElementById('pbRunList').innerHTML = '<table class="fw-table"><thead><tr><th>Tarih</th><th>Playbook</th><th>Durum</th><th>Sonuç</th></tr></thead><tbody>' +
+            runs.slice(0,20).map(r => `<tr><td>${esc(r.created_at)}</td><td>${esc(r.playbook_name)}</td><td>${r.status}</td><td>${(r.results||[]).map(x=>x.action+':'+(x.ok?'✓':'✗')).join(', ')}</td></tr>`).join('') +
+            '</tbody></table>';
+    }
+}
+
+async function fwPbRun(id) {
+    const d = await fwRmmApi(`playbooks/${id}/run`, 'POST', {event:{}});
+    if (d?.success) { fwToast('Playbook çalıştırıldı'); fwPbLoad(); }
+    else fwToast(d?.message||'Hata','error');
+}
+
+async function fwPbToggle(id, val) {
+    await fwRmmApi(`playbooks/${id}`, 'PUT', {enabled:val});
+    fwPbLoad();
+}
+
+async function fwPbDel(id) {
+    if (!confirm('Playbook silinecek, emin misiniz?')) return;
+    await fwRmmApi(`playbooks/${id}`, 'DELETE');
+    fwPbLoad();
+}
+
+// ══════════════ SIEM: UEBA ══════════════
+
+async function fwUebaLoad() {
+    const [ad, bd] = await Promise.all([
+        fwRmmApi('ueba/anomalies'),
+        fwRmmApi('ueba/baselines')
+    ]);
+    const anomalies = ad?.anomalies || [];
+    const baselines = bd?.baselines || [];
+    document.getElementById('uebaAnomalyCount').textContent = anomalies.length;
+    document.getElementById('uebaBaselineCount').textContent = baselines.length;
+    const devs = new Set(baselines.map(b=>b.device_id));
+    document.getElementById('uebaDeviceCount').textContent = devs.size;
+
+    if (!anomalies.length) { document.getElementById('uebaAnomalyList').innerHTML='<div class="fw-empty">Anomali tespit edilmedi</div>'; }
+    else {
+        document.getElementById('uebaAnomalyList').innerHTML = '<table class="fw-table"><thead><tr><th>Tarih</th><th>Cihaz</th><th>Metrik</th><th>Beklenen</th><th>Gerçekleşen</th><th>Z-Score</th></tr></thead><tbody>' +
+            anomalies.slice(0,50).map(a => {
+                const zc = a.z_score>=4?'#ef4444':a.z_score>=3?'#f97316':'#f59e0b';
+                return `<tr><td>${esc(a.created_at)}</td><td>${esc(a.hostname||a.device_id)}</td><td>${esc(a.metric)}</td><td>${a.expected?.toFixed(1)}</td><td>${a.actual?.toFixed(1)}</td><td style="color:${zc};font-weight:600">${a.z_score?.toFixed(2)}</td></tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    if (!baselines.length) { document.getElementById('uebaBaselineList').innerHTML='<div class="fw-empty">Baseline verisi yok</div>'; }
+    else {
+        document.getElementById('uebaBaselineList').innerHTML = '<table class="fw-table"><thead><tr><th>Cihaz</th><th>Metrik</th><th>Ort</th><th>Std</th><th>Örneklem</th><th>Güncelleme</th></tr></thead><tbody>' +
+            baselines.map(b => `<tr><td>${esc(b.hostname||b.device_id)}</td><td>${esc(b.metric)}</td><td>${b.avg}</td><td>${b.std}</td><td>${b.samples}</td><td>${esc(b.updated_at)}</td></tr>`).join('') +
+            '</tbody></table>';
+    }
+}
+
+// ══════════════ SIEM: Case Management ══════════════
+
+async function fwCaseLoad() {
+    const status = document.getElementById('caseFilterStatus')?.value || '';
+    const d = await fwRmmApi('cases/dashboard');
+    if (d?.success) {
+        const s = d.summary || {};
+        document.getElementById('caseOpen').textContent = s.open || 0;
+        document.getElementById('caseInvestigating').textContent = s.investigating || 0;
+        document.getElementById('caseResolved').textContent = s.resolved || 0;
+        document.getElementById('caseClosed').textContent = s.closed || 0;
+    }
+    const q = status ? `cases?status=${status}` : 'cases';
+    const cd = await fwRmmApi(q);
+    const cases = cd?.cases || [];
+    if (!cases.length) { document.getElementById('caseList').innerHTML='<div class="fw-empty">Vaka yok</div>'; return; }
+    const sevColors = {critical:'#ef4444',high:'#f97316',medium:'#f59e0b',low:'#22c55e'};
+    const statusNames = {open:'Açık',investigating:'İnceleniyor',contained:'Kontrol Altında',resolved:'Çözüldü',closed:'Kapatıldı'};
+    document.getElementById('caseList').innerHTML = '<table class="fw-table"><thead><tr><th>#</th><th>Başlık</th><th>Ciddiyet</th><th>Durum</th><th>Atanan</th><th>Tarih</th><th></th></tr></thead><tbody>' +
+        cases.map(c => `<tr><td>${c.id}</td><td>${esc(c.title)}</td><td style="color:${sevColors[c.severity]||'inherit'}">${c.severity}</td><td>${statusNames[c.status]||c.status}</td><td>${esc(c.assignee||'-')}</td><td>${esc(c.created_at)}</td><td><button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="fwCaseDetail(${c.id})"><i class="fas fa-eye"></i></button></td></tr>`).join('') +
+        '</tbody></table>';
+}
+
+async function fwCaseCreate() {
+    const title = document.getElementById('caseTitle').value.trim();
+    if (!title) { fwToast('Başlık girin', 'error'); return; }
+    const d = await fwRmmApi('cases', 'POST', {
+        title, severity: document.getElementById('caseSeverity').value,
+        assignee: document.getElementById('caseAssignee').value,
+        description: document.getElementById('caseDesc').value
+    });
+    if (d?.success) { fwToast('Vaka oluşturuldu'); document.getElementById('caseTitle').value=''; document.getElementById('caseDesc').value=''; fwCaseLoad(); }
+    else fwToast(d?.message||'Hata','error');
+}
+
+async function fwCaseDetail(id) {
+    const d = await fwRmmApi(`cases/${id}`);
+    if (!d?.success) { fwToast('Vaka bulunamadı','error'); return; }
+    document.getElementById('caseList').style.display='none';
+    const dv = document.getElementById('caseDetailView');
+    dv.style.display='block';
+    const sevColors = {critical:'#ef4444',high:'#f97316',medium:'#f59e0b',low:'#22c55e'};
+    const timeline = d.timeline || [];
+    const evidence = d.evidence || [];
+    dv.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h4 style="margin:0">Vaka #${d.id}: ${esc(d.title)}</h4>
+            <button class="fw-btn fw-btn-ghost fw-btn-sm" onclick="document.getElementById('caseList').style.display='';document.getElementById('caseDetailView').style.display='none'"><i class="fas fa-arrow-left"></i> Geri</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="fw-stat"><div class="fw-stat-lbl">Ciddiyet</div><div style="color:${sevColors[d.severity]};font-weight:600">${d.severity}</div></div>
+            <div class="fw-stat"><div class="fw-stat-lbl">Durum</div>
+                <select class="fw-input" onchange="fwCaseUpdate(${d.id},{status:this.value})">
+                    ${['open','investigating','contained','resolved','closed'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}
+                </select>
+            </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <h5 style="margin:0 0 8px 0">📝 Açıklama</h5>
+            <p style="margin:0;font-size:13px">${esc(d.description||'—')}</p>
+        </div>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:16px">
+            <h5 style="margin:0 0 8px 0">📎 Kanıtlar (${evidence.length})</h5>
+            ${evidence.length ? '<table class="fw-table"><thead><tr><th>Tip</th><th>Açıklama</th><th>Tarih</th></tr></thead><tbody>' + evidence.map(e=>`<tr><td>${esc(e.evidence_type)}</td><td>${esc(e.description)}</td><td>${esc(e.added_at)}</td></tr>`).join('') + '</tbody></table>' : '<div class="fw-empty">Kanıt yok</div>'}
+            <div style="display:flex;gap:4px;margin-top:8px">
+                <input class="fw-input" id="evDesc_${d.id}" placeholder="Kanıt açıklaması" style="flex:1">
+                <button class="fw-btn fw-btn-primary fw-btn-sm" onclick="fwCaseAddEvidence(${d.id})">+ Ekle</button>
+            </div>
+        </div>
+        <div style="background:var(--bg-input);border-radius:12px;padding:16px">
+            <h5 style="margin:0 0 8px 0">⏱ Zaman Çizelgesi</h5>
+            <div style="border-left:2px solid var(--accent);padding-left:16px">
+                ${timeline.map(t => `<div style="margin-bottom:10px;position:relative"><div style="width:8px;height:8px;border-radius:50%;background:var(--accent);position:absolute;left:-20px;top:5px"></div><div style="font-size:11px;color:var(--text-secondary)">${esc(t.created_at)} — ${esc(t.actor||'system')}</div><div style="font-size:13px">${esc(t.message)}</div></div>`).join('')}
+            </div>
+        </div>`;
+}
+
+async function fwCaseUpdate(id, fields) {
+    const d = await fwRmmApi(`cases/${id}`, 'PUT', fields);
+    if (d?.success) fwToast('Vaka güncellendi');
+    fwCaseDetail(id);
+}
+
+async function fwCaseAddEvidence(id) {
+    const desc = document.getElementById(`evDesc_${id}`)?.value;
+    if (!desc) return;
+    await fwRmmApi(`cases/${id}/evidence`, 'POST', {evidence_type:'note', description:desc});
+    fwCaseDetail(id);
+}
+
+// ══════════════ SIEM: Syslog ══════════════
+
+async function fwSyslogLoad() {
+    const st = await fwRmmApi('syslog/status');
+    if (st?.success) {
+        document.getElementById('syslogStatus').innerHTML = st.running ?
+            '<span style="color:#22c55e">Çalışıyor</span>' : '<span style="color:#94a3b8">Durmuş</span>';
+        document.getElementById('syslogTotal').textContent = st.total_entries || 0;
+    }
+    const ip = document.getElementById('syslogFilterIP')?.value || '';
+    const sev = document.getElementById('syslogFilterSev')?.value || '';
+    let q = 'syslog/entries?';
+    if (ip) q += `source_ip=${encodeURIComponent(ip)}&`;
+    if (sev) q += `severity=${sev}&`;
+    const d = await fwRmmApi(q);
+    const entries = d?.entries || [];
+    if (!entries.length) { document.getElementById('syslogList').innerHTML='<div class="fw-empty">Syslog kaydı yok</div>'; return; }
+    const sevColors = {0:'#ef4444',1:'#ef4444',2:'#ef4444',3:'#f97316',4:'#f59e0b',5:'#22c55e',6:'#06b6d4',7:'#94a3b8'};
+    document.getElementById('syslogList').innerHTML = '<table class="fw-table"><thead><tr><th>Tarih</th><th>Kaynak</th><th>Seviye</th><th>Host</th><th>Mesaj</th></tr></thead><tbody>' +
+        entries.slice(0,100).map(e => `<tr><td style="white-space:nowrap">${esc(e.received_at)}</td><td>${esc(e.source_ip)}</td><td style="color:${sevColors[e.severity]||'inherit'}">${esc(e.severity_name)}</td><td>${esc(e.hostname)}</td><td style="font-size:11px;max-width:400px;overflow:hidden;text-overflow:ellipsis">${esc(e.message)}</td></tr>`).join('') +
+        '</tbody></table>';
+}
+
+async function fwSyslogStart() {
+    const d = await fwRmmApi('syslog/start', 'POST', {port:5514});
+    if (d?.success) { fwToast(d.message||'Başlatıldı'); fwSyslogLoad(); }
+    else fwToast(d?.message||'Hata','error');
+}
+
+async function fwSyslogStop() {
+    const d = await fwRmmApi('syslog/stop', 'POST', {});
+    if (d?.success) { fwToast(d.message||'Durduruldu'); fwSyslogLoad(); }
+    else fwToast(d?.message||'Hata','error');
+}
+
+// ══════════════ SIEM: Natural Language Query ══════════════
+
+async function fwNlQuery() {
+    const q = document.getElementById('nlqInput').value.trim();
+    if (!q) { fwToast('Sorgu girin','error'); return; }
+    document.getElementById('nlqResults').innerHTML='<div class="fw-empty">Sorgulanıyor...</div>';
+    const d = await fwRmmApi('query', 'POST', {query:q});
+    if (!d?.success) { document.getElementById('nlqResults').innerHTML='<div class="fw-empty">Hata</div>'; return; }
+    // Parsed info
+    const p = d.parsed || {};
+    const parsedEl = document.getElementById('nlqParsed');
+    parsedEl.style.display='block';
+    parsedEl.innerHTML = `<b>Ayrıştırma:</b> Kaynak: ${p.source||'all'} | Zaman: ${p.time_seconds ? (p.time_seconds/3600).toFixed(1)+'s' : 'tümü'} | IP: ${p.target_ip||'-'} | Filtreler: ${JSON.stringify(p.filters||{})} | <b>Toplam: ${d.total_results} sonuç</b>`;
+    // Results
+    const res = d.results || {};
+    let html = '';
+    for (const [src, items] of Object.entries(res)) {
+        if (!items.length) continue;
+        const srcNames = {alerts:'Alarmlar',anomalies:'Anomaliler',threats:'Tehditler',correlations:'Korelasyonlar',syslog:'Syslog',cases:'Vakalar'};
+        html += `<div style="background:var(--bg-input);border-radius:12px;padding:16px;margin-bottom:12px"><h5 style="margin:0 0 8px 0">${srcNames[src]||src} (${items.length})</h5>`;
+        html += '<table class="fw-table"><thead><tr>';
+        const keys = Object.keys(items[0]).slice(0,6);
+        keys.forEach(k => html += `<th>${esc(k)}</th>`);
+        html += '</tr></thead><tbody>';
+        items.slice(0,20).forEach(item => {
+            html += '<tr>';
+            keys.forEach(k => {
+                let v = item[k];
+                if (typeof v === 'object') v = JSON.stringify(v);
+                html += `<td style="font-size:11px">${esc(String(v??''))}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+    }
+    if (!html) html = '<div class="fw-empty">Sonuç bulunamadı</div>';
+    document.getElementById('nlqResults').innerHTML = html;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

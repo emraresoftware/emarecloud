@@ -511,14 +511,24 @@ def _mock_emareos(cmd: str):
 
     # ── Network Analyser: tools ──
     if "/emare tools ping" in cmd:
-        return (True,
-            "  SEQ HOST                                     SIZE TTL TIME  STATUS\n"
-            "    0 8.8.8.8                                    56  55 12.3ms\n"
-            "    1 8.8.8.8                                    56  55 11.8ms\n"
-            "    2 8.8.8.8                                    56  55 13.1ms\n"
-            "    3 8.8.8.8                                    56  55 12.0ms\n"
-            "    sent=4 received=4 packet-loss=0% min-rtt=11.8ms avg-rtt=12.3ms max-rtt=13.1ms\n",
-        "")
+        import random
+        _cnt = 4
+        _m = re.search(r'count=(\d+)', cmd)
+        if _m:
+            _cnt = min(int(_m.group(1)), 500)
+        if _cnt <= 0:
+            _cnt = 4
+        _lines = "  SEQ HOST                                     SIZE TTL TIME  STATUS\n"
+        _times = []
+        for _i in range(_cnt):
+            _t = round(random.uniform(10.0, 15.0), 1)
+            _times.append(_t)
+            _lines += f"    {_i} 8.8.8.8                                    56  55 {_t}ms\n"
+        _min_t = min(_times)
+        _avg_t = round(sum(_times) / len(_times), 1)
+        _max_t = max(_times)
+        _lines += f"    sent={_cnt} received={_cnt} packet-loss=0% min-rtt={_min_t}ms avg-rtt={_avg_t}ms max-rtt={_max_t}ms\n"
+        return (True, _lines, "")
     if "/emare tools traceroute" in cmd:
         return (True,
             " 1  gateway (192.168.88.1) 1.2ms\n"
@@ -768,16 +778,25 @@ def _mock_ufw(cmd: str):
 
     # ── Network Analyser: Linux tools ──
     if cmd.startswith("ping ") or "ping -c" in cmd:
-        return (True,
-            "PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.\n"
-            "64 bytes from 8.8.8.8: icmp_seq=1 ttl=55 time=12.3 ms\n"
-            "64 bytes from 8.8.8.8: icmp_seq=2 ttl=55 time=11.8 ms\n"
-            "64 bytes from 8.8.8.8: icmp_seq=3 ttl=55 time=13.1 ms\n"
-            "64 bytes from 8.8.8.8: icmp_seq=4 ttl=55 time=12.0 ms\n"
-            "\n--- 8.8.8.8 ping statistics ---\n"
-            "4 packets transmitted, 4 received, 0% packet loss, time 3004ms\n"
-            "rtt min/avg/max/mdev = 11.8/12.3/13.1/0.5 ms\n",
-        "")
+        import random
+        _cnt = 4
+        _m = re.search(r'-c\s+(\d+)', cmd)
+        if _m:
+            _cnt = min(int(_m.group(1)), 500)
+        _lines = "PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.\n"
+        _times = []
+        for _i in range(1, _cnt + 1):
+            _t = round(random.uniform(10.0, 15.0), 1)
+            _times.append(_t)
+            _lines += f"64 bytes from 8.8.8.8: icmp_seq={_i} ttl=55 time={_t} ms\n"
+        _min_t = min(_times)
+        _avg_t = round(sum(_times) / len(_times), 1)
+        _max_t = max(_times)
+        _mdev = round((_max_t - _min_t) / 2, 1)
+        _lines += f"\n--- 8.8.8.8 ping statistics ---\n"
+        _lines += f"{_cnt} packets transmitted, {_cnt} received, 0% packet loss, time {_cnt * 1001}ms\n"
+        _lines += f"rtt min/avg/max/mdev = {_min_t}/{_avg_t}/{_max_t}/{_mdev} ms\n"
+        return (True, _lines, "")
     if cmd.startswith("traceroute ") or "traceroute -m" in cmd or "tracepath " in cmd:
         return (True,
             "traceroute to 8.8.8.8 (8.8.8.8), 20 hops max, 60 byte packets\n"
@@ -1048,6 +1067,50 @@ def create_app():
             if base_risk > 0:
                 rmm_store._add_risk_factor(
                     dev['id'], 'initial_assessment', base_risk)
+
+    # SOAR Demo Playbook'ları
+    if not rmm_store.list_playbooks():
+        rmm_store.create_playbook(
+            name='Kritik Alarm → IP Engelle + Kayıt',
+            trigger_type='alert',
+            trigger_conditions={'severity': 'critical'},
+            actions=[
+                {'action_type': 'block_ip', 'params': {}},
+                {'action_type': 'create_ticket',
+                 'params': {'title': 'Otomatik: Kritik alarm',
+                            'priority': 'critical'}},
+            ],
+            description='Kritik alarm geldiğinde IP engelle ve kayıt oluştur')
+        rmm_store.create_playbook(
+            name='Anomali → Tehdit Listesine Ekle',
+            trigger_type='anomaly',
+            trigger_conditions={},
+            actions=[
+                {'action_type': 'add_threat',
+                 'params': {'ioc_type': 'ipv4-addr'}},
+            ],
+            description='UEBA anomalisi tespit edildiğinde tehdide ekle')
+        rmm_store.create_playbook(
+            name='Korelasyon → Kayıt Oluştur',
+            trigger_type='correlation',
+            trigger_conditions={},
+            actions=[
+                {'action_type': 'create_ticket',
+                 'params': {'title': 'Korelasyon Eşleşmesi',
+                            'priority': 'high'}},
+            ],
+            description='Korelasyon kuralı tetiklendiğinde kayıt oluştur')
+
+    # Demo Vakalar (Case Management)
+    if not rmm_store.list_cases():
+        rmm_store.create_case(
+            title='Şüpheli Giriş Denemesi — 192.168.1.50',
+            description='Birden fazla başarısız giriş denemesi tespit edildi',
+            severity='high', assignee='admin', created_by='system')
+        rmm_store.create_case(
+            title='Ransomware İndikatörü — evil-payload.xyz',
+            description='Tehdit istihbaratı eşleşmesi: bilinen ransomware domain',
+            severity='critical', assignee='soc-analyst', created_by='system')
 
     # Blueprint oluştur
     fw_bp = create_blueprint(

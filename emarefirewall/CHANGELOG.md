@@ -2,6 +2,46 @@
 
 Bu projede yapılan tüm değişikliklerin kaydı. [Semver](https://semver.org/) kullanılır.
 
+## [1.14.0] — 2025-07-17
+
+### Eklendi — SIEM Modülü (5 Yeni Özellik)
+- **SOAR / Playbook Engine:** Otomatik yanıt iş akışları — trigger bazlı (alert/correlation/anomaly/threat) playbook çalıştırma, aksiyon tipleri (IP engelle, ticket oluştur, tehdide ekle, görev çalıştır), otomatik tetikleme, çalıştırma logları
+- **UEBA — Davranış Analizi:** Welford online algoritması ile running baseline hesaplama, z-score tabanlı anomali tespiti (eşik: 2.5σ), cihaz bazlı metrik profili, anomali → risk puanı entegrasyonu
+- **Investigation / Case Management:** Olay inceleme vaka yönetimi, durum akışı (open→investigating→contained→resolved→closed), kanıt ekleme (alert/anomaly/threat/syslog/note/correlation), görsel zaman çizelgesi, alarm→vaka bağlama
+- **Syslog Receiver:** UDP syslog alıcı (RFC 3164 parse), konfigüre edilebilir port (varsayılan 5514), arka plan thread, facility/severity parse, hostname çıkarma, başlat/durdur kontrolü
+- **Doğal Dil Sorgusu:** Türkçe/İngilizce doğal dil ile SIEM verisi sorgulama, zaman aralığı parse (son X saat/dakika/gün), ciddiyet filtresi, IP hedefleme, çoklu kaynak sorgusu (alarm/anomali/tehdit/korelasyon/syslog/vaka)
+
+### API Endpoint'leri (20 yeni)
+- `GET/POST /api/rmm/playbooks` — Playbook listesi ve oluşturma
+- `PUT/DELETE /api/rmm/playbooks/<id>` — Playbook güncelleme ve silme
+- `POST /api/rmm/playbooks/<id>/run` — Playbook çalıştırma
+- `GET /api/rmm/playbook-runs` — Çalıştırma logları
+- `GET /api/rmm/ueba/anomalies` — Anomali listesi
+- `GET /api/rmm/ueba/baselines` — Baseline değerleri
+- `GET/POST /api/rmm/cases` — Vaka listesi ve oluşturma
+- `GET/PUT /api/rmm/cases/<id>` — Vaka detay ve güncelleme
+- `POST /api/rmm/cases/<id>/evidence` — Kanıt ekleme
+- `POST /api/rmm/cases/<id>/link-alert` — Alarm bağlama
+- `GET /api/rmm/cases/dashboard` — Vaka dashboard
+- `GET /api/rmm/syslog/status` — Syslog alıcı durumu
+- `POST /api/rmm/syslog/start` — Syslog başlat
+- `POST /api/rmm/syslog/stop` — Syslog durdur
+- `GET /api/rmm/syslog/entries` — Syslog kayıtları
+- `POST /api/rmm/query` — Doğal dil sorgusu
+
+### UI (5 yeni panel)
+- SOAR Playbook: Oluşturma formu, aksiyon ekleme, liste, çalıştırma logları
+- UEBA: Anomali tablosu, baseline değerleri, istatistik kartları
+- İnceleme: Vaka oluşturma, liste, detay görünümü, kanıt ekleme, zaman çizelgesi
+- Syslog: Başlat/Durdur kontrolü, kayıt listesi, IP/seviye filtresi
+- Doğal Dil Sorgusu: Metin girişi, ayrıştırma bilgisi, çoklu kaynak sonuç tabloları
+
+### Veritabanı (8 yeni tablo)
+- `playbooks`, `playbook_runs` — SOAR playbook ve çalıştırma logları
+- `baselines`, `anomalies` — UEBA baseline ve anomali kayıtları
+- `cases`, `case_evidence`, `case_timeline` — Vaka yönetimi
+- `syslog_entries` — Syslog kayıtları
+
 ## [1.13.0] — 2026-03-23
 
 ### Eklendi — SIEM Modülü (5 Özellik)

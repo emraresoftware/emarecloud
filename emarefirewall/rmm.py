@@ -21,10 +21,13 @@ Symon Windows Agent Uyumluluğu:
 
 import json
 import os
+import re
 import secrets
+import socket
 import sqlite3
 import threading
 from datetime import datetime, timezone, timedelta
+from math import sqrt
 from typing import Optional
 
 
@@ -219,7 +222,151 @@ class RMMStore:
             'CREATE UNIQUE INDEX IF NOT EXISTS idx_rs_dev '
             'ON risk_scores(device_id)')
 
+        # ── SOAR Playbook Tables ──
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS playbooks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            trigger_type TEXT DEFAULT 'alert',
+            trigger_conditions TEXT DEFAULT '{}',
+            actions TEXT DEFAULT '[]',
+            enabled INTEGER DEFAULT 1,
+            run_count INTEGER DEFAULT 0,
+            last_run TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )''')
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS playbook_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playbook_id INTEGER NOT NULL,
+            trigger_event TEXT DEFAULT '{}',
+            results TEXT DEFAULT '[]',
+            status TEXT DEFAULT 'completed',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (playbook_id) REFERENCES playbooks(id)
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_pr_pb '
+            'ON playbook_runs(playbook_id)')
+
+        # ── UEBA Tables ──
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS baselines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            avg_val REAL DEFAULT 0,
+            std_val REAL DEFAULT 0,
+            sample_count INTEGER DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (device_id) REFERENCES devices(id)
+        )''')
+        self._conn.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_bl_dev_metric '
+            'ON baselines(device_id, metric)')
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS anomalies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            expected REAL DEFAULT 0,
+            actual REAL DEFAULT 0,
+            z_score REAL DEFAULT 0,
+            message TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (device_id) REFERENCES devices(id)
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_anom_dev '
+            'ON anomalies(device_id)')
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS user_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            action TEXT DEFAULT '',
+            username TEXT DEFAULT '',
+            detail TEXT DEFAULT '',
+            event_ts TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (device_id) REFERENCES devices(id)
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_ue_dev '
+            'ON user_events(device_id)')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_ue_type '
+            'ON user_events(event_type)')
+
+        # ── Investigation / Case Management Tables ──
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS cases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            severity TEXT DEFAULT 'medium',
+            status TEXT DEFAULT 'open',
+            assignee TEXT DEFAULT '',
+            created_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            closed_at TEXT DEFAULT ''
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_case_status '
+            'ON cases(status)')
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS case_evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL,
+            evidence_type TEXT NOT NULL,
+            reference_id TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            data TEXT DEFAULT '{}',
+            added_by TEXT DEFAULT '',
+            added_at TEXT NOT NULL,
+            FOREIGN KEY (case_id) REFERENCES cases(id)
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_ev_case '
+            'ON case_evidence(case_id)')
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS case_timeline (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            actor TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (case_id) REFERENCES cases(id)
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_tl_case '
+            'ON case_timeline(case_id)')
+
+        # ── Syslog Table ──
+
+        self._conn.execute('''CREATE TABLE IF NOT EXISTS syslog_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_ip TEXT DEFAULT '',
+            facility INTEGER DEFAULT 0,
+            severity INTEGER DEFAULT 6,
+            hostname TEXT DEFAULT '',
+            message TEXT DEFAULT '',
+            raw TEXT DEFAULT '',
+            received_at TEXT NOT NULL
+        )''')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_syslog_ts '
+            'ON syslog_entries(received_at)')
+        self._conn.execute(
+            'CREATE INDEX IF NOT EXISTS idx_syslog_src '
+            'ON syslog_entries(source_ip)')
+
         self._conn.commit()
+
+        self._syslog_thread = None
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -272,6 +419,10 @@ class RMMStore:
                    VALUES (?,?,?,?,?,?,?,?)''',
                 (device_id, now, cpu, ram, disk, net_in, net_out, extra_json))
             self._conn.commit()
+        # Store UEBA user events if present
+        events = (extra or {}).get('events')
+        if events and isinstance(events, list):
+            self._store_user_events(device_id, events)
         self._check_thresholds(device_id, cpu, ram, disk)
         self.evaluate_correlation_rules(device_id)
         return True
@@ -1264,7 +1415,973 @@ class RMMStore:
             },
         }
 
+    # ══════════════════════════════════════════════════════════════
+    # 6. SOAR / Playbook Engine
+    # ══════════════════════════════════════════════════════════════
+
+    def create_playbook(self, name: str, trigger_type: str = 'alert',
+                        trigger_conditions: dict = None,
+                        actions: list = None,
+                        description: str = '') -> dict:
+        """
+        Yeni playbook oluşturur.
+        trigger_type: alert | correlation | threat_match
+        actions: [{action_type, params}]
+          action_type: block_ip | create_ticket | add_threat | run_task
+        """
+        now = self._now()
+        conds = json.dumps(trigger_conditions or {})
+        acts = json.dumps(actions or [])
+        with self._lock:
+            cur = self._conn.execute(
+                'INSERT INTO playbooks '
+                '(name, description, trigger_type, trigger_conditions, '
+                'actions, created_at) VALUES (?,?,?,?,?,?)',
+                (name, description, trigger_type, conds, acts, now))
+            self._conn.commit()
+            return {'id': cur.lastrowid, 'name': name}
+
+    def update_playbook(self, pb_id: int, **fields) -> bool:
+        allowed = {'name', 'description', 'trigger_type',
+                    'trigger_conditions', 'actions', 'enabled'}
+        parts, vals = [], []
+        for k, v in fields.items():
+            if k not in allowed:
+                continue
+            if k in ('trigger_conditions', 'actions'):
+                v = json.dumps(v)
+            parts.append(f'{k}=?')
+            vals.append(v)
+        if not parts:
+            return False
+        vals.append(pb_id)
+        with self._lock:
+            self._conn.execute(
+                f'UPDATE playbooks SET {",".join(parts)} WHERE id=?', vals)
+            self._conn.commit()
+        return True
+
+    def delete_playbook(self, pb_id: int):
+        with self._lock:
+            self._conn.execute('DELETE FROM playbook_runs WHERE playbook_id=?',
+                               (pb_id,))
+            self._conn.execute('DELETE FROM playbooks WHERE id=?', (pb_id,))
+            self._conn.commit()
+
+    def list_playbooks(self) -> list:
+        with self._lock:
+            rows = self._conn.execute(
+                'SELECT id, name, description, trigger_type, '
+                'trigger_conditions, actions, enabled, run_count, '
+                'last_run, created_at FROM playbooks '
+                'ORDER BY id DESC').fetchall()
+        return [{
+            'id': r[0], 'name': r[1], 'description': r[2],
+            'trigger_type': r[3],
+            'trigger_conditions': json.loads(r[4] or '{}'),
+            'actions': json.loads(r[5] or '[]'),
+            'enabled': bool(r[6]), 'run_count': r[7],
+            'last_run': r[8], 'created_at': r[9],
+        } for r in rows]
+
+    def get_playbook(self, pb_id: int):
+        with self._lock:
+            r = self._conn.execute(
+                'SELECT id, name, description, trigger_type, '
+                'trigger_conditions, actions, enabled, run_count, '
+                'last_run, created_at FROM playbooks WHERE id=?',
+                (pb_id,)).fetchone()
+        if not r:
+            return None
+        return {
+            'id': r[0], 'name': r[1], 'description': r[2],
+            'trigger_type': r[3],
+            'trigger_conditions': json.loads(r[4] or '{}'),
+            'actions': json.loads(r[5] or '[]'),
+            'enabled': bool(r[6]), 'run_count': r[7],
+            'last_run': r[8], 'created_at': r[9],
+        }
+
+    def execute_playbook(self, pb_id: int, trigger_event: dict = None) -> dict:
+        """Playbook'u çalıştırır ve aksiyon sonuçlarını döner."""
+        pb = self.get_playbook(pb_id)
+        if not pb or not pb['enabled']:
+            return {'ok': False, 'error': 'Playbook bulunamadı veya devre dışı'}
+        results = []
+        for act in pb.get('actions', []):
+            a_type = act.get('action_type', '')
+            params = act.get('params', {})
+            res = self._run_playbook_action(a_type, params, trigger_event or {})
+            results.append(res)
+        now = self._now()
+        with self._lock:
+            self._conn.execute(
+                'INSERT INTO playbook_runs '
+                '(playbook_id, trigger_event, results, status, created_at) '
+                'VALUES (?,?,?,?,?)',
+                (pb_id, json.dumps(trigger_event or {}),
+                 json.dumps(results), 'completed', now))
+            self._conn.execute(
+                'UPDATE playbooks SET run_count=run_count+1, last_run=? '
+                'WHERE id=?', (now, pb_id))
+            self._conn.commit()
+        return {'ok': True, 'results': results}
+
+    def _run_playbook_action(self, action_type: str, params: dict,
+                             trigger: dict) -> dict:
+        """Tek bir playbook aksiyonunu çalıştırır."""
+        if action_type == 'block_ip':
+            ip = params.get('ip') or trigger.get('source_ip', '')
+            if ip:
+                self.add_threat_indicator(ip, 'ip',
+                                source='playbook-auto',
+                                reputation='malicious',
+                                tags=['auto-blocked'])
+                return {'action': 'block_ip', 'ip': ip, 'ok': True}
+            return {'action': 'block_ip', 'ok': False, 'error': 'IP yok'}
+        elif action_type == 'create_ticket':
+            title = params.get('title', 'Playbook Otomatik Kayıt')
+            device_id = trigger.get('device_id', '')
+            tid = self.create_ticket(
+                title=title,
+                description=params.get('description', ''),
+                priority=params.get('priority', 'high'),
+                category='security',
+                device_id=device_id)
+            return {'action': 'create_ticket', 'ticket_id': tid,
+                    'ok': True}
+        elif action_type == 'add_threat':
+            ioc = params.get('ioc', '') or trigger.get('ioc', '')
+            ioc_type = params.get('ioc_type', 'ip')
+            if ioc:
+                self.add_threat_indicator(ioc, ioc_type, source='playbook',
+                                reputation='suspicious',
+                                tags=['playbook-added'])
+                return {'action': 'add_threat', 'ioc': ioc, 'ok': True}
+            return {'action': 'add_threat', 'ok': False}
+        elif action_type == 'run_task':
+            device_id = params.get('device_id') or trigger.get('device_id', '')
+            cmd = params.get('command', '')
+            if device_id and cmd:
+                tid = self.create_task(device_id, 'command', {'command': cmd})
+                return {'action': 'run_task', 'task_id': tid, 'ok': True}
+            return {'action': 'run_task', 'ok': False}
+        return {'action': action_type, 'ok': False, 'error': 'Bilinmeyen aksiyon'}
+
+    def _trigger_playbooks(self, trigger_type: str, event: dict):
+        """Belirli trigger tipine uyan aktif playbook'ları çalıştırır."""
+        with self._lock:
+            rows = self._conn.execute(
+                'SELECT id, trigger_conditions FROM playbooks '
+                'WHERE trigger_type=? AND enabled=1',
+                (trigger_type,)).fetchall()
+        for row in rows:
+            pb_id = row[0]
+            conditions = json.loads(row[1] or '{}')
+            if self._playbook_conditions_met(conditions, event):
+                self.execute_playbook(pb_id, event)
+
+    def _playbook_conditions_met(self, conditions: dict,
+                                 event: dict) -> bool:
+        """Playbook koşullarının event ile eşleşip eşleşmediğini kontrol eder."""
+        if not conditions:
+            return True
+        for key, expected in conditions.items():
+            actual = event.get(key, '')
+            if isinstance(expected, list):
+                if actual not in expected:
+                    return False
+            elif str(actual).lower() != str(expected).lower():
+                return False
+        return True
+
+    def list_playbook_runs(self, pb_id: int = None,
+                           limit: int = 50) -> list:
+        with self._lock:
+            if pb_id:
+                rows = self._conn.execute(
+                    'SELECT pr.id, pr.playbook_id, p.name, '
+                    'pr.trigger_event, pr.results, pr.status, pr.created_at '
+                    'FROM playbook_runs pr '
+                    'LEFT JOIN playbooks p ON pr.playbook_id = p.id '
+                    'WHERE pr.playbook_id=? '
+                    'ORDER BY pr.id DESC LIMIT ?',
+                    (pb_id, limit)).fetchall()
+            else:
+                rows = self._conn.execute(
+                    'SELECT pr.id, pr.playbook_id, p.name, '
+                    'pr.trigger_event, pr.results, pr.status, pr.created_at '
+                    'FROM playbook_runs pr '
+                    'LEFT JOIN playbooks p ON pr.playbook_id = p.id '
+                    'ORDER BY pr.id DESC LIMIT ?',
+                    (limit,)).fetchall()
+        return [{
+            'id': r[0], 'playbook_id': r[1], 'playbook_name': r[2] or '',
+            'trigger_event': json.loads(r[3] or '{}'),
+            'results': json.loads(r[4] or '[]'),
+            'status': r[5], 'created_at': r[6],
+        } for r in rows]
+
+    # ══════════════════════════════════════════════════════════════
+    # 7. UEBA — Kullanıcı ve Varlık Davranış Analizi
+    # ══════════════════════════════════════════════════════════════
+
+    def update_baseline(self, device_id: str, metric: str, value: float):
+        """
+        Cihazın belirli bir metriği için running average günceller.
+        Welford'un online algoritması kullanılır.
+        """
+        now = self._now()
+        with self._lock:
+            row = self._conn.execute(
+                'SELECT avg_val, std_val, sample_count FROM baselines '
+                'WHERE device_id=? AND metric=?',
+                (device_id, metric)).fetchone()
+            if row:
+                old_avg, old_std, n = row[0], row[1], row[2]
+                n += 1
+                new_avg = old_avg + (value - old_avg) / n
+                # Welford variance
+                if n > 1:
+                    old_var = old_std * old_std
+                    new_var = old_var + ((value - old_avg) *
+                                        (value - new_avg) - old_var) / n
+                    new_std = sqrt(abs(new_var))
+                else:
+                    new_std = 0
+                self._conn.execute(
+                    'UPDATE baselines SET avg_val=?, std_val=?, '
+                    'sample_count=?, updated_at=? '
+                    'WHERE device_id=? AND metric=?',
+                    (new_avg, new_std, n, now, device_id, metric))
+            else:
+                self._conn.execute(
+                    'INSERT INTO baselines '
+                    '(device_id, metric, avg_val, std_val, sample_count, '
+                    'updated_at) VALUES (?,?,?,0,1,?)',
+                    (device_id, metric, value, now))
+            self._conn.commit()
+
+    def check_anomaly(self, device_id: str, metric: str,
+                      value: float, threshold: float = 2.5):
+        """
+        Z-score hesaplar. Eşik aşarsa anomali kaydeder.
+        threshold=2.5 → ~%1.2 false positive oranı
+        """
+        with self._lock:
+            row = self._conn.execute(
+                'SELECT avg_val, std_val, sample_count FROM baselines '
+                'WHERE device_id=? AND metric=?',
+                (device_id, metric)).fetchone()
+        if not row or row[2] < 5:
+            # Yeterli örneklem yok
+            return None
+        avg_val, std_val, n = row
+        if std_val < 0.001:
+            return None
+        z = abs(value - avg_val) / std_val
+        if z < threshold:
+            return None
+        now = self._now()
+        msg = (f'{metric} anomalisi: beklenen={avg_val:.1f}, '
+               f'gerçekleşen={value:.1f}, z={z:.2f}')
+        with self._lock:
+            cur = self._conn.execute(
+                'INSERT INTO anomalies '
+                '(device_id, metric, expected, actual, z_score, '
+                'message, created_at) VALUES (?,?,?,?,?,?,?)',
+                (device_id, metric, avg_val, value, z, msg, now))
+            self._conn.commit()
+            anom_id = cur.lastrowid
+        # Risk puanına ekle
+        self._add_risk_factor(device_id, f'ueba_anomaly_{metric}',
+                              int(min(z * 10, 30)))
+        return {'id': anom_id, 'device_id': device_id, 'metric': metric,
+                'z_score': round(z, 2), 'message': msg}
+
+    def process_ueba(self, device_id: str, metrics: dict):
+        """
+        Heartbeat sırasında çağrılır. Her metriği baseline güncelle +
+        anomali kontrolü yap.
+        metrics: {'cpu': 45.2, 'mem': 72.1, 'disk': 55.0, ...}
+        """
+        anomalies = []
+        for metric, value in metrics.items():
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                continue
+            self.update_baseline(device_id, metric, value)
+            anom = self.check_anomaly(device_id, metric, value)
+            if anom:
+                anomalies.append(anom)
+                # Anomali tetiklenen playbook
+                self._trigger_playbooks('anomaly', {
+                    'device_id': device_id,
+                    'metric': metric,
+                    'z_score': anom['z_score'],
+                    'value': value,
+                })
+        return anomalies
+
+    def list_anomalies(self, device_id: str = None,
+                       limit: int = 100) -> list:
+        with self._lock:
+            if device_id:
+                rows = self._conn.execute(
+                    'SELECT a.id, a.device_id, d.hostname, a.metric, '
+                    'a.expected, a.actual, a.z_score, a.message, '
+                    'a.created_at FROM anomalies a '
+                    'LEFT JOIN devices d ON a.device_id = d.id '
+                    'WHERE a.device_id=? ORDER BY a.id DESC LIMIT ?',
+                    (device_id, limit)).fetchall()
+            else:
+                rows = self._conn.execute(
+                    'SELECT a.id, a.device_id, d.hostname, a.metric, '
+                    'a.expected, a.actual, a.z_score, a.message, '
+                    'a.created_at FROM anomalies a '
+                    'LEFT JOIN devices d ON a.device_id = d.id '
+                    'ORDER BY a.id DESC LIMIT ?',
+                    (limit,)).fetchall()
+        return [{
+            'id': r[0], 'device_id': r[1], 'hostname': r[2] or '',
+            'metric': r[3], 'expected': r[4], 'actual': r[5],
+            'z_score': r[6], 'message': r[7], 'created_at': r[8],
+        } for r in rows]
+
+    def get_baselines(self, device_id: str = None) -> list:
+        with self._lock:
+            if device_id:
+                rows = self._conn.execute(
+                    'SELECT b.device_id, d.hostname, b.metric, '
+                    'b.avg_val, b.std_val, b.sample_count, b.updated_at '
+                    'FROM baselines b '
+                    'LEFT JOIN devices d ON b.device_id = d.id '
+                    'WHERE b.device_id=? ORDER BY b.metric',
+                    (device_id,)).fetchall()
+            else:
+                rows = self._conn.execute(
+                    'SELECT b.device_id, d.hostname, b.metric, '
+                    'b.avg_val, b.std_val, b.sample_count, b.updated_at '
+                    'FROM baselines b '
+                    'LEFT JOIN devices d ON b.device_id = d.id '
+                    'ORDER BY b.device_id, b.metric').fetchall()
+        return [{
+            'device_id': r[0], 'hostname': r[1] or '',
+            'metric': r[2], 'avg': round(r[3], 2),
+            'std': round(r[4], 2), 'samples': r[5],
+            'updated_at': r[6],
+        } for r in rows]
+
+    # ══════════════════════════════════════════════════════════════
+    # 8. Investigation / Case Management
+    # ══════════════════════════════════════════════════════════════
+
+    def create_case(self, title: str, description: str = '',
+                    severity: str = 'medium', assignee: str = '',
+                    created_by: str = '') -> dict:
+        now = self._now()
+        with self._lock:
+            cur = self._conn.execute(
+                'INSERT INTO cases '
+                '(title, description, severity, status, assignee, '
+                'created_by, created_at, updated_at) '
+                'VALUES (?,?,?,?,?,?,?,?)',
+                (title, description, severity, 'open', assignee,
+                 created_by, now, now))
+            case_id = cur.lastrowid
+            self._conn.execute(
+                'INSERT INTO case_timeline '
+                '(case_id, event_type, message, actor, created_at) '
+                'VALUES (?,?,?,?,?)',
+                (case_id, 'created', 'Vaka oluşturuldu', created_by, now))
+            self._conn.commit()
+        return {'id': case_id, 'title': title}
+
+    def update_case(self, case_id: int, actor: str = '', **fields) -> bool:
+        allowed = {'title', 'description', 'severity', 'status', 'assignee'}
+        parts, vals = [], []
+        for k, v in fields.items():
+            if k not in allowed:
+                continue
+            parts.append(f'{k}=?')
+            vals.append(v)
+        if not parts:
+            return False
+        now = self._now()
+        parts.append('updated_at=?')
+        vals.append(now)
+        if fields.get('status') == 'closed':
+            parts.append('closed_at=?')
+            vals.append(now)
+        vals.append(case_id)
+        with self._lock:
+            self._conn.execute(
+                f'UPDATE cases SET {",".join(parts)} WHERE id=?', vals)
+            changes = ', '.join(f'{k}={fields[k]}' for k in fields
+                                if k in allowed)
+            self._conn.execute(
+                'INSERT INTO case_timeline '
+                '(case_id, event_type, message, actor, created_at) '
+                'VALUES (?,?,?,?,?)',
+                (case_id, 'updated', f'Güncellendi: {changes}', actor, now))
+            self._conn.commit()
+        return True
+
+    def get_case(self, case_id: int):
+        with self._lock:
+            r = self._conn.execute(
+                'SELECT id, title, description, severity, status, '
+                'assignee, created_by, created_at, updated_at, closed_at '
+                'FROM cases WHERE id=?', (case_id,)).fetchone()
+        if not r:
+            return None
+        return {
+            'id': r[0], 'title': r[1], 'description': r[2],
+            'severity': r[3], 'status': r[4], 'assignee': r[5],
+            'created_by': r[6], 'created_at': r[7],
+            'updated_at': r[8], 'closed_at': r[9],
+        }
+
+    def list_cases(self, status: str = None, limit: int = 50) -> list:
+        with self._lock:
+            if status:
+                rows = self._conn.execute(
+                    'SELECT id, title, severity, status, assignee, '
+                    'created_at, updated_at FROM cases '
+                    'WHERE status=? ORDER BY id DESC LIMIT ?',
+                    (status, limit)).fetchall()
+            else:
+                rows = self._conn.execute(
+                    'SELECT id, title, severity, status, assignee, '
+                    'created_at, updated_at FROM cases '
+                    'ORDER BY id DESC LIMIT ?',
+                    (limit,)).fetchall()
+        return [{
+            'id': r[0], 'title': r[1], 'severity': r[2],
+            'status': r[3], 'assignee': r[4],
+            'created_at': r[5], 'updated_at': r[6],
+        } for r in rows]
+
+    def add_case_evidence(self, case_id: int, evidence_type: str,
+                          description: str = '', data: dict = None,
+                          reference_id: str = '',
+                          added_by: str = '') -> dict:
+        now = self._now()
+        with self._lock:
+            cur = self._conn.execute(
+                'INSERT INTO case_evidence '
+                '(case_id, evidence_type, reference_id, description, '
+                'data, added_by, added_at) VALUES (?,?,?,?,?,?,?)',
+                (case_id, evidence_type, reference_id, description,
+                 json.dumps(data or {}), added_by, now))
+            self._conn.execute(
+                'INSERT INTO case_timeline '
+                '(case_id, event_type, message, actor, created_at) '
+                'VALUES (?,?,?,?,?)',
+                (case_id, 'evidence_added',
+                 f'Kanıt eklendi: {evidence_type} — {description}',
+                 added_by, now))
+            self._conn.execute(
+                'UPDATE cases SET updated_at=? WHERE id=?', (now, case_id))
+            self._conn.commit()
+        return {'id': cur.lastrowid, 'case_id': case_id}
+
+    def get_case_timeline(self, case_id: int) -> list:
+        with self._lock:
+            rows = self._conn.execute(
+                'SELECT id, event_type, message, actor, created_at '
+                'FROM case_timeline WHERE case_id=? '
+                'ORDER BY created_at ASC', (case_id,)).fetchall()
+        return [{
+            'id': r[0], 'event_type': r[1], 'message': r[2],
+            'actor': r[3], 'created_at': r[4],
+        } for r in rows]
+
+    def get_case_evidence_list(self, case_id: int) -> list:
+        with self._lock:
+            rows = self._conn.execute(
+                'SELECT id, evidence_type, reference_id, description, '
+                'data, added_by, added_at '
+                'FROM case_evidence WHERE case_id=? '
+                'ORDER BY added_at ASC', (case_id,)).fetchall()
+        return [{
+            'id': r[0], 'evidence_type': r[1],
+            'reference_id': r[2], 'description': r[3],
+            'data': json.loads(r[4] or '{}'),
+            'added_by': r[5], 'added_at': r[6],
+        } for r in rows]
+
+    def link_alert_to_case(self, case_id: int, alert_id: int,
+                           actor: str = '') -> dict:
+        """Bir alarmı vakaya kanıt olarak bağlar."""
+        with self._lock:
+            r = self._conn.execute(
+                'SELECT id, device_id, alert_type, message, severity, '
+                'created_at FROM alerts WHERE id=?',
+                (alert_id,)).fetchone()
+        if not r:
+            return {'ok': False, 'error': 'Alarm bulunamadı'}
+        return self.add_case_evidence(
+            case_id, evidence_type='alert',
+            reference_id=str(alert_id),
+            description=f'Alarm #{alert_id}: {r[3]}',
+            data={'alert_type': r[2], 'severity': r[4],
+                  'device_id': r[1], 'created_at': r[5]},
+            added_by=actor)
+
+    def case_dashboard(self) -> dict:
+        with self._lock:
+            rows = self._conn.execute(
+                'SELECT status, COUNT(*) FROM cases GROUP BY status'
+            ).fetchall()
+        summary = {r[0]: r[1] for r in rows}
+        summary['total'] = sum(summary.values())
+        return {
+            'summary': summary,
+            'recent': self.list_cases(limit=10),
+        }
+
+    # ══════════════════════════════════════════════════════════════
+    # 9. Syslog Receiver
+    # ══════════════════════════════════════════════════════════════
+
+    def _parse_syslog_msg(self, data: bytes,
+                          addr: tuple) -> dict:
+        """RFC 3164 syslog mesajını parse eder."""
+        try:
+            raw = data.decode('utf-8', errors='replace').strip()
+        except Exception:
+            raw = str(data)
+        facility = 1
+        severity = 6
+        hostname = ''
+        message = raw
+        # <PRI> parse
+        if raw.startswith('<'):
+            end = raw.find('>')
+            if end > 0:
+                try:
+                    pri = int(raw[1:end])
+                    facility = pri >> 3
+                    severity = pri & 7
+                    message = raw[end + 1:].strip()
+                except ValueError:
+                    pass
+        # Hostname parse (first word after timestamp)
+        parts = message.split(' ', 4)
+        if len(parts) >= 4:
+            # Typical: "Mon DD HH:MM:SS hostname msg"
+            hostname = parts[3] if len(parts) > 3 else ''
+            if len(parts) > 4:
+                message = parts[4]
+        return {
+            'source_ip': addr[0] if addr else '',
+            'facility': facility,
+            'severity': severity,
+            'hostname': hostname,
+            'message': message,
+            'raw': raw,
+        }
+
+    def _syslog_listener(self, port: int):
+        """Syslog UDP dinleyici thread fonksiyonu."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(2.0)
+        try:
+            sock.bind(('0.0.0.0', port))
+        except OSError as e:
+            self._syslog_thread = None
+            return
+        self._syslog_sock = sock
+        while self._syslog_thread is not None:
+            try:
+                data, addr = sock.recvfrom(8192)
+                if not data:
+                    continue
+                parsed = self._parse_syslog_msg(data, addr)
+                now = self._now()
+                with self._lock:
+                    self._conn.execute(
+                        'INSERT INTO syslog_entries '
+                        '(source_ip, facility, severity, hostname, '
+                        'message, raw, received_at) '
+                        'VALUES (?,?,?,?,?,?,?)',
+                        (parsed['source_ip'], parsed['facility'],
+                         parsed['severity'], parsed['hostname'],
+                         parsed['message'], parsed['raw'], now))
+                    self._conn.commit()
+            except socket.timeout:
+                continue
+            except Exception:
+                continue
+        sock.close()
+
+    def start_syslog_receiver(self, port: int = 5514) -> dict:
+        """Syslog UDP alıcısını başlatır (non-privileged port)."""
+        if self._syslog_thread is not None:
+            return {'ok': True, 'message': 'Zaten çalışıyor', 'port': port}
+        import threading
+        self._syslog_thread = threading.Thread(
+            target=self._syslog_listener, args=(port,),
+            daemon=True, name='syslog-receiver')
+        self._syslog_thread.start()
+        return {'ok': True, 'message': f'Syslog alıcı port {port} başlatıldı',
+                'port': port}
+
+    def stop_syslog_receiver(self) -> dict:
+        """Syslog alıcısını durdurur."""
+        if self._syslog_thread is None:
+            return {'ok': True, 'message': 'Zaten durmuş'}
+        self._syslog_thread = None
+        if hasattr(self, '_syslog_sock'):
+            try:
+                self._syslog_sock.close()
+            except Exception:
+                pass
+        return {'ok': True, 'message': 'Syslog alıcı durduruldu'}
+
+    def syslog_status(self) -> dict:
+        running = self._syslog_thread is not None
+        with self._lock:
+            count = self._conn.execute(
+                'SELECT COUNT(*) FROM syslog_entries').fetchone()[0]
+        return {'running': running, 'total_entries': count}
+
+    def list_syslog_entries(self, source_ip: str = None,
+                            severity: int = None,
+                            limit: int = 200) -> list:
+        conditions = []
+        params = []
+        if source_ip:
+            conditions.append('source_ip=?')
+            params.append(source_ip)
+        if severity is not None:
+            conditions.append('severity<=?')
+            params.append(severity)
+        where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, source_ip, facility, severity, hostname, '
+                f'message, raw, received_at FROM syslog_entries '
+                f'{where} ORDER BY id DESC LIMIT ?',
+                params).fetchall()
+        sev_names = ['Emergency', 'Alert', 'Critical', 'Error',
+                     'Warning', 'Notice', 'Info', 'Debug']
+        return [{
+            'id': r[0], 'source_ip': r[1], 'facility': r[2],
+            'severity': r[3],
+            'severity_name': sev_names[r[3]] if r[3] < 8 else 'Unknown',
+            'hostname': r[4], 'message': r[5],
+            'raw': r[6], 'received_at': r[7],
+        } for r in rows]
+
+    # ══════════════════════════════════════════════════════════════
+    # 10. Natural Language Query (Doğal Dil Sorgusu)
+    # ══════════════════════════════════════════════════════════════
+
+    _NL_TIME_PATTERNS = [
+        (r'son\s+(\d+)\s*saat', lambda m: int(m.group(1)) * 3600),
+        (r'son\s+(\d+)\s*dakika', lambda m: int(m.group(1)) * 60),
+        (r'son\s+(\d+)\s*gün', lambda m: int(m.group(1)) * 86400),
+        (r'last\s+(\d+)\s*hour', lambda m: int(m.group(1)) * 3600),
+        (r'last\s+(\d+)\s*minute', lambda m: int(m.group(1)) * 60),
+        (r'last\s+(\d+)\s*day', lambda m: int(m.group(1)) * 86400),
+        (r'bugün|today', lambda m: 86400),
+        (r'bu\s*hafta|this\s*week', lambda m: 604800),
+    ]
+
+    _NL_ENTITY_PATTERNS = [
+        # severity
+        (r'kritik|critical', {'severity': 'critical'}),
+        (r'yüksek|high', {'severity': 'high'}),
+        (r'orta|medium', {'severity': 'medium'}),
+        (r'düşük|low', {'severity': 'low'}),
+        # source
+        (r'alarm|alert', {'source': 'alerts'}),
+        (r'anomali|anomaly', {'source': 'anomalies'}),
+        (r'tehdit|threat', {'source': 'threats'}),
+        (r'korelasyon|correlation', {'source': 'correlations'}),
+        (r'syslog', {'source': 'syslog'}),
+        (r'vaka|case|inceleme|investigation', {'source': 'cases'}),
+        # metric
+        (r'cpu', {'metric': 'cpu'}),
+        (r'ram|bellek|memory|mem', {'metric': 'mem'}),
+        (r'disk', {'metric': 'disk'}),
+        (r'ağ|network|net', {'metric': 'net'}),
+    ]
+
+    _NL_IP_PATTERN = re.compile(
+        r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})')
+
+    def natural_language_query(self, query_text: str) -> dict:
+        """
+        Türkçe/İngilizce doğal dil sorgusunu parse edip
+        ilgili verileri döner.
+
+        Örnekler:
+          "son 24 saatteki kritik alarmlar"
+          "192.168.1.5 için anomali var mı"
+          "bu hafta kaç tehdit tespit edildi"
+          "syslog critical entries last 1 hour"
+        """
+        text = query_text.lower().strip()
+        # Time range parse
+        time_seconds = None
+        for pat, fn in self._NL_TIME_PATTERNS:
+            m = re.search(pat, text)
+            if m:
+                time_seconds = fn(m)
+                break
+        # Entity/filter parse
+        filters = {}
+        for pat, vals in self._NL_ENTITY_PATTERNS:
+            if re.search(pat, text):
+                filters.update(vals)
+        # IP parse
+        ip_match = self._NL_IP_PATTERN.search(text)
+        target_ip = ip_match.group(1) if ip_match else None
+
+        # Time boundary
+        if time_seconds:
+            from datetime import datetime, timedelta, timezone
+            cutoff = (datetime.now(timezone.utc) -
+                      timedelta(seconds=time_seconds)).strftime(
+                '%Y-%m-%d %H:%M:%S')
+        else:
+            cutoff = None
+
+        source = filters.get('source', 'all')
+        results = {}
+
+        # Sonuçları topla
+        if source in ('all', 'alerts'):
+            results['alerts'] = self._nl_query_alerts(
+                cutoff, filters, target_ip)
+        if source in ('all', 'anomalies'):
+            results['anomalies'] = self._nl_query_anomalies(
+                cutoff, filters, target_ip)
+        if source in ('all', 'threats'):
+            results['threats'] = self._nl_query_threats(
+                cutoff, target_ip)
+        if source in ('all', 'correlations'):
+            results['correlations'] = self._nl_query_correlations(cutoff)
+        if source in ('all', 'syslog'):
+            results['syslog'] = self._nl_query_syslog(
+                cutoff, filters, target_ip)
+        if source in ('all', 'cases'):
+            results['cases'] = self._nl_query_cases(cutoff, filters)
+
+        total = sum(len(v) for v in results.values())
+        return {
+            'query': query_text,
+            'parsed': {
+                'time_seconds': time_seconds,
+                'filters': filters,
+                'target_ip': target_ip,
+                'source': source,
+            },
+            'total_results': total,
+            'results': results,
+        }
+
+    def _nl_query_alerts(self, cutoff, filters, ip):
+        conds, params = [], []
+        if cutoff:
+            conds.append('created_at>=?')
+            params.append(cutoff)
+        sev = filters.get('severity')
+        if sev:
+            conds.append('severity=?')
+            params.append(sev)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, device_id, alert_type, message, severity, '
+                f'created_at FROM alerts {where} '
+                f'ORDER BY id DESC LIMIT 100', params).fetchall()
+        return [{'id': r[0], 'device_id': r[1], 'type': r[2],
+                 'message': r[3], 'severity': r[4],
+                 'created_at': r[5]} for r in rows]
+
+    def _nl_query_anomalies(self, cutoff, filters, ip):
+        conds, params = [], []
+        if cutoff:
+            conds.append('created_at>=?')
+            params.append(cutoff)
+        met = filters.get('metric')
+        if met:
+            conds.append('metric=?')
+            params.append(met)
+        if ip:
+            conds.append('device_id=?')
+            params.append(ip)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, device_id, metric, expected, actual, '
+                f'z_score, message, created_at FROM anomalies '
+                f'{where} ORDER BY id DESC LIMIT 100',
+                params).fetchall()
+        return [{'id': r[0], 'device_id': r[1], 'metric': r[2],
+                 'expected': r[3], 'actual': r[4], 'z_score': r[5],
+                 'message': r[6], 'created_at': r[7]} for r in rows]
+
+    def _nl_query_threats(self, cutoff, ip):
+        conds, params = [], []
+        if cutoff:
+            conds.append('first_seen>=?')
+            params.append(cutoff)
+        if ip:
+            conds.append('indicator=?')
+            params.append(ip)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, indicator, indicator_type, source, reputation, '
+                f'first_seen FROM threat_intel '
+                f'{where} ORDER BY id DESC LIMIT 100',
+                params).fetchall()
+        return [{'id': r[0], 'indicator': r[1], 'type': r[2],
+                 'source': r[3], 'reputation': r[4],
+                 'first_seen': r[5]} for r in rows]
+
+    def _nl_query_correlations(self, cutoff):
+        conds, params = [], []
+        if cutoff:
+            conds.append('ce.created_at>=?')
+            params.append(cutoff)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT ce.id, cr.name, ce.device_id, ce.event_data, '
+                f'ce.created_at FROM correlation_events ce '
+                f'LEFT JOIN correlation_rules cr ON ce.rule_id = cr.id '
+                f'{where} ORDER BY ce.id DESC LIMIT 100',
+                params).fetchall()
+        return [{'id': r[0], 'rule_name': r[1] or '',
+                 'device_id': r[2],
+                 'event_data': json.loads(r[3] or '{}'),
+                 'created_at': r[4]} for r in rows]
+
+    def _nl_query_syslog(self, cutoff, filters, ip):
+        conds, params = [], []
+        if cutoff:
+            conds.append('received_at>=?')
+            params.append(cutoff)
+        if ip:
+            conds.append('source_ip=?')
+            params.append(ip)
+        sev = filters.get('severity')
+        if sev:
+            sev_map = {'critical': 2, 'high': 3, 'medium': 4, 'low': 6}
+            conds.append('severity<=?')
+            params.append(sev_map.get(sev, 6))
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, source_ip, severity, hostname, message, '
+                f'received_at FROM syslog_entries '
+                f'{where} ORDER BY id DESC LIMIT 100',
+                params).fetchall()
+        return [{'id': r[0], 'source_ip': r[1], 'severity': r[2],
+                 'hostname': r[3], 'message': r[4],
+                 'received_at': r[5]} for r in rows]
+
+    def _nl_query_cases(self, cutoff, filters):
+        conds, params = [], []
+        if cutoff:
+            conds.append('created_at>=?')
+            params.append(cutoff)
+        sev = filters.get('severity')
+        if sev:
+            conds.append('severity=?')
+            params.append(sev)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT id, title, severity, status, assignee, '
+                f'created_at FROM cases '
+                f'{where} ORDER BY id DESC LIMIT 100',
+                params).fetchall()
+        return [{'id': r[0], 'title': r[1], 'severity': r[2],
+                 'status': r[3], 'assignee': r[4],
+                 'created_at': r[5]} for r in rows]
+
     def close(self):
+        self.stop_syslog_receiver()
         if self._conn:
             self._conn.close()
             self._conn = None
+
+    # ── UEBA User Events ──
+
+    def _store_user_events(self, device_id: str, events: list):
+        """Agent'tan gelen kullanıcı olaylarını user_events tablosuna yaz."""
+        now = self._now()
+        ALLOWED_TYPES = {'logon', 'usb', 'process_start', 'network_connection',
+                         'file_access', 'software_inventory'}
+        with self._lock:
+            for ev in events[:200]:
+                if not isinstance(ev, dict):
+                    continue
+                etype = str(ev.get('type', ''))[:50]
+                if etype not in ALLOWED_TYPES:
+                    continue
+                action = str(ev.get('action', ''))[:100]
+                user = str(ev.get('user', ev.get('username', '')))[:100]
+                # Build detail summary
+                detail_parts = {k: v for k, v in ev.items()
+                                if k not in ('type', 'action', 'user',
+                                             'username', 'timestamp')}
+                detail = json.dumps(detail_parts, ensure_ascii=False)[:4000]
+                event_ts = str(ev.get('timestamp', now))[:50]
+                self._conn.execute(
+                    'INSERT INTO user_events '
+                    '(device_id, event_type, action, username, detail, '
+                    'event_ts, created_at) VALUES (?,?,?,?,?,?,?)',
+                    (device_id, etype, action, user, detail, event_ts, now))
+            self._conn.commit()
+
+    def list_user_events(self, device_id: str = None,
+                         event_type: str = None,
+                         limit: int = 100) -> list:
+        """Kullanıcı olaylarını listele."""
+        conds, params = [], []
+        if device_id:
+            conds.append('e.device_id=?')
+            params.append(device_id)
+        if event_type:
+            conds.append('e.event_type=?')
+            params.append(event_type)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT e.id, e.device_id, d.hostname, e.event_type, '
+                f'e.action, e.username, e.detail, e.event_ts, e.created_at '
+                f'FROM user_events e '
+                f'LEFT JOIN devices d ON e.device_id = d.id '
+                f'{where} ORDER BY e.id DESC LIMIT ?',
+                params).fetchall()
+        return [{
+            'id': r[0], 'device_id': r[1], 'hostname': r[2] or '',
+            'event_type': r[3], 'action': r[4], 'username': r[5],
+            'detail': r[6], 'event_ts': r[7], 'created_at': r[8],
+        } for r in rows]
+
+    def count_user_events(self, device_id: str = None) -> dict:
+        """Event tipine göre özet sayı."""
+        conds, params = [], []
+        if device_id:
+            conds.append('device_id=?')
+            params.append(device_id)
+        where = ('WHERE ' + ' AND '.join(conds)) if conds else ''
+        with self._lock:
+            rows = self._conn.execute(
+                f'SELECT event_type, COUNT(*) FROM user_events '
+                f'{where} GROUP BY event_type',
+                params).fetchall()
+        return {r[0]: r[1] for r in rows}
