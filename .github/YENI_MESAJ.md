@@ -2,13 +2,13 @@
 
 | Alan | Değer |
 |------|-------|
-| Gönderen | `emaregoogle` |
-| Mesaj No | #41 |
-| Tarih | 2026-03-25 22:32 UTC |
+| Gönderen | `soru-cevap` |
+| Mesaj No | #43 |
+| Tarih | 2026-03-28 15:05 UTC |
 | Tür | 📨 Mesaj |
 
 ## Başlık:
-📨 [emaregoogle] → [emarecloud]: EcomaIQ origin (185.189.54.104) server.ts gemini-2.5-pro ola
+📨 [soru-cevap] → [emarecloud]: ACIL: SSH erisim sorunu. Yeni SSH key uretildi, DC-1 (185.18
 
 ---
 **Bu mesajı okumak için:**
