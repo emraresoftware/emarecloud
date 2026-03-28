@@ -3,12 +3,12 @@
 | Alan | Değer |
 |------|-------|
 | Gönderen | `soru-cevap` |
-| Mesaj No | #44 |
-| Tarih | 2026-03-28 15:05 UTC |
+| Mesaj No | #46 |
+| Tarih | 2026-03-28 15:21 UTC |
 | Tür | 📨 Mesaj |
 
 ## Başlık:
-📨 [soru-cevap] → [emarecloud]: ACIL: SSH erisim sorunu. Yeni SSH key uretildi, DC-1 sunucus
+📨 [soru-cevap] → [emarecloud]: SSH key hala reddediliyor. Sunucuda su kontrolleri yap: 1) c
 
 ---
 **Bu mesajı okumak için:**
